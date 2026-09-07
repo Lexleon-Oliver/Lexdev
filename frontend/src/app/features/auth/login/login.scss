@@ -1,0 +1,15 @@
+.auth-container {
+      display: flex; justify-content: center; align-items: center;
+      height: 100vh; background-color: #f3f4f6;
+    }
+    .card {
+      background: white; padding: 2rem; border-radius: 8px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); width: 100%; max-width: 380px;
+    }
+    .field { margin-bottom: 1rem; display: flex; flex-direction: column; }
+    input { padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; margin-top: 0.25rem; }
+    button {
+      width: 100%; padding: 0.75rem; background-color: #2563eb; color: white;
+      border: none; border-radius: 4px; cursor: pointer; font-weight: bold;
+    }
+    button:disabled { background-color: #93c5fd; cursor: not-allowed; }

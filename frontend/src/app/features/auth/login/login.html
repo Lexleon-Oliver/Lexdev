@@ -1,0 +1,16 @@
+<div class="auth-container">
+      <div class="card">
+        <h2>SystemPro Login</h2>
+        <form [formGroup]="form" (ngSubmit)="onSubmit()">
+          <div class="field">
+            <label>Usuário / E-mail</label>
+            <input type="text" formControlName="username" placeholder="Digite seu usuário">
+          </div>
+          <div class="field">
+            <label>Senha</label>
+            <input type="password" formControlName="password" placeholder="Digite sua senha">
+          </div>
+          <button type="submit" [disabled]="form.invalid">Entrar</button>
+        </form>
+      </div>
+    </div>
