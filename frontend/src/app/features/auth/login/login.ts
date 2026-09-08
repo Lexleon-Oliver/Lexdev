@@ -13,24 +13,31 @@ export class Login {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
   private router = inject(Router);
-  errorMessage = signal<string | null>(null);
 
-  form = this.fb.group({
+  errorMessage = signal<string | null>(null);
+  isLoading = signal<boolean>(false);
+
+  // FormBuilder não-nulo garante tipagem estrita de string
+  form = this.fb.nonNullable.group({
     username: ['', Validators.required],
-    password: ['', Validators.required]
+    password: ['', Validators.required],
   });
 
   onSubmit(): void {
-    if (this.form.valid) {
-      this.errorMessage.set(null);
-      this.authService.login(this.form.value).subscribe({
-        next: () => {
-          this.router.navigate(['/dashboard']);
-        },
-        error: () => {
-          this.errorMessage.set('Usuário ou senha inválidos.');
-        }
-      });
-    }
+    if (this.form.invalid) return;
+
+    this.errorMessage.set(null);
+    this.isLoading.set(true);
+
+    this.authService.login(this.form.getRawValue()).subscribe({
+      next: () => {
+        this.isLoading.set(false);
+        this.router.navigate(['/dashboard']);
+      },
+      error: () => {
+        this.isLoading.set(false);
+        this.errorMessage.set('Usuário ou senha inválidos.');
+      }
+    });
   }
 }

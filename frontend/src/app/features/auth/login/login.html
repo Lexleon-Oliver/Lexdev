@@ -8,6 +8,12 @@
       <img src="logo.png" alt="Logo" class="logo" />
       <h3>Lexdev</h3>
 
+      @if (errorMessage()) {
+        <div class="alert-error">
+          {{ errorMessage() }}
+        </div>
+      }
+
       <label for="username">Username</label>
       <input
         type="text"
@@ -24,8 +30,8 @@
         placeholder="Digite sua senha"
       />
 
-      <button class="btn" type="submit" [disabled]="form.invalid">
-        Log In
+      <button class="btn" type="submit" [disabled]="form.invalid || isLoading()">
+        {{ isLoading() ? 'Carregando...' : 'Log In' }}
       </button>
     </form>
   </div>

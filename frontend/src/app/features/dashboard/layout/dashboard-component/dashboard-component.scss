@@ -1,0 +1,163 @@
+.dashboard-wrapper {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f5f7fb;
+}
+
+/* Sidebar Desktop */
+.sidebar {
+  width: 250px;
+  background: #2c3e50;
+  color: #fff;
+  transition: width 0.3s;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1000;
+}
+
+.sidebar.collapsed {
+  width: 70px;
+}
+
+.sidebar-header {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.sidebar-brand {
+  font-size: 1.25rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  color: #fff;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 0.5rem 0;
+  overflow-y: auto;
+}
+
+.nav-link {
+  color: #adb5bd;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.2s;
+  white-space: nowrap;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  color: #fff;
+  background: rgba(255,255,255,0.1);
+}
+
+.nav-link i {
+  font-size: 1.2rem;
+  min-width: 20px;
+}
+
+.submenu {
+  padding-left: 1rem;
+}
+
+.submenu .nav-link {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+
+.submenu-arrow {
+  transition: transform 0.3s;
+}
+
+.nav-link[aria-expanded="true"] .submenu-arrow {
+  transform: rotate(180deg);
+}
+
+/* Sidebar Mobile */
+.mobile-sidebar {
+  position: fixed;
+  top: 0;
+  left: -280px;
+  width: 280px;
+  height: 100%;
+  background: #2c3e50;
+  color: #fff;
+  transition: left 0.3s;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-sidebar.open {
+  left: 0;
+}
+
+.mobile-sidebar-header {
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.mobile-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  z-index: 1050;
+}
+
+/* Conteúdo principal */
+.main-content {
+  flex: 1;
+  margin-left: 250px;
+  transition: margin-left 0.3s;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main-content.expanded {
+  margin-left: 70px;
+}
+
+/* Barra superior */
+.topbar {
+  background: #fff;
+  padding: 0.75rem 1.5rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  position: sticky;
+  top: 0;
+  z-index: 900;
+}
+
+.page-title {
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+/* Responsividade */
+@media (max-width: 992px) {
+  .sidebar {
+    display: none; /* esconde sidebar desktop em telas menores */
+  }
+  .main-content,
+  .main-content.expanded {
+    margin-left: 0;
+  }
+}

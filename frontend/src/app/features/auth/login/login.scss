@@ -67,6 +67,24 @@ html, body {
   min-height: auto;
 }
 
+.alert-error {
+  background-color: red;           /* fundo bem claro com leve tom de vermelho */
+  border: 2px solid #ff4336;           /* borda mais grossa para destaque */
+  color: #b30000;                      /* vermelho escuro, excelente contraste */
+   /* padding: 10px 15px;
+  border-radius: 5px;
+  font-size: 14px;
+  text-align: center;
+  margin-bottom: 15px;
+  width: 100%;
+  box-sizing: border-box;*/
+  padding: 12px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 8px rgba(255, 67, 54, 0.2); /* sombra suave */
+}
+
 /* Em telas grandes mantemos a altura original */
 @media (min-width: 992px) {
   .login-form {

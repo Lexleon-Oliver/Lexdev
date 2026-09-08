@@ -3,16 +3,21 @@ import { Login } from './features/auth/login/login';
 import { Forbidden } from './core/pages/forbidden/forbidden';
 import { NotFound } from './core/pages/not-found/not-found';
 import { authGuard } from './core/guards/auth.guard';
-import { DashboardComponent } from './features/dashboard/dashboard-component/dashboard-component';
+
 
 export const routes: Routes = [
-  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+   { path: 'login', loadComponent: () => import('./features/auth/login/login').then(m => m.Login) },
   {
     path: 'dashboard',
-    component: DashboardComponent,
-    canActivate: [authGuard]
+    loadComponent: () => import('./features/dashboard/layout/dashboard-component/dashboard-component').then(m => m.DashboardComponent),
+    canActivate: [authGuard],
+    children: [
+      { path: '', redirectTo: 'home', pathMatch: 'full' },
+      { path: 'home', loadComponent: () => import('./features/dashboard/home/home-component/home-component').then(m => m.HomeComponent) },
+      // Outras rotas filhas serão adicionadas depois
+    ]
   },
-  { path: 'login', component: Login },
+  { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
   { path: '403', component: Forbidden },
   { path: '404', component: NotFound },
   { path: '**', redirectTo: '404' }
