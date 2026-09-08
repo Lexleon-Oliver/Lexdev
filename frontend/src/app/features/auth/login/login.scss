@@ -132,6 +132,15 @@ button.btn:disabled {
   cursor: not-allowed;
 }
 
+img{
+  width: 100px;
+  height: auto;
+  display: block;
+  margin: 0 auto 1rem auto;
+
+
+}
+
 /* ===== Responsividade ===== */
 @media (max-width: 576px) {
   .login-wrapper {
