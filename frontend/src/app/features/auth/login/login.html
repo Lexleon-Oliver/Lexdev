@@ -1,16 +1,31 @@
-<div class="auth-container">
-      <div class="card">
-        <h2>SystemPro Login</h2>
-        <form [formGroup]="form" (ngSubmit)="onSubmit()">
-          <div class="field">
-            <label>Usuário / E-mail</label>
-            <input type="text" formControlName="username" placeholder="Digite seu usuário">
-          </div>
-          <div class="field">
-            <label>Senha</label>
-            <input type="password" formControlName="password" placeholder="Digite sua senha">
-          </div>
-          <button type="submit" [disabled]="form.invalid">Entrar</button>
-        </form>
-      </div>
+<div class="login-container d-flex align-items-center justify-content-center">
+  <div class="login-wrapper">
+    <div class="background">
+      <div class="shape"></div>
+      <div class="shape"></div>
     </div>
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="login-form">
+      <h3>Login Here</h3>
+
+      <label for="username">Username</label>
+      <input
+        type="text"
+        id="username"
+        formControlName="username"
+        placeholder="Digite seu usuário"
+      />
+
+      <label for="password">Password</label>
+      <input
+        type="password"
+        id="password"
+        formControlName="password"
+        placeholder="Digite sua senha"
+      />
+
+      <button class="btn" type="submit" [disabled]="form.invalid">
+        Log In
+      </button>
+    </form>
+  </div>
+</div>

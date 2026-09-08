@@ -1,15 +1,175 @@
-.auth-container {
-      display: flex; justify-content: center; align-items: center;
-      height: 100vh; background-color: #f3f4f6;
-    }
-    .card {
-      background: white; padding: 2rem; border-radius: 8px;
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); width: 100%; max-width: 380px;
-    }
-    .field { margin-bottom: 1rem; display: flex; flex-direction: column; }
-    input { padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; margin-top: 0.25rem; }
-    button {
-      width: 100%; padding: 0.75rem; background-color: #2563eb; color: white;
-      border: none; border-radius: 4px; cursor: pointer; font-weight: bold;
-    }
-    button:disabled { background-color: #93c5fd; cursor: not-allowed; }
+/* ===== Garantir altura total da viewport ===== */
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+.login-container {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem; /* espaçamento mínimo para evitar cortes */
+  box-sizing: border-box;
+}
+
+/* ===== Contêiner do formulário + fundo ===== */
+.login-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+}
+
+/* ===== Fundo decorativo (absoluto ao wrapper) ===== */
+.background {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.background .shape {
+  position: absolute;
+  border-radius: 50%;
+}
+
+.shape:first-child {
+  background: linear-gradient(#1845ad, #23a2f6);
+  width: 200px;
+  height: 200px;
+  left: -80px;
+  top: -80px;
+}
+
+.shape:last-child {
+  background: linear-gradient(to right, #1845ad, #23a2f6);
+  width: 200px;
+  height: 200px;
+  right: -30px;
+  bottom: -80px;
+}
+
+/* ===== Formulário ===== */
+.login-form {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.13);
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 40px rgba(8, 7, 16, 0.6);
+  padding: 50px 35px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  /* Altura flexível: mínimo para telas grandes, auto para pequenas */
+  min-height: auto;
+}
+
+/* Em telas grandes mantemos a altura original */
+@media (min-width: 992px) {
+  .login-form {
+    min-height: 520px;
+  }
+}
+
+/* Demais estilos (fontes, inputs, botão) permanecem iguais */
+.login-form * {
+  font-family: 'Poppins', sans-serif;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+  outline: none;
+  border: none;
+}
+
+.login-form h3 {
+  font-size: 32px;
+  font-weight: 500;
+  line-height: 42px;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+label {
+  display: block;
+  margin-top: 1.5rem;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+input {
+  display: block;
+  height: 50px;
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.07);
+  border-radius: 3px;
+  padding: 0 10px;
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 300;
+}
+
+::placeholder {
+  color: #e5e5e5;
+}
+
+button.btn {
+  margin-top: 2.5rem;
+  width: 100%;
+  background-color: #ffffff;
+  color: #000000 !important;
+  padding: 15px 0;
+  font-size: 18px;
+  font-weight: 600;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+button.btn:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* ===== Responsividade ===== */
+@media (max-width: 576px) {
+  .login-wrapper {
+    max-width: 100%;
+  }
+
+  .login-form {
+    padding: 35px 20px;
+  }
+
+  .login-form h3 {
+    font-size: 26px;
+    line-height: 34px;
+  }
+
+  label {
+    margin-top: 1rem;
+  }
+
+  button.btn {
+    margin-top: 2rem;
+    padding: 12px 0;
+    font-size: 16px;
+  }
+
+  .shape:first-child,
+  .shape:last-child {
+    width: 140px;
+    height: 140px;
+  }
+
+  .shape:first-child {
+    left: -40px;
+    top: -40px;
+  }
+
+  .shape:last-child {
+    right: -20px;
+    bottom: -60px;
+  }
+}
