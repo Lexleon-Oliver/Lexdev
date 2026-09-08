@@ -1,8 +1,9 @@
 export interface MenuItem {
+  key: string;
   label: string;
   icon: string;
-  route: string | null;
-  children: MenuItem[];
-  expanded?: boolean;
+  route?: string[];
+  open?: boolean;
+  submenu?: MenuItem[];
 }
 

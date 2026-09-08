@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth-service';
 
@@ -10,23 +10,22 @@ import { AuthService } from '../../../core/services/auth-service';
   templateUrl: './login.html',
 })
 export class Login {
+
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
   private router = inject(Router);
 
-  errorMessage = signal<string | null>(null);
   isLoading = signal<boolean>(false);
 
   // FormBuilder não-nulo garante tipagem estrita de string
   form = this.fb.nonNullable.group({
-    username: ['', Validators.required],
-    password: ['', Validators.required],
+    username: ['', [Validators.required, Validators.minLength(3)]],
+      password: ['', [Validators.required, Validators.minLength(6)]]
   });
 
   onSubmit(): void {
-    if (this.form.invalid) return;
+    if (this.form.invalid || this.isLoading()) return;
 
-    this.errorMessage.set(null);
     this.isLoading.set(true);
 
     this.authService.login(this.form.getRawValue()).subscribe({
@@ -36,8 +35,8 @@ export class Login {
       },
       error: () => {
         this.isLoading.set(false);
-        this.errorMessage.set('Usuário ou senha inválidos.');
       }
     });
   }
+
 }

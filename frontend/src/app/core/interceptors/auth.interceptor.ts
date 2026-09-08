@@ -2,14 +2,17 @@ import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
+import { AuthService } from '../services/auth-service';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
+
+  const authService = inject(AuthService);
   const router = inject(Router);
-  const token = localStorage.getItem('token');
+
+  const token = authService.getToken();
 
   let authReq = req;
 
-  // Injeta o Bearer Token se ele estiver presente
   if (token) {
     authReq = req.clone({
       setHeaders: {
@@ -19,16 +22,21 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   }
 
   return next(authReq).pipe(
+
     catchError((error: HttpErrorResponse) => {
+
       if (error.status === 401) {
-        // Token expirado ou ausente: limpa sessão e redireciona para o login
-        localStorage.removeItem('token');
-        router.navigate(['/login']);
+
+        authService.logout();
+
       } else if (error.status === 403) {
-        // Sem permissão de acesso ao recurso
+
         router.navigate(['/403']);
+
       }
+
       return throwError(() => error);
     })
+
   );
 };

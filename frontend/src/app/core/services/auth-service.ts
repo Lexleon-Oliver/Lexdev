@@ -21,10 +21,15 @@ export class AuthService {
 
   private readonly tokenKey = 'token';
 
-  private readonly _isAuthenticated = signal(
+  // Sinal do estado de autenticação
+  private readonly _isAuthenticated = signal<boolean>(
     !!localStorage.getItem(this.tokenKey)
   );
   readonly isAuthenticated = this._isAuthenticated.asReadonly();
+
+  // Sinal reativo para guardar os dados do usuário vindo do backend
+  private readonly _currentUser = signal<User | null>(null);
+  readonly currentUser = this._currentUser.asReadonly();
 
   getToken(): string | null {
     return localStorage.getItem(this.tokenKey);
@@ -39,24 +44,18 @@ export class AuthService {
     );
   }
 
+  // Busca os dados do usuário autenticado no backend
+  fetchCurrentUser(): Observable<User> {
+    return this.http.get<User>('/api/users/me').pipe(
+      tap((user) => this._currentUser.set(user))
+    );
+  }
+
   logout(): void {
     localStorage.removeItem(this.tokenKey);
     this._isAuthenticated.set(false);
+    this._currentUser.set(null);
     this.router.navigate(['/login']);
   }
 
-  // src/app/services/auth.service.ts
-
-getUser(): User | null {
-  const token = this.getToken();
-  if (!token) return null;
-
-  try {
-    // Exemplo extraindo o payload do JWT (base64)
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return { username: payload.sub || payload.username };
-  } catch {
-    return null;
-  }
-}
 }

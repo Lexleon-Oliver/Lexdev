@@ -1,110 +1,102 @@
-<div class="dashboard-wrapper">
-  <!-- Sidebar (Desktop) -->
-  <aside class="sidebar" [class.collapsed]="isSidebarCollapsed">
-    <div class="sidebar-header d-flex align-items-center">
-      <span class="sidebar-brand">
-        <i class="bi bi-hexagon-fill me-2"></i>
-        <span *ngIf="!isSidebarCollapsed">Lexdev</span>
-      </span>
-      <button class="btn btn-link text-white d-none d-lg-block" (click)="toggleSidebar()">
-        <i class="bi" [class.bi-chevron-left]="!isSidebarCollapsed" [class.bi-chevron-right]="isSidebarCollapsed"></i>
-      </button>
+<div class="dashboard-container">
+
+  <!-- Barra Superior -->
+  <header class="topbar">
+    <button class="mobile-toggle" (click)="toggleSidebarMobile()">
+      <i class="fas fa-bars"></i>
+    </button>
+
+    <div class="topbar-left">
+      <img src="logo.png" alt="Logo" class="topbar-logo" />
+      <span class="topbar-brand">Lexdev</span>
     </div>
 
-    <nav class="sidebar-nav">
-      <div *ngFor="let item of menuItems" class="nav-item">
-        <!-- Item sem submenu -->
-        <a *ngIf="item.route" class="nav-link" [routerLink]="item.route" routerLinkActive="active">
-          <i class="bi {{ item.icon }}"></i>
-          <span *ngIf="!isSidebarCollapsed">{{ item.label }}</span>
-        </a>
-
-        <!-- Item com submenu (dropdown) -->
-        <ng-container *ngIf="!item.route && item.children.length > 0">
-          <a class="nav-link" (click)="toggleSubmenu(item)"
-            [class.active]="isSubmenuActive(item)"
-            data-bs-toggle="collapse"
-            [attr.data-bs-target]="'#submenu-' + item.label">
-            <i class="bi {{ item.icon }}"></i>
-            <span *ngIf="!isSidebarCollapsed">{{ item.label }}</span>
-            <i class="bi bi-chevron-down ms-auto submenu-arrow" *ngIf="!isSidebarCollapsed"></i>
-          </a>
-          <div class="collapse" [id]="'submenu-' + item.label">
-            <ul class="nav flex-column submenu">
-              <li *ngFor="let child of item.children">
-                <a *ngIf="child.route" class="nav-link" [routerLink]="child.route" routerLinkActive="active">
-                  <i class="bi {{ child.icon }}"></i>
-                  <span *ngIf="!isSidebarCollapsed">{{ child.label }}</span>
-                </a>
-              </li>
-            </ul>
-          </div>
-        </ng-container>
+    <div class="topbar-right">
+      <div class="profile-info">
+        <span class="profile-name">
+          {{ authService.currentUser()?.username || 'Carregando...' }}
+        </span>
+        <button class="logout-btn" (click)="onLogout()">
+          <i class="fas fa-sign-out-alt"></i>
+          Sair
+        </button>
       </div>
+    </div>
+  </header>
+
+  <!-- Menu Lateral -->
+  <aside class="sidebar" [class.open]="sidebarMobileOpen">
+    <nav class="sidebar-nav">
+      <ul class="nav-list">
+        @for (menu of menus; track menu.key) {
+
+          <li
+            class="nav-item"
+            [class.has-submenu]="!!menu.submenu"
+            [class.open]="menu.open"
+          >
+
+            @if (menu.submenu) {
+
+              <a
+                href=""
+                class="nav-link"
+                (click)="toggleSubmenu(menu, $event)"
+              >
+                <i [class]="menu.icon"></i>
+
+                <span>
+                  {{ menu.label }}
+                </span>
+
+                <i class="fas fa-chevron-down submenu-arrow"></i>
+              </a>
+
+              @if (menu.open) {
+                <ul class="submenu">
+                  @for (submenu of menu.submenu; track submenu.key) {
+                    <li>
+                      <a
+                        [routerLink]="submenu.route"
+                        routerLinkActive="active"
+                        class="submenu-link"
+                      >
+                        {{ submenu.label }}
+                      </a>
+                    </li>
+                  }
+                </ul>
+              }
+            } @else {
+
+              <a
+                [routerLink]="menu.route"
+                routerLinkActive="active"
+                class="nav-link"
+              >
+                <i [class]="menu.icon"></i>
+
+                <span>
+                  {{ menu.label }}
+                </span>
+              </a>
+
+            }
+
+          </li>
+        }
+      </ul>
     </nav>
   </aside>
 
-  <!-- Sidebar Mobile (Offcanvas) -->
-  <div class="mobile-sidebar" [class.open]="isMobileSidebarOpen">
-    <div class="mobile-sidebar-header">
-      <span class="sidebar-brand">
-        <i class="bi bi-hexagon-fill me-2"></i> Lexdev
-      </span>
-      <button class="btn btn-link text-white" (click)="toggleMobileSidebar()">
-        <i class="bi bi-x-lg"></i>
-      </button>
-    </div>
-    <nav class="sidebar-nav">
-      <!-- Mesmos itens, mas sem colapso (podem ser expandidos por padrão) -->
-      <div *ngFor="let item of menuItems" class="nav-item">
-        <a *ngIf="item.route" class="nav-link" [routerLink]="item.route" routerLinkActive="active" (click)="toggleMobileSidebar()">
-          <i class="bi {{ item.icon }}"></i> {{ item.label }}
-        </a>
-        <ng-container *ngIf="!item.route && item.children.length > 0">
-          <a class="nav-link" data-bs-toggle="collapse" [attr.data-bs-target]="'#mobile-submenu-' + item.label">
-            <i class="bi {{ item.icon }}"></i> {{ item.label }}
-            <i class="bi bi-chevron-down ms-auto"></i>
-          </a>
-          <div class="collapse" [id]="'mobile-submenu-' + item.label">
-            <ul class="nav flex-column submenu">
-              <li *ngFor="let child of item.children">
-                <a class="nav-link" [routerLink]="child.route" routerLinkActive="active" (click)="toggleMobileSidebar()">
-                  <i class="bi {{ child.icon }}"></i> {{ child.label }}
-                </a>
-              </li>
-            </ul>
-          </div>
-        </ng-container>
-      </div>
-    </nav>
-  </div>
-  <div class="mobile-backdrop" *ngIf="isMobileSidebarOpen" (click)="toggleMobileSidebar()"></div>
+  <!-- Conteúdo Principal -->
+  <main class="main-content">
+    <router-outlet />
+  </main>
 
-  <!-- Conteúdo principal -->
-  <div class="main-content" [class.expanded]="isSidebarCollapsed">
-    <!-- Barra Superior -->
-    <header class="topbar d-flex align-items-center">
-      <button class="btn btn-outline-secondary d-lg-none me-2" (click)="toggleMobileSidebar()">
-        <i class="bi bi-list"></i>
-      </button>
-      <h5 class="page-title mb-0">Dashboard</h5> <!-- Pode ser dinâmico via serviço -->
-      <div class="ms-auto d-flex align-items-center">
-        <div class="dropdown">
-          <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="bi bi-person-circle me-1"></i> {{ currentUser }}
-          </a>
-          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-            <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i>Perfil</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" (click)="logout()"><i class="bi bi-box-arrow-right me-2"></i>Sair</a></li>
-          </ul>
-        </div>
-      </div>
-    </header>
-
-    <!-- Conteúdo da rota filha -->
-    <main class="p-4">
-      <router-outlet></router-outlet>
-    </main>
+  <!-- Formas decorativas de fundo -->
+  <div class="background-shapes">
+    <div class="shape shape1"></div>
+    <div class="shape shape2"></div>
   </div>
 </div>

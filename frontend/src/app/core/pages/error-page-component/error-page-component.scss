@@ -1,0 +1,176 @@
+/* ===== Container principal ===== */
+.error-container {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  background-color: #080710; /* fundo escuro base */
+  overflow: hidden;
+  font-family: 'Poppins', sans-serif;
+  color: #ffffff;
+}
+
+/* ===== Formas decorativas ===== */
+.background-shapes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.shape {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.6;
+}
+
+.shape1 {
+  width: 350px;
+  height: 350px;
+  background: linear-gradient(#1845ad, #23a2f6);
+  top: -120px;
+  right: -120px;
+}
+
+.shape2 {
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(to right, #1845ad, #23a2f6);
+  bottom: -100px;
+  left: -100px;
+}
+
+/* ===== Card de erro ===== */
+.error-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 480px;
+  background-color: rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  backdrop-filter: blur(12px);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 40px rgba(8, 7, 16, 0.6);
+  padding: 3rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+/* ===== Logo ===== */
+.logo {
+  width: 80px;
+  height: auto;
+  margin-bottom: 1.5rem;
+}
+
+/* ===== Código do erro ===== */
+.error-code {
+  font-size: 6rem;
+  font-weight: 700;
+  line-height: 1;
+  margin: 0;
+  background: linear-gradient(to right, #1845ad, #23a2f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 2px;
+}
+
+/* ===== Título ===== */
+.error-title {
+  font-size: 1.8rem;
+  font-weight: 500;
+  margin: 0.5rem 0 1rem;
+  letter-spacing: 0.5px;
+}
+
+/* ===== Mensagem ===== */
+.error-message {
+  font-size: 1rem;
+  font-weight: 300;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 2rem;
+}
+
+/* ===== Ações (botões) ===== */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  width: 100%;
+}
+
+.btn-back,
+.btn-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 5px;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.5px;
+  border: none;
+  outline: none;
+  background-color: #ffffff;
+  color: #080710 !important;
+  flex: 0 0 auto;
+}
+
+.btn-back:hover,
+.btn-home:hover {
+  background-color: #e0e0e0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== Responsividade ===== */
+@media (max-width: 576px) {
+  .error-card {
+    padding: 2rem 1.5rem;
+  }
+
+  .error-code {
+    font-size: 4rem;
+  }
+
+  .error-title {
+    font-size: 1.4rem;
+  }
+
+  .error-message {
+    font-size: 0.9rem;
+  }
+
+  .btn-back,
+  .btn-home {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+  }
+
+  .shape1 {
+    width: 220px;
+    height: 220px;
+    top: -80px;
+    right: -80px;
+  }
+
+  .shape2 {
+    width: 200px;
+    height: 200px;
+    bottom: -60px;
+    left: -60px;
+  }
+}

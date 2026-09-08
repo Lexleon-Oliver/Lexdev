@@ -1,24 +1,75 @@
 import { Routes } from '@angular/router';
-import { Login } from './features/auth/login/login';
-import { Forbidden } from './core/pages/forbidden/forbidden';
-import { NotFound } from './core/pages/not-found/not-found';
 import { authGuard } from './core/guards/auth.guard';
+import { ErrorPageComponent } from './core/pages/error-page-component/error-page-component';
 
 
 export const routes: Routes = [
-   { path: 'login', loadComponent: () => import('./features/auth/login/login').then(m => m.Login) },
+
   {
-    path: 'dashboard',
-    loadComponent: () => import('./features/dashboard/layout/dashboard-component/dashboard-component').then(m => m.DashboardComponent),
+    path: 'login',
+    loadComponent: () =>
+      import('./features/auth/login/login')
+        .then(m => m.Login)
+  },
+
+  {
+    path: '',
+    loadComponent: () =>
+      import('./features/dashboard/layout/dashboard-component/dashboard-component')
+        .then(m => m.DashboardComponent),
+
     canActivate: [authGuard],
+
     children: [
-      { path: '', redirectTo: 'home', pathMatch: 'full' },
-      { path: 'home', loadComponent: () => import('./features/dashboard/home/home-component/home-component').then(m => m.HomeComponent) },
-      // Outras rotas filhas serão adicionadas depois
+
+      {
+        path: '',
+        redirectTo: 'dashboard',
+        pathMatch: 'full'
+      },
+
+      {
+        path: 'dashboard',
+        loadComponent: () =>
+          import('./features/dashboard/home/home-component/home-component')
+            .then(m => m.HomeComponent)
+      },
+/*
+      {
+        path: 'clientes',
+        loadComponent: () =>
+          import('./features/clientes/clientes-component/clientes-component')
+            .then(m => m.ClientesComponent)
+      },
+
+      {
+        path: 'fornecedores',
+        loadComponent: () =>
+          import('./features/fornecedores/fornecedores-component/fornecedores-component')
+            .then(m => m.FornecedoresComponent)
+      }
+*/
     ]
   },
-  { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
-  { path: '403', component: Forbidden },
-  { path: '404', component: NotFound },
-  { path: '**', redirectTo: '404' }
+
+   {
+    path: '403',
+    component: ErrorPageComponent,
+    data: {
+      code: '403',
+      title: 'Acesso negado',
+      message: 'Você não tem permissão para acessar esta página.'
+    }
+  },
+  {
+    path: '404',
+    component: ErrorPageComponent,
+    data: {
+      code: '404',
+      title: 'Página não encontrada',
+      message: 'A página que você está procurando não existe ou foi movida.'
+    }
+  },
+  // Rota coringa para redirecionar para 404
+  { path: '**', redirectTo: '/404' }
 ];

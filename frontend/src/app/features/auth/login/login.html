@@ -1,18 +1,13 @@
-<div class="login-container d-flex align-items-center justify-content-center">
-  <div class="login-wrapper">
-    <div class="background">
-      <div class="shape"></div>
-      <div class="shape"></div>
-    </div>
+
+<div class="error-container">
+  <!-- Formas decorativas de fundo -->
+  <div class="background-shapes">
+    <div class="shape shape1"></div>
+    <div class="shape shape2"></div>
+  </div>
     <form [formGroup]="form" (ngSubmit)="onSubmit()" class="login-form">
       <img src="logo.png" alt="Logo" class="logo" />
-      <h3>Lexdev</h3>
-
-      @if (errorMessage()) {
-        <div class="alert-error">
-          {{ errorMessage() }}
-        </div>
-      }
+      <h3 class="error-code">Lexdev</h3>
 
       <label for="username">Username</label>
       <input
@@ -20,7 +15,11 @@
         id="username"
         formControlName="username"
         placeholder="Digite seu usuário"
+        [class.input-error]="form.get('username')?.invalid && form.get('username')?.touched"
       />
+      @if (form.get('username')?.invalid && form.get('username')?.touched) {
+        <small class="field-error">Usuário é obrigatório (mín. 3 caracteres).</small>
+      }
 
       <label for="password">Password</label>
       <input
@@ -28,11 +27,15 @@
         id="password"
         formControlName="password"
         placeholder="Digite sua senha"
+        [class.input-error]="form.get('password')?.invalid && form.get('password')?.touched"
       />
+      @if (form.get('password')?.invalid && form.get('password')?.touched) {
+        <small class="field-error">Senha é obrigatória (mín. 6 caracteres).</small>
+      }
 
       <button class="btn" type="submit" [disabled]="form.invalid || isLoading()">
         {{ isLoading() ? 'Carregando...' : 'Log In' }}
       </button>
     </form>
   </div>
-</div>
+

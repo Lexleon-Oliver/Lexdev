@@ -1,1 +1,20 @@
-<h2>Bem-vindo ao Dashboard</h2><p>Conteúdo principal virá aqui.</p>
+<div class="welcome-card">
+  <h2>Olá, {{ authService.currentUser()?.username || 'Usuário' }}! 👋</h2>
+  <p>Bem-vindo ao painel do **SystemPro**. Selecione uma opção no menu lateral para começar.</p>
+
+  <div class="user-details-badge">
+    <span>Performa/Role: <strong>{{ authService.currentUser()?.role }}</strong></span>
+  </div>
+</div>
+
+<div class="test-buttons" style="display: flex; gap: 12px; margin-top: 20px;">
+  <button (click)="testSuccess()" style="background: #198754; color: white; padding: 10px; border: none; border-radius: 6px; cursor: pointer;">
+    Testar Sucesso
+  </button>
+  <button (click)="testError()" style="background: #dc3545; color: white; padding: 10px; border: none; border-radius: 6px; cursor: pointer;">
+    Testar Erro
+  </button>
+  <button (click)="testWarning()" style="background: #ffc107; color: black; padding: 10px; border: none; border-radius: 6px; cursor: pointer;">
+    Testar Alerta
+  </button>
+</div>

@@ -30,12 +30,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) throws ServletException {
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
         String path = request.getRequestURI();
         return path.startsWith("/auth/") || 
-            path.equals("/test") || 
-            path.startsWith("/swagger-ui") || 
-            path.startsWith("/v3/api-docs");
+               path.equals("/test") || 
+               path.startsWith("/swagger-ui") || 
+               path.startsWith("/v3/api-docs");
     }
 
     @Override
@@ -56,19 +56,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 if (jwtService.isTokenValid(jwt)) {
-                    userRepository.findByUsername(username).ifPresent(user -> {
-                        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                                user,
-                                null,
-                                List.of(new SimpleGrantedAuthority(user.getRole()))
-                        );
-                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                        SecurityContextHolder.getContext().setAuthentication(authToken);
-                    });
+                    userRepository.findByUsername(username).ifPresentOrElse(
+                        user -> {
+                            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                                    user.getUsername(), // Usa a String do username como Principal
+                                    null,
+                                    List.of(new SimpleGrantedAuthority(user.getRole()))
+                            );
+                            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                            SecurityContextHolder.getContext().setAuthentication(authToken);
+                        },
+                        () -> logger.warn("Usuário do token não foi encontrado no banco: " + username)
+                    );
                 }
             }
         } catch (Exception e) {
-            // Se o token for inválido, apenas ignora para deixar o Spring Security decidir o bloqueio
             logger.error("Erro ao processar JWT Token: " + e.getMessage());
         }
 
