@@ -115,15 +115,11 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-
-
   toggleProfileMenu() {
     this.profileMenuOpen = !this.profileMenuOpen;
   }
 
   goToChangePassword() {
-    this.profileMenuOpen = false;
-    // Navegar para a rota de alteração de senha
     this.router.navigate(['/alterar-senha']);
   }
 
