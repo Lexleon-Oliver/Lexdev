@@ -44,7 +44,6 @@
             [class.has-submenu]="!!menu.submenu"
             [class.open]="menu.open"
           >
-
             @if (menu.submenu) {
 
               <a
@@ -53,14 +52,11 @@
                 (click)="toggleSubmenu(menu, $event)"
               >
                 <i [class]="menu.icon"></i>
-
                 <span>
                   {{ menu.label }}
                 </span>
-
                 <i class="fas fa-chevron-down submenu-arrow"></i>
               </a>
-
               @if (menu.open) {
                 <ul class="submenu">
                   @for (submenu of menu.submenu; track submenu.key) {
@@ -69,6 +65,7 @@
                         [routerLink]="submenu.route"
                         routerLinkActive="active"
                         class="submenu-link"
+                        (click)="sidebarMobileOpen = false"
                       >
                         {{ submenu.label }}
                       </a>
@@ -77,21 +74,16 @@
                 </ul>
               }
             } @else {
-
-              <a
-                [routerLink]="menu.route"
-                routerLinkActive="active"
-                class="nav-link"
-              >
-                <i [class]="menu.icon"></i>
-
-                <span>
-                  {{ menu.label }}
-                </span>
-              </a>
-
+            <a
+              [routerLink]="menu.route"
+              routerLinkActive="active"
+              class="nav-link"
+              (click)="sidebarMobileOpen = false"
+            >
+              <i [class]="menu.icon"></i>
+              <span>{{ menu.label }}</span>
+            </a>
             }
-
           </li>
         }
       </ul>

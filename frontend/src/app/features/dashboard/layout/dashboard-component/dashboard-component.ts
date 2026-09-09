@@ -14,6 +14,7 @@ export class DashboardComponent implements OnInit {
   authService = inject(AuthService);
   private router = inject(Router);
   profileMenuOpen = false;
+  sidebarMobileOpen = false;
 
    menus: MenuItem[] = [
   {
@@ -78,6 +79,20 @@ export class DashboardComponent implements OnInit {
       }
     ]
   },
+  {
+    key: 'admin',
+    label: 'Administração',
+    icon: 'fas fa-cogs',
+    open: false,
+    submenu: [
+      {
+        key: 'users',
+        label: 'Gerenciar Usuários',
+        icon: '',
+        route: ['/usuarios']
+      }
+    ]
+  },
 
   {
     key: 'configuracoes',
@@ -86,8 +101,6 @@ export class DashboardComponent implements OnInit {
     route: ['/configuracoes']
   }
 ];
-
-  sidebarMobileOpen = false;
 
   toggleSubmenu(menu: MenuItem, event: Event): void {
     event.preventDefault();
@@ -111,7 +124,7 @@ export class DashboardComponent implements OnInit {
   goToChangePassword() {
     this.profileMenuOpen = false;
     // Navegar para a rota de alteração de senha
-    this.router.navigate(['/change-password']);
+    this.router.navigate(['/alterar-senha']);
   }
 
   onLogout(): void {

@@ -1,0 +1,185 @@
+<div class="users-page">
+  <!-- Barra de título e ações -->
+  <div class="page-header">
+    <h2>
+      <i class="fas fa-users" style="font-size: 1.5rem; color: #23a2f6;"></i>
+      Usuários
+    </h2>
+    <div class="header-actions">
+      <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input
+          type="text"
+          placeholder="Buscar usuários..."
+          [value]="searchTerm()"
+          (input)="searchTerm.set($any($event.target).value)"
+        />
+      </div>
+      <button class="btn-primary" (click)="openCreateModal()">
+        <i class="fas fa-plus"></i> Novo Usuário
+      </button>
+    </div>
+  </div>
+
+  <!-- Mensagem de erro -->
+  @if (errorMessage()) {
+    <div class="alert-error">
+      <i class="fas fa-exclamation-circle"></i>
+      {{ errorMessage() }}
+    </div>
+  }
+
+  <!-- Tabela -->
+  @if (isLoading()) {
+    <div class="loading">
+      <i class="fas fa-spinner fa-spin"></i> Carregando...
+    </div>
+  } @else {
+    @if (filteredUsers().length === 0) {
+      <div class="empty-state">
+        <i class="fas fa-users"></i>
+        <p>Nenhum usuário encontrado.</p>
+      </div>
+    } @else {
+      <div class="table-wrapper">
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Usuário</th>
+              <th>Email</th>
+              <th>Perfil</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (user of filteredUsers(); track user.id) {
+              <tr>
+                <td data-label="Nome">{{ user.fullName }}</td>
+                <td data-label="Usuário">{{ user.username }}</td>
+                <td data-label="Email">{{ user.email }}</td>
+                <td data-label="Perfil">
+                  <span class="role-badge" [class.role-admin]="user.role === 'ROLE_ADMIN'">
+                    {{ user.role === 'ROLE_ADMIN' ? 'Administrador' : 'Usuário' }}
+                  </span>
+                </td>
+                <td data-label="Status">
+                  <span class="status-badge" [class.active]="user.active">
+                    {{ user.active ? 'Ativo' : 'Inativo' }}
+                  </span>
+                </td>
+                <td data-label="Ações">
+                  <div class="action-buttons">
+                    <button class="btn-edit" (click)="openEditModal(user)" title="Editar">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-delete" (click)="confirmDelete(user)" title="Excluir">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+
+  <!-- Modal de formulário (criar/editar) -->
+  @if (showFormModal()) {
+    <div class="modal-overlay" (click)="closeFormModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>{{ editingUser() ? 'Editar Usuário' : 'Novo Usuário' }}</h3>
+          <button class="close-btn" (click)="closeFormModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="user-form">
+          <label for="name">Nome</label>
+          <input id="name" type="text" formControlName="name" placeholder="Nome completo" />
+          @if (form.get('name')?.invalid && form.get('name')?.touched) {
+            <small class="field-error">Nome é obrigatório.</small>
+          }
+
+          <label for="username">Usuário</label>
+          <input
+            id="username"
+            type="text"
+            formControlName="username"
+            placeholder="Nome de usuário"
+          />
+          @if (editingUser()) {
+            <small class="field-hint">O nome de usuário não pode ser alterado.</small>
+          }
+          @if (form.get('username')?.invalid && form.get('username')?.touched && !editingUser()) {
+            <small class="field-error">Usuário deve ter no mínimo 3 caracteres.</small>
+          }
+
+          <label for="email">Email</label>
+          <input id="email" type="email" formControlName="email" placeholder="Email" />
+          @if (form.get('email')?.invalid && form.get('email')?.touched) {
+            <small class="field-error">Email inválido.</small>
+          }
+
+          <!-- Exibe senha somente na criação -->
+          @if (!editingUser()) {
+            <label for="password">Senha</label>
+            <input
+              id="password"
+              type="password"
+              formControlName="password"
+              placeholder="Mínimo 6 caracteres"
+            />
+            @if (form.get('password')?.invalid && form.get('password')?.touched) {
+              <small class="field-error">Senha obrigatória com no mínimo 6 caracteres.</small>
+            }
+          }
+
+          <label for="role">Perfil</label>
+          <select id="role" formControlName="role">
+            <option value="ROLE_USER">Usuário</option>
+            <option value="ROLE_ADMIN">Administrador</option>
+          </select>
+
+          <div class="checkbox-group">
+            <input id="active" type="checkbox" formControlName="active" />
+            <label for="active">Ativo</label>
+          </div>
+
+          <button type="submit" class="btn-submit" [disabled]="form.invalid || isSaving()">
+            @if (isSaving()) {
+              <i class="fas fa-spinner fa-spin"></i> Salvando...
+            } @else {
+              Salvar
+            }
+          </button>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- Modal de confirmação de exclusão -->
+  @if (showDeleteModal()) {
+    <div class="modal-overlay" (click)="closeDeleteModal()">
+      <div class="modal-content delete-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Confirmar Exclusão</h3>
+          <button class="close-btn" (click)="closeDeleteModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="delete-message">
+          <p>Tem certeza que deseja excluir o usuário <strong>{{ deletingUser()?.fullName }}</strong>?</p>
+          <p class="warning-text">Esta ação não pode ser desfeita.</p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-cancel" (click)="closeDeleteModal()">Cancelar</button>
+          <button class="btn-confirm-delete" (click)="deleteUser()">Excluir</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

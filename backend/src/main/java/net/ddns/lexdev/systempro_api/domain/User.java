@@ -2,6 +2,9 @@ package net.ddns.lexdev.systempro_api.domain;
 
 import java.util.Objects;
 
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -14,6 +17,8 @@ import jakarta.validation.constraints.Size;
 
 @Entity
 @Table(name = "tb_users")
+@SQLDelete(sql = "UPDATE tb_users SET active = false WHERE id = ?")
+@SQLRestriction("active = true")
 public class User {
 
     @Id

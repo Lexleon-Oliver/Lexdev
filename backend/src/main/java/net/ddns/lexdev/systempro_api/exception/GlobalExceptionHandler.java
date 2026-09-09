@@ -3,6 +3,7 @@ package net.ddns.lexdev.systempro_api.exception;
 import java.time.Instant;
 import java.util.List;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -52,6 +53,44 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponseDto> handleGenericException(Exception ex, HttpServletRequest request) {
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Erro Interno do Servidor", "Ocorreu um erro inesperado no sistema", request.getRequestURI(), null);
+    }
+
+    // 6. Regras de Negócio / Erros de Requisição (400)
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiErrorResponseDto> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
+        return buildResponse(
+            HttpStatus.BAD_REQUEST, 
+            "Regra de Negócio", 
+            ex.getMessage(), 
+            request.getRequestURI(), 
+            null
+        );
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiErrorResponseDto> handleDataIntegrityViolation(
+            DataIntegrityViolationException ex, 
+            HttpServletRequest request) {
+
+        String message = "Usuário ou e-mail já cadastrado no sistema.";
+
+        // Identifica se a violação veio do e-mail ou do username
+        String detailMessage = ex.getMostSpecificCause().getMessage();
+        if (detailMessage != null) {
+            if (detailMessage.contains("email")) {
+                message = "O e-mail informado já está em uso.";
+            } else if (detailMessage.contains("username")) {
+                message = "O nome de usuário informado já está em uso.";
+            }
+        }
+
+        return buildResponse(
+            HttpStatus.BAD_REQUEST, // Retorna 400 em vez de 500
+            "Conflito de Dados", 
+            message, 
+            request.getRequestURI(), 
+            null
+        );
     }
 
     private ResponseEntity<ApiErrorResponseDto> buildResponse(HttpStatus status, String error, String message, String path, List<ApiErrorResponseDto.FieldErrorDetails> fieldErrors) {

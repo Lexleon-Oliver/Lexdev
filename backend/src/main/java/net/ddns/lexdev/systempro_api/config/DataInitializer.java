@@ -20,7 +20,7 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (userRepository.findByUsername("admin").isEmpty()) {
+        if (userRepository.findByUsernameAndActiveTrue("admin").isEmpty()) {
             User admin = new User(
                 "admin",
                 "Administrator",

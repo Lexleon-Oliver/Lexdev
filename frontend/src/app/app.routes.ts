@@ -35,7 +35,11 @@ export const routes: Routes = [
           import('./features/dashboard/home/home-component/home-component')
             .then(m => m.HomeComponent)
       },
-      { path: 'change-password', component: ChangePasswordComponent },
+      { path: 'alterar-senha', component: ChangePasswordComponent },
+      { path: 'usuarios', loadComponent: () =>
+          import('./features/users/users-component/users-component')
+            .then(m => m.UsersComponent)
+      },
 /*
       {
         path: 'clientes',

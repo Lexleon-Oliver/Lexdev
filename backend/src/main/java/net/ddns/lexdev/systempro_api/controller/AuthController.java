@@ -30,7 +30,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody @Valid LoginRequest request) {
-        return userRepository.findByUsername(request.username())
+        return userRepository.findByUsernameAndActiveTrue(request.username())
                 .filter(user -> passwordEncoder.matches(request.password(), user.getPassword()))
                 .map(user -> {
                     String token = jwtService.generateToken(user.getUsername(), user.getRole());
