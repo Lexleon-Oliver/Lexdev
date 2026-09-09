@@ -1,0 +1,293 @@
+<div class="clients-page">
+  <!-- Cabeçalho -->
+  <div class="page-header">
+    <h2>Clientes</h2>
+    <div class="header-actions">
+      <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input
+          type="text"
+          placeholder="Buscar clientes..."
+          [value]="searchTerm()"
+          (input)="searchTerm.set($any($event.target).value)"
+        />
+      </div>
+      <button class="btn-primary" (click)="openCreateModal()">
+        <i class="fas fa-plus"></i> Novo Cliente
+      </button>
+    </div>
+  </div>
+
+  <!-- Erro -->
+  @if (errorMessage()) {
+    <div class="alert-error">
+      <i class="fas fa-exclamation-circle"></i>
+      {{ errorMessage() }}
+    </div>
+  }
+
+  <!-- Loading / Tabela -->
+  @if (isLoading()) {
+    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>
+  } @else {
+    @if (filteredClients().length === 0) {
+      <div class="empty-state">
+        <i class="fas fa-users"></i>
+        <p>Nenhum cliente encontrado.</p>
+      </div>
+    } @else {
+      <div class="table-wrapper">
+        <table class="clients-table">
+          <thead>
+            <tr>
+              <th>Nome / Razão Social</th>
+              <th>CPF / CNPJ</th>
+              <th>E-mail</th>
+              <th>Telefone</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (client of filteredClients(); track client.id) {
+              <tr>
+                <td data-label="Nome/Razão">{{ client.name }}</td>
+                <td data-label="CPF/CNPJ">{{ client.cpfCnpj }}</td>
+                <td data-label="E-mail">{{ client.email }}</td>
+                <td data-label="Telefone">{{ client.phone }}</td>
+                <td data-label="Status">
+                  <span class="status-badge" [class.active]="client.active">
+                    {{ client.active ? 'Ativo' : 'Inativo' }}
+                  </span>
+                </td>
+                <td data-label="Ações">
+                  <div class="action-buttons">
+                    <button class="btn-edit" (click)="openEditModal(client)" title="Editar">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-delete" (click)="confirmDelete(client)" title="Excluir">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+
+  <!-- Modal de formulário -->
+  @if (showFormModal()) {
+    <div class="modal-overlay" (click)="closeFormModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>{{ editingClient() ? 'Editar Cliente' : 'Novo Cliente' }}</h3>
+          <button class="close-btn" (click)="closeFormModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <!-- Abas -->
+        <div class="tabs">
+          <button class="tab-btn" [class.active]="activeTab() === 'identification'" (click)="activeTab.set('identification')">
+            Identificação
+          </button>
+          <button class="tab-btn" [class.active]="activeTab() === 'contact'" (click)="activeTab.set('contact')">
+            Contato
+          </button>
+          <button class="tab-btn" [class.active]="activeTab() === 'address'" (click)="activeTab.set('address')">
+            Endereço
+          </button>
+          <button class="tab-btn" [class.active]="activeTab() === 'settings'" (click)="activeTab.set('settings')">
+            Configurações
+          </button>
+        </div>
+
+        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="client-form">
+          <!-- Aba Identificação -->
+          <div class="tab-panel" [hidden]="activeTab() !== 'identification'">
+            <!-- Tipo de Pessoa -->
+            <div class="form-row full-width">
+              <label>Tipo de Pessoa</label>
+              <div class="radio-group">
+                <label>
+                  <input type="radio" formControlName="tipoPessoa" value="PF" />
+                  Pessoa Física
+                </label>
+                <label>
+                  <input type="radio" formControlName="tipoPessoa" value="PJ" />
+                  Pessoa Jurídica
+                </label>
+              </div>
+            </div>
+
+            <!-- Nome / Razão Social -->
+            <div class="form-row full-width">
+              <label for="name">
+                {{ form.get('tipoPessoa')?.value === 'PJ' ? 'Razão Social' : 'Nome Completo' }}
+              </label>
+              <input id="name" type="text" formControlName="name" placeholder="Digite..." />
+              @if (form.get('name')?.invalid && form.get('name')?.touched) {
+                <small class="field-error">Campo obrigatório.</small>
+              }
+            </div>
+
+            <!-- Nome Fantasia (só PJ) -->
+            @if (form.get('tipoPessoa')?.value === 'PJ') {
+              <div class="form-row full-width">
+                <label for="nomeFantasia">Nome Fantasia</label>
+                <input id="nomeFantasia" type="text" formControlName="nomeFantasia" placeholder="Opcional" />
+              </div>
+            }
+
+
+            <!-- CPF / CNPJ -->
+            <div class="form-row full-width">
+              <label for="cpfCnpj">
+                {{ form.get('tipoPessoa')?.value === 'PJ' ? 'CNPJ' : 'CPF' }}
+              </label>
+              <input
+                id="cpfCnpj"
+                type="text"
+                formControlName="cpfCnpj"
+                (input)="formatCpfCnpj($event)"
+                maxlength="18"
+                [placeholder]="form.get('tipoPessoa')?.value === 'PJ' ? '00.000.000/0000-00' : '000.000.000-00'"
+              />
+              @if (form.get('cpfCnpj')?.invalid && form.get('cpfCnpj')?.touched) {
+                <small class="field-error">Campo obrigatório.</small>
+              }
+            </div>
+
+            <!-- RG / Inscrição Estadual -->
+            <div class="form-row full-width">
+              <label for="rgIe">
+                {{ form.get('tipoPessoa')?.value === 'PJ' ? 'Inscrição Estadual' : 'RG' }}
+              </label>
+              <input id="rgIe" type="text" formControlName="rgIe" placeholder="Opcional" />
+            </div>
+          </div>
+
+          <!-- Aba Contato -->
+          <div class="tab-panel" [hidden]="activeTab() !== 'contact'">
+            <div class="form-row full-width">
+              <label for="email">E-mail</label>
+              <input id="email" type="email" formControlName="email" placeholder="exemplo@dominio.com" />
+              @if (form.get('email')?.invalid && form.get('email')?.touched) {
+                <small class="field-error">E-mail inválido.</small>
+              }
+            </div>
+            <div class="form-row full-width">
+              <label for="phone">Telefone / Celular</label>
+              <input
+                id="phone"
+                type="text"
+                formControlName="phone"
+                placeholder="(00) 00000-0000"
+                maxlength="15"
+                (input)="formatPhone($event)"
+              />
+              @if (form.get('phone')?.invalid && form.get('phone')?.touched) {
+                <small class="field-error">Campo obrigatório.</small>
+              }
+            </div>
+          </div>
+
+          <!-- Aba Endereço -->
+          <div class="tab-panel" [hidden]="activeTab() !== 'address'">
+            <div class="form-row full-width">
+              <label for="cep">CEP</label>
+              <input
+                id="cep"
+                type="text"
+                formControlName="cep"
+                placeholder="00000-000"
+                mask="00000-000"
+                (blur)="buscarCep()"
+              />
+            </div>
+            <div class="form-row full-width">
+              <label for="logradouro">Logradouro</label>
+              <input id="logradouro" type="text" formControlName="logradouro" />
+            </div>
+            <div class="form-row">
+              <div>
+                <label for="numero">Número</label>
+                <input id="numero" type="text" formControlName="numero" />
+                @if (form.get('numero')?.invalid && form.get('numero')?.touched) {
+                  <small class="field-error">Obrigatório.</small>
+                }
+              </div>
+              <div>
+                <label for="complemento">Complemento</label>
+                <input id="complemento" type="text" formControlName="complemento" />
+              </div>
+            </div>
+            <div class="form-row three">
+              <div>
+                <label for="bairro">Bairro</label>
+                <input id="bairro" type="text" formControlName="bairro" />
+              </div>
+              <div>
+                <label for="cidade">Cidade</label>
+                <input id="cidade" type="text" formControlName="cidade" />
+              </div>
+              <div>
+                <label for="uf">UF</label>
+                <select id="uf" formControlName="uf">
+                  <option value="">Selecione</option>
+                  <option *ngFor="let sigla of ufList" [value]="sigla">{{ sigla }}</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Aba Configurações -->
+          <div class="tab-panel" [hidden]="activeTab() !== 'settings'">
+            <div class="form-row full-width">
+              <div class="toggle-wrapper">
+                <span class="toggle-label">Ativo</span>
+                <div class="toggle" [class.active]="form.get('active')?.value" (click)="toggleActive()">
+                  <div class="toggle-slider"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botão salvar -->
+          <button type="submit" class="btn-submit" [disabled]="form.invalid || isSaving()">
+            @if (isSaving()) {
+              <i class="fas fa-spinner fa-spin"></i> Salvando...
+            } @else {
+              Salvar
+            }
+          </button>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- Modal de exclusão -->
+  @if (showDeleteModal()) {
+    <div class="modal-overlay" (click)="closeDeleteModal()">
+      <div class="modal-content delete-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Confirmar Exclusão</h3>
+          <button class="close-btn" (click)="closeDeleteModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="delete-message">
+          <p>Tem certeza que deseja excluir o cliente <strong>{{ deletingClient()?.name }}</strong>?</p>
+          <p class="warning-text">Esta ação não pode ser desfeita.</p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-cancel" (click)="closeDeleteModal()">Cancelar</button>
+          <button class="btn-confirm-delete" (click)="deleteClient()">Excluir</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

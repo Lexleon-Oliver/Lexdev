@@ -77,7 +77,6 @@ export class UsersComponent implements OnInit {
       error: (err) => {
         this.errorMessage.set('Erro ao carregar usuários.');
         this.isLoading.set(false);
-        this.notification.error('Erro ao carregar usuários.');
       }
     });
   }
