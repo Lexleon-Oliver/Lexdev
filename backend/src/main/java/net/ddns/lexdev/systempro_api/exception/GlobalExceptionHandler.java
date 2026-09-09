@@ -67,6 +67,17 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiErrorResponseDto> handleBusinessException(BusinessException e, HttpServletRequest request) {
+         return buildResponse(
+            HttpStatus.BAD_REQUEST, 
+            "Regra de Negócio", 
+            e.getMessage(), 
+            request.getRequestURI(), 
+            null
+        );
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiErrorResponseDto> handleDataIntegrityViolation(
             DataIntegrityViolationException ex, 

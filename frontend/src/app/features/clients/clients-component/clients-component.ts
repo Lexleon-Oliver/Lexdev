@@ -1,10 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, computed, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NotificationService } from '../../../core/services/notification-service';
 import { cpfCnpjValidator } from '../../../core/validators/cpf-cnpj.validator';
 import { Client } from '../../models/client';
+import { ClientService } from '../../../core/services/client-service';
 
 @Component({
   imports: [CommonModule, ReactiveFormsModule],
@@ -13,6 +14,9 @@ import { Client } from '../../models/client';
   templateUrl: './clients-component.html',
 })
 export class ClientsComponent implements OnInit {
+  private clientService = inject(ClientService);
+  private fb = inject(FormBuilder);
+  private notification = inject(NotificationService);
   // Estado
   clients = signal<Client[]>([]);
   isLoading = signal(false);
@@ -26,9 +30,7 @@ export class ClientsComponent implements OnInit {
 
     // Segurança contra valores que não sejam arrays
     if (!Array.isArray(currentClients)) return [];
-
     if (!term) return currentClients;
-
     return currentClients.filter(client =>
       client.name?.toLowerCase().includes(term) ||
       client.email?.toLowerCase().includes(term) ||
@@ -54,11 +56,7 @@ export class ClientsComponent implements OnInit {
 
   form: FormGroup;
 
-  constructor(
-    private http: HttpClient,
-    private fb: FormBuilder,
-    private notification: NotificationService
-  ) {
+  constructor( ) {
     this.form = this.fb.group({
       tipoPessoa: ['PF', Validators.required],
       name: ['', Validators.required],
@@ -86,7 +84,7 @@ export class ClientsComponent implements OnInit {
   loadClients(): void {
     this.isLoading.set(true);
     this.errorMessage.set(null);
-    this.http.get<Client[]>('/api/clients').subscribe({
+    this.clientService.getClients().subscribe({
       next: (data) => {
         this.clients.set(data);
         this.isLoading.set(false);
@@ -142,12 +140,12 @@ export class ClientsComponent implements OnInit {
 
     this.isSaving.set(true);
     const payload = this.form.value;
+    const editing = this.editingClient();
 
-    if (this.editingClient()) {
-      const id = this.editingClient()!.id;
-      this.http.put<Client>(`/api/clients/${id}`, payload).subscribe({
+    if (editing?.id) {
+      this.clientService.updateClient(editing.id, payload).subscribe({
         next: (updated) => {
-          this.clients.update(list => list.map(c => c.id === id ? updated : c));
+          this.clients.update(list => list.map(c => c.id === editing.id ? updated : c));
           this.notification.success('Cliente atualizado!');
           this.isSaving.set(false);
           this.closeFormModal();
@@ -158,7 +156,7 @@ export class ClientsComponent implements OnInit {
         }
       });
     } else {
-      this.http.post<Client>('/api/clients', payload).subscribe({
+      this.clientService.createClient(payload).subscribe({
         next: (created) => {
           this.clients.update(list => [...list, created]);
           this.notification.success('Cliente criado!');
@@ -242,8 +240,8 @@ export class ClientsComponent implements OnInit {
 
   deleteClient(): void {
     const client = this.deletingClient();
-    if (!client) return;
-    this.http.delete(`/api/clients/${client.id}`).subscribe({
+    if (!client?.id) return;
+    this.clientService.deleteClient(client.id).subscribe({
       next: () => {
         this.clients.update(list => list.filter(c => c.id !== client.id));
         this.notification.success('Cliente excluído!');
@@ -260,11 +258,11 @@ export class ClientsComponent implements OnInit {
 
   // ===== ViaCEP =====
   buscarCep(): void {
-    const cep = this.form.get('cep')?.value?.replace(/\D/g, '');
-    if (cep?.length !== 8) return;
+    const cep = this.form.get('cep')?.value;
+    if (!cep || cep.replace(/\D/g, '').length !== 8) return;
 
-    this.http.get(`https://viacep.com.br/ws/${cep}/json/`).subscribe({
-      next: (data: any) => {
+    this.clientService.getAddressByCep(cep).subscribe({
+      next: (data) => {
         if (!data.erro) {
           this.form.patchValue({
             logradouro: data.logradouro || '',
