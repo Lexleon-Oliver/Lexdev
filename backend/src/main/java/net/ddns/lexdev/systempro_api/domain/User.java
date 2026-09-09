@@ -8,6 +8,9 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 @Entity
 @Table(name = "tb_users")
@@ -17,23 +20,38 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank
     @Column(unique = true, nullable = false, length = 50)
     private String username;
 
+    @NotBlank
+    @Size(min = 2, max = 100)
+    @Column(nullable = false, length = 100)
+    private String name;
+
+
+    @NotBlank
+    @Email
+    @Column(unique = true, nullable = false)
+    private String email;
+
+    @NotBlank
     @Column(nullable = false)
     private String password;
 
     @Column(nullable = false)
-    private String role;
+    private String role = "ROLE_USER";
 
     private boolean active = true;
 
     public User() {}
 
-    public User(String username, String password, String role) {
+    public User(String username, String fullName, String email, String password, String role) {
         this.username = username;
+        this.name = fullName;
         this.password = password;
         this.role = role;
+        this.email = email;
     }
 
     public Long getId() { return id; }
@@ -45,6 +63,10 @@ public class User {
     public void setRole(String role) { this.role = role; }
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
     @Override
     public boolean equals(Object o) {

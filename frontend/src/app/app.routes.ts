@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { ErrorPageComponent } from './core/pages/error-page-component/error-page-component';
+import { ChangePasswordComponent } from './core/pages/change-password-component/change-password-component';
 
 
 export const routes: Routes = [
@@ -34,6 +35,7 @@ export const routes: Routes = [
           import('./features/dashboard/home/home-component/home-component')
             .then(m => m.HomeComponent)
       },
+      { path: 'change-password', component: ChangePasswordComponent },
 /*
       {
         path: 'clientes',

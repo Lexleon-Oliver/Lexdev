@@ -22,9 +22,12 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) {
         if (userRepository.findByUsername("admin").isEmpty()) {
             User admin = new User(
-                "admin", 
-                passwordEncoder.encode("admin123"), 
+                "admin",
+                "Administrator",
+                "admin@lexdev.net.br",
+                passwordEncoder.encode("admin123"),
                 "ROLE_ADMIN"
+                
             );
             userRepository.save(admin);
         }

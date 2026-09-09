@@ -12,14 +12,23 @@
     </div>
 
     <div class="topbar-right">
-      <div class="profile-info">
+      <div class="profile-menu" (click)="toggleProfileMenu()" [class.open]="profileMenuOpen">
         <span class="profile-name">
-          {{ authService.currentUser()?.username || 'Carregando...' }}
+          {{ authService.currentUser()?.fullName || 'Carregando...' }}
         </span>
-        <button class="logout-btn" (click)="onLogout()">
-          <i class="fas fa-sign-out-alt"></i>
-          Sair
-        </button>
+        <i class="fas fa-chevron-down profile-arrow"></i>
+
+        @if (profileMenuOpen) {
+          <div class="profile-dropdown">
+            <a (click)="goToChangePassword()" class="dropdown-item">
+              <i class="fas fa-key"></i> Alterar senha
+            </a>
+            <div class="dropdown-divider"></div>
+            <button (click)="onLogout()" class="dropdown-item">
+              <i class="fas fa-sign-out-alt"></i> Sair
+            </button>
+          </div>
+        }
       </div>
     </div>
   </header>

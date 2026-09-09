@@ -13,6 +13,7 @@ import { MenuItem } from '../../../models/menu-item';
 export class DashboardComponent implements OnInit {
   authService = inject(AuthService);
   private router = inject(Router);
+  profileMenuOpen = false;
 
    menus: MenuItem[] = [
   {
@@ -99,6 +100,18 @@ export class DashboardComponent implements OnInit {
     this.authService.fetchCurrentUser().subscribe({
       error: () => this.onLogout() // Se o token for inválido, desloga o usuário
     });
+  }
+
+
+
+  toggleProfileMenu() {
+    this.profileMenuOpen = !this.profileMenuOpen;
+  }
+
+  goToChangePassword() {
+    this.profileMenuOpen = false;
+    // Navegar para a rota de alteração de senha
+    this.router.navigate(['/change-password']);
   }
 
   onLogout(): void {
