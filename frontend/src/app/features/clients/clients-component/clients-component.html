@@ -156,8 +156,14 @@
                 maxlength="18"
                 [placeholder]="form.get('tipoPessoa')?.value === 'PJ' ? '00.000.000/0000-00' : '000.000.000-00'"
               />
-              @if (form.get('cpfCnpj')?.invalid && form.get('cpfCnpj')?.touched) {
-                <small class="field-error">Campo obrigatório.</small>
+              @if (form.get('cpfCnpj')?.touched) {
+                @if (form.get('cpfCnpj')?.hasError('required')) {
+                  <small class="field-error">Campo obrigatório.</small>
+                } @else if (form.get('cpfCnpj')?.hasError('invalidCpfCnpj')) {
+                  <small class="field-error">
+                    {{ form.get('tipoPessoa')?.value === 'PJ' ? 'CNPJ inválido.' : 'CPF inválido.' }}
+                  </small>
+                }
               }
             </div>
 
