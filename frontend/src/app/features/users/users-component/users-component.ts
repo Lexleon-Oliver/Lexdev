@@ -142,7 +142,6 @@ export class UsersComponent implements OnInit {
           this.closeFormModal();
         },
         error: () => {
-          this.notification.error('Erro ao atualizar usuário.');
           this.isSaving.set(false);
         }
       });
