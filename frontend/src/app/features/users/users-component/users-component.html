@@ -49,7 +49,6 @@
               <th>Usuário</th>
               <th>Email</th>
               <th>Perfil</th>
-              <th>Status</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -62,11 +61,6 @@
                 <td data-label="Perfil">
                   <span class="role-badge" [class.role-admin]="user.role === 'ROLE_ADMIN'">
                     {{ user.role === 'ROLE_ADMIN' ? 'Administrador' : 'Usuário' }}
-                  </span>
-                </td>
-                <td data-label="Status">
-                  <span class="status-badge" [class.active]="user.active">
-                    {{ user.active ? 'Ativo' : 'Inativo' }}
                   </span>
                 </td>
                 <td data-label="Ações">
@@ -143,11 +137,6 @@
             <option value="ROLE_USER">Usuário</option>
             <option value="ROLE_ADMIN">Administrador</option>
           </select>
-
-          <div class="checkbox-group">
-            <input id="active" type="checkbox" formControlName="active" />
-            <label for="active">Ativo</label>
-          </div>
 
           <button type="submit" class="btn-submit" [disabled]="form.invalid || isSaving()">
             @if (isSaving()) {

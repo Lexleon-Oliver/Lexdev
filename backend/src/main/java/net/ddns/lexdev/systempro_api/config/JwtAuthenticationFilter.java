@@ -3,7 +3,6 @@ package net.ddns.lexdev.systempro_api.config;
 import java.io.IOException;
 import java.util.List;
 
-import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,32 +15,32 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import net.ddns.lexdev.systempro_api.repository.UserRepository;
-import net.ddns.lexdev.systempro_api.service.JwtService;
+
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtService jwtService;
+    private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
 
-    public JwtAuthenticationFilter(JwtService jwtService, UserRepository userRepository) {
-        this.jwtService = jwtService;
+    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, UserRepository userRepository) {
+        this.jwtTokenProvider = jwtTokenProvider;
         this.userRepository = userRepository;
     }
 
     @Override
-    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+    protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return path.startsWith("/auth/") || 
-               path.equals("/test") || 
-               path.startsWith("/swagger-ui") || 
+        return path.startsWith("/auth/") ||
+               path.equals("/test") ||
+               path.startsWith("/swagger-ui") ||
                path.startsWith("/v3/api-docs");
     }
 
     @Override
-    protected void doFilterInternal(@NonNull HttpServletRequest request,
-                                    @NonNull HttpServletResponse response,
-                                    @NonNull FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
 
@@ -50,28 +49,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        try {
-            final String jwt = authHeader.substring(7);
-            final String username = jwtService.extractUsername(jwt);
+        final String token = authHeader.substring(7);
+
+        if (jwtTokenProvider.validateAccessToken(token)) {
+            String username = jwtTokenProvider.extractUsernameFromAccessToken(token);
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                if (jwtService.isTokenValid(jwt)) {
-                    userRepository.findByUsernameAndActiveTrue(username).ifPresentOrElse(
-                        user -> {
-                            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                                    user.getUsername(), // Usa a String do username como Principal
-                                    null,
-                                    List.of(new SimpleGrantedAuthority(user.getRole()))
-                            );
-                            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                            SecurityContextHolder.getContext().setAuthentication(authToken);
-                        },
-                        () -> logger.warn("Usuário do token não foi encontrado no banco: " + username)
-                    );
-                }
+                // O banco define o estado e a role atual em tempo real
+                userRepository.findByUsernameAndActiveTrue(username).ifPresentOrElse(
+                    user -> {
+                        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                                user.getUsername(),
+                                null,
+                                List.of(new SimpleGrantedAuthority(user.getRole()))
+                        );
+                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authToken);
+                    },
+                    () -> logger.warn("Acesso negado: usuário inativo ou não encontrado - " + username)
+                );
             }
-        } catch (Exception e) {
-            logger.error("Erro ao processar JWT Token: " + e.getMessage());
         }
 
         filterChain.doFilter(request, response);

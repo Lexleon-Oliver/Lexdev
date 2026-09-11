@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { User } from '../../models/user';
 import { HttpClient } from '@angular/common/http';
@@ -13,20 +13,26 @@ import { UserService } from '../../../core/services/user-service';
   templateUrl: './users-component.html',
 })
 export class UsersComponent implements OnInit {
+  private readonly userService = inject(UserService);
+  private readonly fb = inject(FormBuilder);
+  private readonly notification = inject(NotificationService);
+
   // Estado
   users = signal<User[]>([]);
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
   searchTerm = signal('');
 
-  // Signal computado para filtragem
+  // Paginação
+  currentPage = signal(0);
+  pageSize = signal(10);
+  totalElements = signal(0);
+
   filteredUsers = computed(() => {
     const term = this.searchTerm().toLowerCase();
     const currentUsers = this.users();
 
-    // Segurança contra valores que não sejam arrays
     if (!Array.isArray(currentUsers)) return [];
-
     if (!term) return currentUsers;
 
     return currentUsers.filter(user =>
@@ -36,29 +42,20 @@ export class UsersComponent implements OnInit {
     );
   });
 
-  // Controle dos modais
+  // Modais e UI
   showFormModal = signal(false);
   showDeleteModal = signal(false);
   editingUser = signal<User | null>(null);
   deletingUser = signal<User | null>(null);
   isSaving = signal(false);
 
-  form: FormGroup;
-
-  constructor(
-    private fb: FormBuilder,
-    private notification: NotificationService,
-    private userService: UserService,
-  ) {
-    this.form = this.fb.group({
-      name: ['', [Validators.required]],
-      username: ['', [Validators.required, Validators.minLength(3)]],
-      email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(6)]],
-      role: ['ROLE_USER', Validators.required],
-      active: [true]
-    });
-  }
+  form: FormGroup = this.fb.group({
+    name: ['', [Validators.required]],
+    username: ['', [Validators.required, Validators.minLength(3)]],
+    email: ['', [Validators.required, Validators.email]],
+    password: ['', [Validators.required, Validators.minLength(6)]],
+    role: ['ROLE_USER', Validators.required],
+  });
 
   ngOnInit(): void {
     this.loadUsers();
@@ -68,13 +65,13 @@ export class UsersComponent implements OnInit {
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
-    this.userService.getAll().subscribe({
-      next: (pageData) => {
-        // Pega a lista do atributo .content do Spring Page
-        this.users.set(pageData.content || []);
+    this.userService.findAll(this.currentPage(), this.pageSize()).subscribe({
+      next: (page) => {
+        this.users.set(page.content || []);
+        this.totalElements.set(page.totalElements);
         this.isLoading.set(false);
       },
-      error: (err) => {
+      error: () => {
         this.errorMessage.set('Erro ao carregar usuários.');
         this.isLoading.set(false);
       }
@@ -83,9 +80,8 @@ export class UsersComponent implements OnInit {
 
   openCreateModal(): void {
     this.editingUser.set(null);
-    this.form.reset({ role: 'ROLE_USER', active: true });
+    this.form.reset({ role: 'ROLE_USER' });
 
-    // Habilita username e ativa a validação de senha para criação
     this.form.get('username')?.enable();
     this.form.get('password')?.setValidators([Validators.required, Validators.minLength(6)]);
     this.form.get('password')?.updateValueAndValidity();
@@ -99,16 +95,13 @@ export class UsersComponent implements OnInit {
       name: user.fullName,
       username: user.username,
       email: user.email,
-      role: user.role,
-      active: user.active
+      role: user.role
     });
-    // Desabilita username e remove validação de senha na edição
+
     this.form.get('username')?.disable();
     this.form.get('password')?.clearValidators();
     this.form.get('password')?.updateValueAndValidity();
 
-    // Desabilita o campo de usuário na edição (ficará readonly no HTML)
-    this.form.get('username')?.disable();
     this.showFormModal.set(true);
   }
 
@@ -119,19 +112,19 @@ export class UsersComponent implements OnInit {
   onSubmit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+      this.notification.show('Preencha os campos corretamente.', 'warning');
       return;
     }
 
     this.isSaving.set(true);
-    const formVal = this.form.getRawValue(); // Pega inclusive campos desabilitados se necessário
+    const formVal = this.form.getRawValue();
+
     if (this.editingUser()) {
-      // EDIÇÃO: Envia apenas os campos do UserUpdateDto
       const id = this.editingUser()!.id;
       const updatePayload = {
         name: formVal.name,
         email: formVal.email,
-        role: formVal.role,
-        active: formVal.active
+        role: formVal.role
       };
 
       this.userService.update(id, updatePayload).subscribe({
@@ -142,15 +135,15 @@ export class UsersComponent implements OnInit {
           this.closeFormModal();
         },
         error: () => {
+          this.notification.error('Erro ao atualizar usuário.');
           this.isSaving.set(false);
         }
       });
     } else {
-      // CRIAÇÃO: Envia todos os campos exigidos pelo UserCreateDto
       const createPayload = {
         username: formVal.username,
         name: formVal.name,
-        fullName: formVal.name, // Preenche o fullName exigido pelo DTO Java
+        fullName: formVal.name,
         email: formVal.email,
         password: formVal.password,
         role: formVal.role
@@ -158,17 +151,19 @@ export class UsersComponent implements OnInit {
 
       this.userService.create(createPayload).subscribe({
         next: (created) => {
-          this.users.update(list => [...list, created]);
+          this.users.update(list => [created, ...list]);
           this.notification.success('Usuário criado com sucesso!');
           this.isSaving.set(false);
           this.closeFormModal();
         },
-        error: (err) => {
+        error: () => {
+          this.notification.error('Erro ao criar usuário.');
           this.isSaving.set(false);
         }
       });
     }
   }
+
   confirmDelete(user: User): void {
     this.deletingUser.set(user);
     this.showDeleteModal.set(true);
@@ -189,9 +184,7 @@ export class UsersComponent implements OnInit {
         this.notification.success('Usuário excluído com sucesso!');
         this.closeDeleteModal();
       },
-      error: () => {
-        this.notification.error('Erro ao excluir usuário.');
-      }
+      error: () => this.notification.error('Erro ao excluir usuário.')
     });
   }
 }

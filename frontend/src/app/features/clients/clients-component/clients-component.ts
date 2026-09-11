@@ -14,23 +14,28 @@ import { ClientService } from '../../../core/services/client-service';
   templateUrl: './clients-component.html',
 })
 export class ClientsComponent implements OnInit {
-  private clientService = inject(ClientService);
-  private fb = inject(FormBuilder);
-  private notification = inject(NotificationService);
+  private readonly clientService = inject(ClientService);
+  private readonly fb = inject(FormBuilder);
+  private readonly notification = inject(NotificationService);
+
   // Estado
   clients = signal<Client[]>([]);
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
   searchTerm = signal('');
 
-  // Signal computado para filtragem de clientes
+  // Paginação
+  currentPage = signal(0);
+  pageSize = signal(10);
+  totalElements = signal(0);
+
   filteredClients = computed(() => {
     const term = this.searchTerm().toLowerCase();
     const currentClients = this.clients();
 
-    // Segurança contra valores que não sejam arrays
     if (!Array.isArray(currentClients)) return [];
     if (!term) return currentClients;
+
     return currentClients.filter(client =>
       client.name?.toLowerCase().includes(term) ||
       client.email?.toLowerCase().includes(term) ||
@@ -38,55 +43,48 @@ export class ClientsComponent implements OnInit {
     );
   });
 
-  // Modais
+  // Modais e UI
   showFormModal = signal(false);
   showDeleteModal = signal(false);
   editingClient = signal<Client | null>(null);
   deletingClient = signal<Client | null>(null);
   isSaving = signal(false);
-
-  // Controle de abas
   activeTab = signal<'identification' | 'contact' | 'address' | 'settings'>('identification');
 
-  // Lista de UF
-  ufList = [
+  readonly ufList = [
     'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA',
     'PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'
   ];
 
-  form: FormGroup;
-
-  constructor( ) {
-    this.form = this.fb.group({
-      tipoPessoa: ['PF', Validators.required],
-      name: ['', Validators.required],
-      nomeFantasia: [''],
-      cpfCnpj: ['', [Validators.required, cpfCnpjValidator()]],
-      rgIe: [''],
-      email: ['', [Validators.required, Validators.email]],
-      phone: ['', Validators.required],
-      cep: [''],
-      logradouro: [''],
-      numero: ['', Validators.required],
-      complemento: [''],
-      bairro: [''],
-      cidade: [''],
-      uf: [''],
-      active: [true]
-    });
-  }
+  form: FormGroup = this.fb.group({
+    tipoPessoa: ['PF', Validators.required],
+    name: ['', Validators.required],
+    nomeFantasia: [''],
+    cpfCnpj: ['', [Validators.required, cpfCnpjValidator()]],
+    rgIe: [''],
+    email: ['', [Validators.required, Validators.email]],
+    phone: ['', Validators.required],
+    cep: [''],
+    logradouro: [''],
+    numero: ['', Validators.required],
+    complemento: [''],
+    bairro: [''],
+    cidade: [''],
+    uf: [''],
+  });
 
   ngOnInit(): void {
     this.loadClients();
   }
 
-  // ===== CRUD =====
   loadClients(): void {
     this.isLoading.set(true);
     this.errorMessage.set(null);
-    this.clientService.getClients().subscribe({
-      next: (data) => {
-        this.clients.set(data);
+
+    this.clientService.findAll(this.currentPage(), this.pageSize()).subscribe({
+      next: (page) => {
+        this.clients.set(page.content || []);
+        this.totalElements.set(page.totalElements);
         this.isLoading.set(false);
       },
       error: () => {
@@ -96,10 +94,9 @@ export class ClientsComponent implements OnInit {
     });
   }
 
-  // ===== Formulário =====
   openCreateModal(): void {
     this.editingClient.set(null);
-    this.form.reset({ tipoPessoa: 'PF', active: true });
+    this.form.reset({ tipoPessoa: 'PF' });
     this.activeTab.set('identification');
     this.showFormModal.set(true);
   }
@@ -121,7 +118,6 @@ export class ClientsComponent implements OnInit {
       bairro: client.bairro || '',
       cidade: client.cidade || '',
       uf: client.uf || '',
-      active: client.active
     });
     this.activeTab.set('identification');
     this.showFormModal.set(true);
@@ -143,91 +139,34 @@ export class ClientsComponent implements OnInit {
     const editing = this.editingClient();
 
     if (editing?.id) {
-      this.clientService.updateClient(editing.id, payload).subscribe({
+      this.clientService.update(editing.id, payload).subscribe({
         next: (updated) => {
           this.clients.update(list => list.map(c => c.id === editing.id ? updated : c));
-          this.notification.success('Cliente atualizado!');
+          this.notification.success('Cliente atualizado com sucesso!');
           this.isSaving.set(false);
           this.closeFormModal();
         },
         error: () => {
-          this.notification.error('Erro ao atualizar.');
+          this.notification.error('Erro ao atualizar cliente.');
           this.isSaving.set(false);
         }
       });
     } else {
-      this.clientService.createClient(payload).subscribe({
+      this.clientService.create(payload).subscribe({
         next: (created) => {
-          this.clients.update(list => [...list, created]);
-          this.notification.success('Cliente criado!');
+          this.clients.update(list => [created, ...list]);
+          this.notification.success('Cliente criado com sucesso!');
           this.isSaving.set(false);
           this.closeFormModal();
         },
         error: () => {
-          this.notification.error('Erro ao criar.');
+          this.notification.error('Erro ao criar cliente.');
           this.isSaving.set(false);
         }
       });
     }
   }
 
-  formatCpfCnpj(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    let value = input.value.replace(/\D/g, ''); // Remove não dígitos
-
-    if (value.length > 14) value = value.substring(0, 14);
-
-    if (value.length <= 11) {
-      // Máscara CPF: 000.000.000-00
-      value = value
-        .replace(/(\d{3})(\d)/, '$1.$2')
-        .replace(/(\d{3})(\d)/, '$1.$2')
-        .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-    } else {
-      // Máscara CNPJ: 00.000.000/0000-00
-      value = value
-        .replace(/^(\d{2})(\d)/, '$1.$2')
-        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
-        .replace(/\.(\d{3})(\d)/, '.$1/$2')
-        .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
-    }
-
-    this.form.get('cpfCnpj')?.setValue(value, { emitEvent: false });
-  }
-
-  // Máscara de Telefone: (00) 0000-0000 ou (00) 00000-0000
-  formatPhone(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    let value = input.value.replace(/\D/g, ''); // Remove não dígitos
-
-    if (value.length > 11) value = value.substring(0, 11);
-
-    if (value.length <= 10) {
-      value = value
-        .replace(/^(\d{2})(\d)/, '($1) $2')
-        .replace(/(\d{4})(\d)/, '$1-$2');
-    } else {
-      value = value
-        .replace(/^(\d{2})(\d)/, '($1) $2')
-        .replace(/(\d{5})(\d)/, '$1-$2');
-    }
-
-    this.form.get('phone')?.setValue(value, { emitEvent: false });
-  }
-
-  // Máscara de CEP: 00000-000
-  formatCep(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    let value = input.value.replace(/\D/g, ''); // Remove não dígitos
-
-    if (value.length > 8) value = value.substring(0, 8);
-
-    value = value.replace(/^(\d{5})(\d)/, '$1-$2');
-
-    this.form.get('cep')?.setValue(value, { emitEvent: false });
-  }
-
-  // ===== Exclusão =====
   confirmDelete(client: Client): void {
     this.deletingClient.set(client);
     this.showDeleteModal.set(true);
@@ -241,22 +180,58 @@ export class ClientsComponent implements OnInit {
   deleteClient(): void {
     const client = this.deletingClient();
     if (!client?.id) return;
-    this.clientService.deleteClient(client.id).subscribe({
+
+    this.clientService.delete(client.id).subscribe({
       next: () => {
         this.clients.update(list => list.filter(c => c.id !== client.id));
-        this.notification.success('Cliente excluído!');
+        this.notification.success('Cliente excluído com sucesso!');
         this.closeDeleteModal();
       },
-      error: () => this.notification.error('Erro ao excluir.')
+      error: () => this.notification.error('Erro ao excluir cliente.')
     });
   }
 
-  // ===== Toggle Active =====
-  toggleActive(): void {
-    this.form.patchValue({ active: !this.form.get('active')?.value });
+  formatCpfCnpj(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    let value = input.value.replace(/\D/g, '');
+    if (value.length > 14) value = value.substring(0, 14);
+
+    if (value.length <= 11) {
+      value = value
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    } else {
+      value = value
+        .replace(/^(\d{2})(\d)/, '$1.$2')
+        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+        .replace(/\.(\d{3})(\d)/, '.$1/$2')
+        .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+    }
+    this.form.get('cpfCnpj')?.setValue(value, { emitEvent: false });
   }
 
-  // ===== ViaCEP =====
+  formatPhone(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    let value = input.value.replace(/\D/g, '');
+    if (value.length > 11) value = value.substring(0, 11);
+
+    if (value.length <= 10) {
+      value = value.replace(/^(\d{2})(\d)/, '($1) $2').replace(/(\d{4})(\d)/, '$1-$2');
+    } else {
+      value = value.replace(/^(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2');
+    }
+    this.form.get('phone')?.setValue(value, { emitEvent: false });
+  }
+
+  formatCep(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    let value = input.value.replace(/\D/g, '');
+    if (value.length > 8) value = value.substring(0, 8);
+    value = value.replace(/^(\d{5})(\d)/, '$1-$2');
+    this.form.get('cep')?.setValue(value, { emitEvent: false });
+  }
+
   buscarCep(): void {
     const cep = this.form.get('cep')?.value;
     if (!cep || cep.replace(/\D/g, '').length !== 8) return;
@@ -278,4 +253,3 @@ export class ClientsComponent implements OnInit {
     });
   }
 }
-

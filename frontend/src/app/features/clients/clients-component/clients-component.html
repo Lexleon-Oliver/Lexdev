@@ -44,7 +44,6 @@
               <th>CPF / CNPJ</th>
               <th>E-mail</th>
               <th>Telefone</th>
-              <th>Status</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -55,11 +54,6 @@
                 <td data-label="CPF/CNPJ">{{ client.cpfCnpj }}</td>
                 <td data-label="E-mail">{{ client.email }}</td>
                 <td data-label="Telefone">{{ client.phone }}</td>
-                <td data-label="Status">
-                  <span class="status-badge" [class.active]="client.active">
-                    {{ client.active ? 'Ativo' : 'Inativo' }}
-                  </span>
-                </td>
                 <td data-label="Ações">
                   <div class="action-buttons">
                     <button class="btn-edit" (click)="openEditModal(client)" title="Editar">
@@ -99,9 +93,6 @@
           </button>
           <button class="tab-btn" [class.active]="activeTab() === 'address'" (click)="activeTab.set('address')">
             Endereço
-          </button>
-          <button class="tab-btn" [class.active]="activeTab() === 'settings'" (click)="activeTab.set('settings')">
-            Configurações
           </button>
         </div>
 
@@ -250,17 +241,6 @@
             </div>
           </div>
 
-          <!-- Aba Configurações -->
-          <div class="tab-panel" [hidden]="activeTab() !== 'settings'">
-            <div class="form-row full-width">
-              <div class="toggle-wrapper">
-                <span class="toggle-label">Ativo</span>
-                <div class="toggle" [class.active]="form.get('active')?.value" (click)="toggleActive()">
-                  <div class="toggle-slider"></div>
-                </div>
-              </div>
-            </div>
-          </div>
 
           <!-- Botão salvar -->
           <button type="submit" class="btn-submit" [disabled]="form.invalid || isSaving()">

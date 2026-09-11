@@ -20,11 +20,16 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
       - SPRING_DATASOURCE_USERNAME=${DB_USER}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
-      - JWT_SECRET=${SECRET_KEY}
+      - JWT_SECRET_ACCESS=${SECRET_KEY}
+      - JWT_SECRET_REFRESH=${SECRET_REFRESH_KEY}
+      - JWT_ISSUER=${JWT_ISSUER}
+      - JWT_AUDIENCE=${JWT_AUDIENCE}
+      - JWT_EXPIRATION=${JWT_EXPIRATION}
+      - JWT_REFRESH_EXPIRATION=${JWT_REFRESH_EXPIRATION}
     depends_on:
       - db
     deploy:
-      replicas: 2 # <-- Ativa o balanceamento de carga do Nginx automaticamente
+      replicas: 1
     restart: unless-stopped
 
   frontend:

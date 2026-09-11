@@ -1,7 +1,7 @@
 package net.ddns.lexdev.systempro_api.service;
 
-import java.util.List;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,10 +22,8 @@ public class ClientService {
     }
 
     @Transactional(readOnly = true)
-    public List<ClientResponseDto> findAll() {
-        return repository.findAll().stream()
-                .map(ClientResponseDto::fromEntity)
-                .toList();
+    public Page<ClientResponseDto> findAll(Pageable pageable) {
+        return repository.findAll(pageable).map(ClientResponseDto::fromEntity);
     }
 
     @Transactional(readOnly = true)
@@ -45,8 +43,9 @@ public class ClientService {
 
         Client client = new Client();
         copyDtoToEntity(dto, client);
-        Client savedClient = repository.save(client);
-        return ClientResponseDto.fromEntity(savedClient);
+        client.setCpfCnpj(cleanCpfCnpj); // Garante que o valor limpo seja salvo
+        
+        return ClientResponseDto.fromEntity(repository.save(client));
     }
 
     @Transactional
@@ -63,8 +62,9 @@ public class ClientService {
         });
 
         copyDtoToEntity(dto, client);
-        Client updatedClient = repository.save(client);
-        return ClientResponseDto.fromEntity(updatedClient);
+        client.setCpfCnpj(cleanCpfCnpj);
+        
+        return ClientResponseDto.fromEntity(repository.save(client));
     }
 
     @Transactional
@@ -84,7 +84,6 @@ public class ClientService {
         entity.setTipoPessoa(dto.tipoPessoa());
         entity.setName(dto.name());
         entity.setNomeFantasia(dto.nomeFantasia());
-        entity.setCpfCnpj(dto.cpfCnpj());
         entity.setRgIe(dto.rgIe());
         entity.setEmail(dto.email());
         entity.setPhone(dto.phone());

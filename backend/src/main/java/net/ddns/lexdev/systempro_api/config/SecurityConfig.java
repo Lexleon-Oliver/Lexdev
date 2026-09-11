@@ -17,7 +17,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
     private final JwtAuthenticationFilter jwtAuthFilter;
+
     public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
     }
@@ -35,10 +37,10 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(
-                    "/auth/**", 
+                    "/auth/**",
                     "/error",
-                    "/v3/api-docs/**", 
-                    "/swagger-ui/**", 
+                    "/v3/api-docs/**",
+                    "/swagger-ui/**",
                     "/swagger-ui.html"
                 ).permitAll()
                 .anyRequest().authenticated()
@@ -47,6 +49,7 @@ public class SecurityConfig {
 
         return http.build();
     }
+
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();

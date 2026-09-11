@@ -1,8 +1,9 @@
 package net.ddns.lexdev.systempro_api.controller;
 
-import java.util.List;
+import java.net.URI;
 
-import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import jakarta.validation.Valid;
 import net.ddns.lexdev.systempro_api.dto.ClientRequestDto;
@@ -21,6 +23,7 @@ import net.ddns.lexdev.systempro_api.service.ClientService;
 @RestController
 @RequestMapping("/clients")
 public class ClientController {
+
     private final ClientService service;
 
     public ClientController(ClientService service) {
@@ -28,8 +31,8 @@ public class ClientController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ClientResponseDto>> findAll() {
-        return ResponseEntity.ok(service.findAll());
+    public ResponseEntity<Page<ClientResponseDto>> findAll(Pageable pageable) {
+        return ResponseEntity.ok(service.findAll(pageable));
     }
 
     @GetMapping("/{id}")
@@ -40,14 +43,17 @@ public class ClientController {
     @PostMapping
     public ResponseEntity<ClientResponseDto> create(@Valid @RequestBody ClientRequestDto dto) {
         ClientResponseDto created = service.create(dto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        URI uri = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(created.id())
+                .toUri();
+        return ResponseEntity.created(uri).body(created);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ClientResponseDto> update(
             @PathVariable Long id,
-            @Valid @RequestBody ClientRequestDto dto
-    ) {
+            @Valid @RequestBody ClientRequestDto dto) {
         return ResponseEntity.ok(service.update(id, dto));
     }
 
@@ -56,5 +62,4 @@ public class ClientController {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }
-
 }

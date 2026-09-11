@@ -4,14 +4,8 @@ import { Router } from '@angular/router';
 import { tap } from 'rxjs/operators';
 import { Observable } from 'rxjs';
 import { User } from '../../features/models/user';
-export interface LoginCredentials {
-  username?: string | null;
-  password?: string | null;
-}
-export interface AuthResponse {
-  token: string;
-  tokenType: string;
-}
+import { LoginCredentials } from '../../features/models/login-credentials';
+import { AuthResponse } from '../../features/models/auth-response';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -20,6 +14,7 @@ export class AuthService {
   private router = inject(Router);
 
   private readonly tokenKey = 'token';
+  private readonly refreshTokenKey = 'refreshToken';
 
   // Sinal do estado de autenticação
   private readonly _isAuthenticated = signal<boolean>(
@@ -38,7 +33,8 @@ export class AuthService {
   login(credentials: LoginCredentials): Observable<AuthResponse> {
     return this.http.post<AuthResponse>('/api/auth/login', credentials).pipe(
       tap((res) => {
-        localStorage.setItem(this.tokenKey, res.token);
+        localStorage.setItem(this.tokenKey, res.accessToken);
+        localStorage.setItem(this.refreshTokenKey, res.refreshToken);
         this._isAuthenticated.set(true);
       })
     );
@@ -53,9 +49,21 @@ export class AuthService {
 
   logout(): void {
     localStorage.removeItem(this.tokenKey);
+    localStorage.removeItem(this.refreshTokenKey);
     this._isAuthenticated.set(false);
     this._currentUser.set(null);
     this.router.navigate(['/login']);
+  }
+
+  refreshToken(): Observable<AuthResponse> {
+    const refreshToken = localStorage.getItem(this.refreshTokenKey);
+
+    return this.http.post<AuthResponse>('/api/auth/refresh', { refreshToken }).pipe(
+      tap((res) => {
+        localStorage.setItem(this.tokenKey, res.accessToken);
+        localStorage.setItem(this.refreshTokenKey, res.refreshToken);
+      })
+    );
   }
 
 }
