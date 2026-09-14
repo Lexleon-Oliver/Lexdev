@@ -16,91 +16,9 @@ export class DashboardComponent implements OnInit {
   profileMenuOpen = false;
   sidebarMobileOpen = false;
 
-   menus: MenuItem[] = [
-  {
-    key: 'inicio',
-    label: 'Início',
-    icon: 'fas fa-home',
-    route: ['/dashboard']
-  },
+  menus: MenuItem[] = [
 
-  {
-    key: 'cadastros',
-    label: 'Cadastros',
-    icon: 'fas fa-database',
-    open: false,
-
-    submenu: [
-      {
-        key: 'clientes',
-        label: 'Clientes',
-        icon: '',
-        route: ['/clientes']
-      },
-      {
-        key: 'fornecedores',
-        label: 'Fornecedores',
-        icon: '',
-        route: ['/fornecedores']
-      },
-      {
-        key: 'produtos',
-        label: 'Produtos',
-        icon: '',
-        route: ['/produtos']
-      }
-    ]
-  },
-
-  {
-    key: 'relatorios',
-    label: 'Relatórios',
-    icon: 'fas fa-chart-bar',
-    open: false,
-
-    submenu: [
-      {
-        key: 'vendas',
-        label: 'Vendas',
-        icon: '',
-        route: ['/vendas']
-      },
-      {
-        key: 'estoque',
-        label: 'Estoque',
-        icon: '',
-        route: ['/estoque']
-      },
-      {
-        key: 'financeiro',
-        label: 'Financeiro',
-        icon: '',
-        route: ['/financeiro']
-      }
-    ]
-  },
-  {
-    key: 'admin',
-    label: 'Administração',
-    icon: 'fas fa-cogs',
-    open: false,
-    submenu: [
-      {
-        key: 'users',
-        label: 'Gerenciar Usuários',
-        icon: '',
-        route: ['/usuarios']
-      }
-    ]
-  },
-
-  {
-    key: 'configuracoes',
-    label: 'Configurações',
-    icon: 'fas fa-cog',
-    route: ['/configuracoes']
-  }
-];
+  ];
 
   toggleSubmenu(menu: MenuItem, event: Event): void {
     event.preventDefault();
@@ -109,10 +27,102 @@ export class DashboardComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // Busca os dados do banco dinamicamente via GET /api/users/me
     this.authService.fetchCurrentUser().subscribe({
-      error: () => this.onLogout() // Se o token for inválido, desloga o usuário
+      next: () => { this.buildMenus(); },
+      error: () => { this.onLogout(); }
     });
+  }
+
+  private buildMenus(): void {
+    this.menus = [
+      {
+        key: 'inicio',
+        label: 'Início',
+        icon: 'fas fa-home',
+        route: ['/dashboard']
+      },
+
+      {
+        key: 'cadastros',
+        label: 'Cadastros',
+        icon: 'fas fa-database',
+        open: false,
+        submenu: [
+          {
+            key: 'clientes',
+            label: 'Clientes',
+            icon: '',
+            route: ['/clientes']
+          },
+          {
+            key: 'fornecedores',
+            label: 'Fornecedores',
+            icon: '',
+            route: ['/fornecedores']
+          },
+          {
+            key: 'produtos',
+            label: 'Produtos',
+            icon: '',
+            route: ['/produtos']
+          }
+        ]
+      },
+
+      {
+        key: 'relatorios',
+        label: 'Relatórios',
+        icon: 'fas fa-chart-bar',
+        open: false,
+        submenu: [
+          {
+            key: 'vendas',
+            label: 'Vendas',
+            icon: '',
+            route: ['/vendas']
+          },
+          {
+            key: 'estoque',
+            label: 'Estoque',
+            icon: '',
+            route: ['/estoque']
+          },
+          {
+            key: 'financeiro',
+            label: 'Financeiro',
+            icon: '',
+            route: ['/financeiro']
+          }
+        ]
+      },
+
+      {
+        key: 'configuracoes',
+        label: 'Configurações',
+        icon: 'fas fa-cog',
+        route: ['/configuracoes']
+      }
+    ];
+    if (this.isAdmin()) {
+      this.menus.push({
+        key: 'admin',
+        label: 'Administração',
+        icon: 'fas fa-cogs',
+        open: false,
+        submenu: [
+          {
+            key: 'users',
+            label: 'Gerenciar Usuários',
+            icon: '',
+            route: ['/usuarios']
+          }
+        ]
+      });
+    }
+  }
+
+  private isAdmin(): boolean {
+    return this.authService.currentUser()?.role === 'ROLE_ADMIN';
   }
 
   toggleProfileMenu() {

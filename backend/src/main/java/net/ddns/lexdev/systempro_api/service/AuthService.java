@@ -49,33 +49,52 @@ public class AuthService {
 
     @Transactional
     public AuthResponse refreshToken(RefreshTokenRequest request) {
+
         String tokenStr = request.refreshToken();
 
-        // 1. Validação matemática/assinatura do JWT
         if (!jwtTokenProvider.validateRefreshToken(tokenStr)) {
-            throw new IllegalArgumentException("Refresh token inválido ou expirado");
+            throw new IllegalArgumentException(
+                    "Refresh token inválido ou expirado"
+            );
         }
 
-        String jti = jwtTokenProvider.extractJtiFromRefreshToken(tokenStr);
+        String jti =
+                jwtTokenProvider.extractJtiFromRefreshToken(tokenStr);
 
-        // 2. Consulta no banco pelo JTI
-        RefreshToken storedToken = refreshTokenRepository.findByJti(jti)
-                .orElseThrow(() -> new IllegalArgumentException("Refresh token não encontrado no registro"));
+        RefreshToken storedToken =
+                refreshTokenRepository.findByJtiForUpdate(jti)
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Refresh token não encontrado no registro"
+                                )
+                        );
 
-        // 3. Valida se já foi revogado ou se expirou
-        if (storedToken.isRevoked() || storedToken.getExpiryDate().isBefore(Instant.now())) {
-            throw new IllegalArgumentException("Refresh token revogado ou expirado");
+        if (storedToken.isRevoked()) {
+            throw new IllegalArgumentException(
+                    "Refresh token já foi revogado"
+            );
         }
 
-        // 4. Rotação real: Revoga o token atual
+        if (storedToken.getExpiryDate().isBefore(Instant.now())) {
+            throw new IllegalArgumentException(
+                    "Refresh token expirado"
+            );
+        }
+
+        User user =
+                userRepository
+                        .findByUsernameAndActiveTrue(
+                                storedToken.getUsername()
+                        )
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Usuário inativo ou não encontrado"
+                                )
+                        );
+
         storedToken.setRevoked(true);
         refreshTokenRepository.save(storedToken);
 
-        // 5. Valida se o usuário continua ativo
-        User user = userRepository.findByUsernameAndActiveTrue(storedToken.getUsername())
-                .orElseThrow(() -> new IllegalArgumentException("Usuário inativo ou não encontrado"));
-
-        // 6. Emite o novo par e persiste o novo JTI
         return issueNewTokens(user.getUsername());
     }
 
@@ -84,7 +103,7 @@ public class AuthService {
         String tokenStr = request.refreshToken();
         if (jwtTokenProvider.validateRefreshToken(tokenStr)) {
             String jti = jwtTokenProvider.extractJtiFromRefreshToken(tokenStr);
-            refreshTokenRepository.findByJti(jti).ifPresent(token -> {
+            refreshTokenRepository.findByJtiForUpdate(jti).ifPresent(token -> {
                 token.setRevoked(true);
                 refreshTokenRepository.save(token);
             });
@@ -96,11 +115,12 @@ public class AuthService {
         JwtTokenProvider.TokenHolder refreshHolder = jwtTokenProvider.generateRefreshToken(username);
 
         // Persiste o JTI do novo Refresh Token
-        RefreshToken refreshTokenEntity = new RefreshToken(
-                refreshHolder.jti(),
-                username,
-                Instant.now().plusMillis(refreshHolder.durationMs())
-        );
+        RefreshToken refreshTokenEntity =
+            new RefreshToken(
+                    refreshHolder.jti(),
+                    username,
+                    refreshHolder.expiresAt()
+            );
         refreshTokenRepository.save(refreshTokenEntity);
 
         return new AuthResponse(accessHolder.token(), refreshHolder.token());

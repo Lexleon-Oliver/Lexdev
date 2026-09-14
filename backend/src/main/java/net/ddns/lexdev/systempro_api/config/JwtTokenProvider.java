@@ -1,5 +1,6 @@
 package net.ddns.lexdev.systempro_api.config;
 
+import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
 
@@ -46,28 +47,45 @@ public class JwtTokenProvider {
         this.refreshTokenExpiration = refreshTokenExpiration;
     }
 
-    public record TokenHolder(String token, String jti, long durationMs) {}
+    public record TokenHolder(
+            String token,
+            String jti,
+            Instant expiresAt
+    ) {}
 
     // Access Token: apenas 'sub', 'jti' e 'type'
     public TokenHolder generateAccessToken(String username) {
         String jti = UUID.randomUUID().toString();
+        Instant now = Instant.now();
+        Instant expiresAt = now.plusMillis(accessTokenExpiration);
+
         JwtBuilder builder = Jwts.builder()
                 .claim("jti", jti)
                 .claim("type", "access")
                 .subject(username)
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + accessTokenExpiration))
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(expiresAt))
                 .signWith(accessKey);
 
         if (issuer != null && !issuer.isBlank()) builder.issuer(issuer);
-        if (audience != null && !audience.isBlank()) builder.audience().add(audience);
+        if (audience != null && !audience.isBlank()) {
+            builder.audience()
+                    .add(audience)
+                    .and();
+        }
 
-        return new TokenHolder(builder.compact(), jti, accessTokenExpiration);
+                return new TokenHolder(
+                builder.compact(),
+                jti,
+                expiresAt
+        );
     }
 
     // Refresh Token: apenas 'sub', 'jti' e 'type'
     public TokenHolder generateRefreshToken(String username) {
         String jti = UUID.randomUUID().toString();
+        Instant now = Instant.now();
+        Instant expiresAt = now.plusMillis(refreshTokenExpiration);
         JwtBuilder builder = Jwts.builder()
                 .claim("jti", jti)
                 .claim("type", "refresh")
@@ -77,9 +95,17 @@ public class JwtTokenProvider {
                 .signWith(refreshKey);
 
         if (issuer != null && !issuer.isBlank()) builder.issuer(issuer);
-        if (audience != null && !audience.isBlank()) builder.audience().add(audience);
+        if (audience != null && !audience.isBlank()) {
+            builder.audience()
+                    .add(audience)
+                    .and();
+        }
 
-        return new TokenHolder(builder.compact(), jti, refreshTokenExpiration);
+        return new TokenHolder(
+                builder.compact(),
+                jti,
+                expiresAt
+        );
     }
 
     public boolean validateAccessToken(String token) {
