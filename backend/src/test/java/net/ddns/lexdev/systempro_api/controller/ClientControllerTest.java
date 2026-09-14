@@ -314,66 +314,42 @@ class ClientControllerTest {
         @Test
         @DisplayName("Deve retornar 400 quando CPF/CNPJ já estiver cadastrado")
         void deveRetornar400QuandoCpfCnpjJaEstiverCadastrado() throws Exception {
+        when(service.create(any(ClientRequestDto.class)))
+                .thenThrow(new BusinessException("Já existe um cliente ativo cadastrado com este CPF/CNPJ."));
 
-                ClientRequestDto dto = new ClientRequestDto(
-                        "PF",
-                        "João da Silva",
-                        null,
-                        "12345678900",
-                        "495493478",
-                        "joao@email.com",
-                        "31999999999",
-                        "65570-970",
-                        "Avenida Doutor Paulo Ramos",
-                        "125",
-                        null,
-                        "Conceição",
-                        "Araióses",
-                        "MA",
-                        true
-                );
+        String json = """
+                {
+                        "tipoPessoa": "PF",
+                        "name": "João da Silva",
+                        "nomeFantasia": null,
+                        "cpfCnpj": "12345678900",
+                        "rgIe": "495493478",
+                        "email": "joao@email.com",
+                        "phone": "31999999999",
+                        "cep": "65570-970",
+                        "logradouro": "Avenida Doutor Paulo Ramos",
+                        "numero": "125",
+                        "complemento": null,
+                        "bairro": "Conceição",
+                        "cidade": "Araióses",
+                        "uf": "MA",
+                        "active": true
+                }
+                """;
 
-                when(service.create(any(ClientRequestDto.class)))
-                        .thenThrow(new BusinessException(
-                                "Já existe um cliente ativo cadastrado com este CPF/CNPJ."
-                        ));
+        mockMvc.perform(
+                post("/clients")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json)
+        )
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.status").value(400))
+        .andExpect(jsonPath("$.error").value("Regra de Negócio"))
+        .andExpect(jsonPath("$.message").value("Já existe um cliente ativo cadastrado com este CPF/CNPJ."))
+        .andExpect(jsonPath("$.path").value("/clients"));
 
-                String json = """
-                        {
-                                "tipoPessoa": "PF",
-                                "name": "João da Silva",
-                                "nomeFantasia": null,
-                                "cpfCnpj": "12345678900",
-                                "rgIe": "495493478",
-                                "email": "joao@email.com",
-                                "phone": "31999999999",
-                                "cep": "65570-970",
-                                "logradouro": "Avenida Doutor Paulo Ramos",
-                                "numero": "125",
-                                "complemento": null,
-                                "bairro": "Conceição",
-                                "cidade": "Araióses",
-                                "uf": "MA",
-                                "active": true
-                        }
-                        """;
-
-               mockMvc.perform(
-                        post("/clients")
-                                .with(csrf())
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(json)
-                )
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value(400))
-                .andExpect(jsonPath("$.error")
-                        .value("Regra de Negócio"))
-                .andExpect(jsonPath("$.message")
-                        .value("Já existe um cliente ativo cadastrado com este CPF/CNPJ."))
-                .andExpect(jsonPath("$.path")
-                        .value("/clients"));
-
-                verify(service).create(any(ClientRequestDto.class));
+        verify(service).create(any(ClientRequestDto.class));
         }
 
         @Test
