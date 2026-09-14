@@ -7,28 +7,32 @@ import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityNotFoundException;
 import net.ddns.lexdev.systempro_api.domain.Client;
+import net.ddns.lexdev.systempro_api.domain.Person;
 import net.ddns.lexdev.systempro_api.dto.ClientRequestDto;
 import net.ddns.lexdev.systempro_api.dto.ClientResponseDto;
 import net.ddns.lexdev.systempro_api.exception.BusinessException;
 import net.ddns.lexdev.systempro_api.repository.ClientRepository;
+import net.ddns.lexdev.systempro_api.repository.PersonRepository;
 
 @Service
 public class ClientService {
 
-    private final ClientRepository repository;
+    private final ClientRepository clientRepository;
+    private final PersonRepository personRepository;
 
-    public ClientService(ClientRepository repository) {
-        this.repository = repository;
+    public ClientService(ClientRepository clientRepository, PersonRepository personRepository) {
+        this.clientRepository = clientRepository;
+        this.personRepository = personRepository;
     }
 
     @Transactional(readOnly = true)
     public Page<ClientResponseDto> findAll(Pageable pageable) {
-        return repository.findAll(pageable).map(ClientResponseDto::fromEntity);
+        return clientRepository.findAllWithPerson(pageable).map(ClientResponseDto::fromEntity);
     }
 
     @Transactional(readOnly = true)
     public ClientResponseDto findById(Long id) {
-        Client client = repository.findById(id)
+        Client client = clientRepository.findByIdWithPerson(id)
                 .orElseThrow(() -> new EntityNotFoundException("Cliente não encontrado com o ID: " + id));
         return ClientResponseDto.fromEntity(client);
     }
@@ -37,65 +41,71 @@ public class ClientService {
     public ClientResponseDto create(ClientRequestDto dto) {
         String cleanCpfCnpj = sanitize(dto.cpfCnpj());
 
-        if (repository.existsByCpfCnpj(cleanCpfCnpj)) {
-            throw new BusinessException("Já existe um cliente ativo cadastrado com este CPF/CNPJ.");
+        if (clientRepository.existsByPersonCpfCnpj(cleanCpfCnpj)) {
+            throw new BusinessException("Esta pessoa/empresa já está cadastrada como cliente ativo.");
         }
 
+        Person person = personRepository.findByCpfCnpj(cleanCpfCnpj)
+                .orElseGet(Person::new);
+
+        copyDtoToPerson(dto, person);
+        person.setCpfCnpj(cleanCpfCnpj);
+
         Client client = new Client();
-        copyDtoToEntity(dto, client);
-        client.setCpfCnpj(cleanCpfCnpj); // Garante que o valor limpo seja salvo
-        
-        return ClientResponseDto.fromEntity(repository.save(client));
+        client.setPerson(person);
+
+        return ClientResponseDto.fromEntity(clientRepository.save(client));
     }
 
     @Transactional
     public ClientResponseDto update(Long id, ClientRequestDto dto) {
-        Client client = repository.findById(id)
+        Client client = clientRepository.findByIdWithPerson(id)
                 .orElseThrow(() -> new EntityNotFoundException("Cliente não encontrado com o ID: " + id));
 
         String cleanCpfCnpj = sanitize(dto.cpfCnpj());
+        Person person = client.getPerson();
 
-        repository.findByCpfCnpj(cleanCpfCnpj).ifPresent(existingClient -> {
-            if (!existingClient.getId().equals(id)) {
-                throw new BusinessException("CPF/CNPJ já cadastrado para outro cliente.");
+        personRepository.findByCpfCnpj(cleanCpfCnpj).ifPresent(existingPerson -> {
+            if (!existingPerson.getId().equals(person.getId())) {
+                throw new BusinessException("CPF/CNPJ já cadastrado para outra pessoa.");
             }
         });
 
-        copyDtoToEntity(dto, client);
-        client.setCpfCnpj(cleanCpfCnpj);
-        
-        return ClientResponseDto.fromEntity(repository.save(client));
+        copyDtoToPerson(dto, person);
+        person.setCpfCnpj(cleanCpfCnpj);
+
+        return ClientResponseDto.fromEntity(clientRepository.save(client));
     }
 
     @Transactional
     public void delete(Long id) {
-        Client client = repository.findById(id)
+        Client client = clientRepository.findByIdWithPerson(id)
                 .orElseThrow(() -> new EntityNotFoundException("Cliente não encontrado com o ID: " + id));
 
         client.setActive(false);
-        repository.save(client);
+        clientRepository.save(client);
     }
 
     private String sanitize(String value) {
         return value != null ? value.replaceAll("\\D", "") : null;
     }
 
-    private void copyDtoToEntity(ClientRequestDto dto, Client entity) {
-        entity.setTipoPessoa(dto.tipoPessoa());
-        entity.setName(dto.name());
-        entity.setNomeFantasia(dto.nomeFantasia());
-        entity.setRgIe(dto.rgIe());
-        entity.setEmail(dto.email());
-        entity.setPhone(dto.phone());
-        entity.setCep(dto.cep());
-        entity.setLogradouro(dto.logradouro());
-        entity.setNumero(dto.numero());
-        entity.setComplemento(dto.complemento());
-        entity.setBairro(dto.bairro());
-        entity.setCidade(dto.cidade());
-        entity.setUf(dto.uf());
+    private void copyDtoToPerson(ClientRequestDto dto, Person person) {
+        person.setTipoPessoa(dto.tipoPessoa());
+        person.setName(dto.name());
+        person.setNomeFantasia(dto.nomeFantasia());
+        person.setRgIe(dto.rgIe());
+        person.setEmail(dto.email());
+        person.setPhone(dto.phone());
+        person.setCep(dto.cep());
+        person.setLogradouro(dto.logradouro());
+        person.setNumero(dto.numero());
+        person.setComplemento(dto.complemento());
+        person.setBairro(dto.bairro());
+        person.setCidade(dto.cidade());
+        person.setUf(dto.uf());
         if (dto.active() != null) {
-            entity.setActive(dto.active());
+            person.setActive(dto.active());
         }
     }
 }

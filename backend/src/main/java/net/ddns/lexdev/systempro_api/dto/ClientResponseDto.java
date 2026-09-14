@@ -1,9 +1,11 @@
 package net.ddns.lexdev.systempro_api.dto;
 
 import net.ddns.lexdev.systempro_api.domain.Client;
+import net.ddns.lexdev.systempro_api.domain.Person;
 
 public record ClientResponseDto(
     Long id,
+    Long personId,
     String tipoPessoa,
     String name,
     String nomeFantasia,
@@ -21,22 +23,24 @@ public record ClientResponseDto(
     Boolean active
 ) {
     public static ClientResponseDto fromEntity(Client client) {
+        Person p = client.getPerson();
         return new ClientResponseDto(
             client.getId(),
-            client.getTipoPessoa(),
-            client.getName(),
-            client.getNomeFantasia(),
-            client.getCpfCnpj(),
-            client.getRgIe(),
-            client.getEmail(),
-            client.getPhone(),
-            client.getCep(),
-            client.getLogradouro(),
-            client.getNumero(),
-            client.getComplemento(),
-            client.getBairro(),
-            client.getCidade(),
-            client.getUf(),
+            p.getId(),
+            p.getTipoPessoa(),
+            p.getName(),
+            p.getNomeFantasia(),
+            p.getCpfCnpj(),
+            p.getRgIe(),
+            p.getEmail(),
+            p.getPhone(),
+            p.getCep(),
+            p.getLogradouro(),
+            p.getNumero(),
+            p.getComplemento(),
+            p.getBairro(),
+            p.getCidade(),
+            p.getUf(),
             client.getActive()
         );
     }

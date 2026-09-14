@@ -1,0 +1,363 @@
+package net.ddns.lexdev.systempro_api.service;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import static org.mockito.ArgumentMatchers.any;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
+import jakarta.persistence.EntityNotFoundException;
+import net.ddns.lexdev.systempro_api.domain.Person;
+import net.ddns.lexdev.systempro_api.domain.Supplier;
+import net.ddns.lexdev.systempro_api.dto.BankDetailsDto;
+import net.ddns.lexdev.systempro_api.dto.SupplierContactDto;
+import net.ddns.lexdev.systempro_api.dto.SupplierRequestDto;
+import net.ddns.lexdev.systempro_api.dto.SupplierResponseDto;
+import net.ddns.lexdev.systempro_api.exception.BusinessException;
+import net.ddns.lexdev.systempro_api.repository.PersonRepository;
+import net.ddns.lexdev.systempro_api.repository.SupplierRepository;
+
+@ExtendWith(MockitoExtension.class)
+class SupplierServiceTest {
+
+    @Mock
+    private SupplierRepository supplierRepository;
+
+    @Mock
+    private PersonRepository personRepository;
+
+    @InjectMocks
+    private SupplierService service;
+
+    private SupplierRequestDto buildSupplierRequestDto(String cpfCnpj) {
+        return new SupplierRequestDto(
+                "PJ",
+                "Fornecedor Tech Ltda",
+                "Tech Fornecimentos",
+                cpfCnpj,
+                "123456789",
+                "contato@techfornecimentos.com",
+                "31988888888",
+                "30100000",
+                "Rua dos Fornecedores",
+                "500",
+                "Sala 101",
+                "Centro",
+                "Belo Horizonte",
+                "MG",
+                "30 DIAS",
+                5,
+                new BigDecimal("1000.00"),
+                "Tecnologia",
+                "Prazo de entrega rigoroso",
+                new BankDetailsDto("001", "1234", "56789-0", "CORRENTE", "12345678000195"),
+                List.of(new SupplierContactDto("Carlos", "Gerente", "carlos@tech.com", "31977777777", "Comercial")),
+                List.of(),
+                true
+        );
+    }
+
+    private Person buildPerson(Long id, String cpfCnpj) {
+        Person person = new Person();
+        person.setId(id);
+        person.setTipoPessoa("PJ");
+        person.setName("Fornecedor Tech Ltda");
+        person.setNomeFantasia("Tech Fornecimentos");
+        person.setCpfCnpj(cpfCnpj);
+        person.setRgIe("123456789");
+        person.setEmail("contato@techfornecimentos.com");
+        person.setPhone("31988888888");
+        person.setCep("30100000");
+        person.setLogradouro("Rua dos Fornecedores");
+        person.setNumero("500");
+        person.setComplemento("Sala 101");
+        person.setBairro("Centro");
+        person.setCidade("Belo Horizonte");
+        person.setUf("MG");
+        person.setActive(true);
+        return person;
+    }
+
+    private Supplier buildSupplier(Long id, Person person) {
+        Supplier supplier = new Supplier();
+        supplier.setId(id);
+        supplier.setPerson(person);
+        supplier.setCondicaoPagamentoPadrao("30 DIAS");
+        supplier.setPrazoEntregaDias(5);
+        supplier.setValorMinimoPedido(new BigDecimal("1000.00"));
+        supplier.setCategoria("Tecnologia");
+        supplier.setObservacoesComerciais("Prazo de entrega rigoroso");
+        supplier.setActive(true);
+        return supplier;
+    }
+
+    @Test
+    @DisplayName("Deve criar fornecedor com CPF/CNPJ sanitizado")
+    void deveCriarFornecedorComCpfCnpjSanitizado() {
+        SupplierRequestDto dto = buildSupplierRequestDto("12.345.678/0001-95");
+        Person person = buildPerson(10L, "12345678000195");
+        Supplier supplierSalvo = buildSupplier(1L, person);
+
+        when(supplierRepository.existsByPersonCpfCnpj("12345678000195")).thenReturn(false);
+        when(personRepository.findByCpfCnpj("12345678000195")).thenReturn(Optional.of(person));
+        when(supplierRepository.save(any(Supplier.class))).thenReturn(supplierSalvo);
+
+        SupplierResponseDto result = service.create(dto);
+
+        ArgumentCaptor<Supplier> supplierCaptor = ArgumentCaptor.forClass(Supplier.class);
+        verify(supplierRepository).save(supplierCaptor.capture());
+
+        Supplier supplierEnviadoParaRepository = supplierCaptor.getValue();
+        assertThat(supplierEnviadoParaRepository.getPerson().getCpfCnpj()).isEqualTo("12345678000195");
+
+        assertThat(result.id()).isEqualTo(1L);
+        assertThat(result.name()).isEqualTo("Fornecedor Tech Ltda");
+
+        verify(supplierRepository).existsByPersonCpfCnpj("12345678000195");
+        verify(personRepository).findByCpfCnpj("12345678000195");
+    }
+
+    @Test
+    @DisplayName("Não deve criar fornecedor quando CPF/CNPJ já estiver cadastrado")
+    void naoDeveCriarFornecedorQuandoCpfCnpjJaExiste() {
+        SupplierRequestDto dto = buildSupplierRequestDto("12.345.678/0001-95");
+
+        when(supplierRepository.existsByPersonCpfCnpj("12345678000195")).thenReturn(true);
+
+        assertThatThrownBy(() -> service.create(dto))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Esta pessoa/empresa já está cadastrada como fornecedor ativo.");
+
+        verify(supplierRepository).existsByPersonCpfCnpj("12345678000195");
+        verify(supplierRepository, never()).save(any(Supplier.class));
+    }
+
+    @Test
+    @DisplayName("Deve retornar fornecedor quando o ID existir")
+    void deveRetornarFornecedorQuandoIdExistir() {
+        Person person = buildPerson(10L, "12345678000195");
+        Supplier supplier = buildSupplier(1L, person);
+
+        when(supplierRepository.findByIdWithPerson(1L)).thenReturn(Optional.of(supplier));
+
+        SupplierResponseDto result = service.findById(1L);
+
+        assertThat(result).isNotNull();
+        assertThat(result.id()).isEqualTo(1L);
+        assertThat(result.tipoPessoa()).isEqualTo("PJ");
+        assertThat(result.name()).isEqualTo("Fornecedor Tech Ltda");
+        assertThat(result.cpfCnpj()).isEqualTo("12345678000195");
+        assertThat(result.email()).isEqualTo("contato@techfornecimentos.com");
+        assertThat(result.condicaoPagamentoPadrao()).isEqualTo("30 DIAS");
+
+        verify(supplierRepository).findByIdWithPerson(1L);
+    }
+
+    @Test
+    @DisplayName("Deve lançar exceção quando o fornecedor não existir")
+    void deveLancarExcecaoQuandoFornecedorNaoExistir() {
+        when(supplierRepository.findByIdWithPerson(999L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.findById(999L))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessage("Fornecedor não encontrado com o ID: 999");
+
+        verify(supplierRepository).findByIdWithPerson(999L);
+    }
+
+    @Test
+    @DisplayName("Deve atualizar fornecedor quando os dados forem válidos")
+    void deveAtualizarFornecedorQuandoDadosForemValidos() {
+        Person person = buildPerson(10L, "12345678000195");
+        Supplier supplier = buildSupplier(1L, person);
+
+        SupplierRequestDto dto = new SupplierRequestDto(
+                "PJ",
+                "Fornecedor Tech Ltda Atualizado",
+                "Tech Fornecimentos ME",
+                "98.765.432/0001-10",
+                "987654321",
+                "novo@techfornecimentos.com",
+                "31977777777",
+                "30100000",
+                "Rua Nova",
+                "1000",
+                "Apt 200",
+                "Centro",
+                "Belo Horizonte",
+                "MG",
+                "60 DIAS",
+                10,
+                new BigDecimal("2000.00"),
+                "Tecnologia e Serviços",
+                "Parceria Estratégica",
+                null,
+                List.of(),
+                List.of(),
+                true
+        );
+
+        when(supplierRepository.findByIdWithPerson(1L)).thenReturn(Optional.of(supplier));
+        when(personRepository.findByCpfCnpj("98765432000110")).thenReturn(Optional.empty());
+        when(supplierRepository.save(any(Supplier.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SupplierResponseDto result = service.update(1L, dto);
+
+        assertThat(result).isNotNull();
+        assertThat(result.id()).isEqualTo(1L);
+        assertThat(result.name()).isEqualTo("Fornecedor Tech Ltda Atualizado");
+        assertThat(result.nomeFantasia()).isEqualTo("Tech Fornecimentos ME");
+        assertThat(result.cpfCnpj()).isEqualTo("98765432000110");
+        assertThat(result.email()).isEqualTo("novo@techfornecimentos.com");
+
+        verify(supplierRepository).findByIdWithPerson(1L);
+        verify(personRepository).findByCpfCnpj("98765432000110");
+        verify(supplierRepository).save(supplier);
+    }
+
+    @Test
+    @DisplayName("Não deve atualizar quando CPF/CNPJ pertencer a outra pessoa")
+    void naoDeveAtualizarQuandoCpfCnpjPertencerAOutraPessoa() {
+        Person personCurrent = buildPerson(10L, "12345678000195");
+        Supplier supplier = buildSupplier(1L, personCurrent);
+
+        Person personOther = buildPerson(20L, "98765432000110");
+
+        SupplierRequestDto dto = buildSupplierRequestDto("98.765.432/0001-10");
+
+        when(supplierRepository.findByIdWithPerson(1L)).thenReturn(Optional.of(supplier));
+        when(personRepository.findByCpfCnpj("98765432000110")).thenReturn(Optional.of(personOther));
+
+        assertThatThrownBy(() -> service.update(1L, dto))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("CPF/CNPJ já cadastrado para outra pessoa no sistema.");
+
+        verify(supplierRepository).findByIdWithPerson(1L);
+        verify(personRepository).findByCpfCnpj("98765432000110");
+        verify(supplierRepository, never()).save(any(Supplier.class));
+    }
+
+    @Test
+    @DisplayName("Deve permitir atualizar o fornecedor mantendo seu próprio CPF/CNPJ")
+    void devePermitirAtualizarMantendoProprioCpfCnpj() {
+        Person person = buildPerson(10L, "12345678000195");
+        Supplier supplier = buildSupplier(1L, person);
+        SupplierRequestDto dto = buildSupplierRequestDto("12.345.678/0001-95");
+
+        when(supplierRepository.findByIdWithPerson(1L)).thenReturn(Optional.of(supplier));
+        when(personRepository.findByCpfCnpj("12345678000195")).thenReturn(Optional.of(person));
+        when(supplierRepository.save(any(Supplier.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SupplierResponseDto result = service.update(1L, dto);
+
+        assertThat(result).isNotNull();
+        assertThat(result.id()).isEqualTo(1L);
+        assertThat(result.cpfCnpj()).isEqualTo("12345678000195");
+
+        verify(supplierRepository).findByIdWithPerson(1L);
+        verify(personRepository).findByCpfCnpj("12345678000195");
+        verify(supplierRepository).save(supplier);
+    }
+
+    @Test
+    @DisplayName("Deve lançar exceção ao atualizar fornecedor inexistente")
+    void deveLancarExcecaoAoAtualizarFornecedorInexistente() {
+        SupplierRequestDto dto = buildSupplierRequestDto("12.345.678/0001-95");
+
+        when(supplierRepository.findByIdWithPerson(999L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.update(999L, dto))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessage("Fornecedor não encontrado com o ID: 999");
+
+        verify(supplierRepository).findByIdWithPerson(999L);
+        verify(personRepository, never()).findByCpfCnpj(any());
+        verify(supplierRepository, never()).save(any(Supplier.class));
+    }
+
+    @Test
+    @DisplayName("Deve realizar soft delete do fornecedor")
+    void deveRealizarSoftDeleteDoFornecedor() {
+        Person person = buildPerson(10L, "12345678000195");
+        Supplier supplier = buildSupplier(1L, person);
+
+        when(supplierRepository.findByIdWithPerson(1L)).thenReturn(Optional.of(supplier));
+
+        service.delete(1L);
+
+        assertThat(supplier.getActive()).isFalse();
+
+        verify(supplierRepository).findByIdWithPerson(1L);
+        verify(supplierRepository).save(supplier);
+    }
+
+    @Test
+    @DisplayName("Deve lançar exceção ao excluir fornecedor inexistente")
+    void deveLancarExcecaoAoExcluirFornecedorInexistente() {
+        when(supplierRepository.findByIdWithPerson(999L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.delete(999L))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessage("Fornecedor não encontrado com o ID: 999");
+
+        verify(supplierRepository).findByIdWithPerson(999L);
+        verify(supplierRepository, never()).save(any(Supplier.class));
+    }
+
+    @Test
+    @DisplayName("Deve retornar fornecedores paginados")
+    void deveRetornarFornecedoresPaginados() {
+        Person person1 = buildPerson(10L, "12345678000195");
+        Supplier supplier1 = buildSupplier(1L, person1);
+
+        Person person2 = buildPerson(20L, "98765432000110");
+        Supplier supplier2 = buildSupplier(2L, person2);
+
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Supplier> supplierPage = new PageImpl<>(List.of(supplier1, supplier2), pageable, 2);
+
+        when(supplierRepository.findAllWithPerson(pageable)).thenReturn(supplierPage);
+
+        Page<SupplierResponseDto> result = service.findAll(pageable);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getContent().get(0).id()).isEqualTo(1L);
+        assertThat(result.getContent().get(1).id()).isEqualTo(2L);
+        assertThat(result.getTotalElements()).isEqualTo(2);
+
+        verify(supplierRepository).findAllWithPerson(pageable);
+    }
+
+    @Test
+    @DisplayName("Deve retornar página vazia quando não houver fornecedores")
+    void deveRetornarPaginaVaziaQuandoNaoHouverFornecedores() {
+        Pageable pageable = PageRequest.of(0, 10);
+
+        when(supplierRepository.findAllWithPerson(pageable)).thenReturn(Page.empty(pageable));
+
+        Page<SupplierResponseDto> result = service.findAll(pageable);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).isEmpty();
+        assertThat(result.getTotalElements()).isZero();
+
+        verify(supplierRepository).findAllWithPerson(pageable);
+    }
+}
