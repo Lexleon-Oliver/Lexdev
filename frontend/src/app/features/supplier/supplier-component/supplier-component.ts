@@ -140,41 +140,63 @@ export class SupplierComponent implements OnInit {
   openEditModal(supplier: Supplier): void {
     this.editingSupplier.set(supplier);
     this.contatos.clear();
+    this.isLoading.set(true);
 
-    (supplier.contatos || []).forEach(c => {
-      this.contatos.push(this.buildContatoGroup(c));
+    this.supplierService.findById(supplier.id!).subscribe({
+      next: (fullSupplier: any) => {
+        // Preenche os contatos (mapeando setor do backend para departamento do form)
+        (fullSupplier.contatos || []).forEach((c: any) => {
+          this.contatos.push(this.buildContatoGroup(c));
+        });
+
+        // Formata o valor mínimo para exibição em moeda
+        let valorMin = fullSupplier.valorMinimoPedido;
+        if (valorMin !== null && valorMin !== undefined && typeof valorMin === 'number') {
+          valorMin = Number(valorMin).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        this.form.patchValue({
+          tipoPessoa: fullSupplier.tipoPessoa,
+          name: fullSupplier.name ?? '',
+          nomeFantasia: fullSupplier.nomeFantasia ?? '',
+          cpfCnpj: fullSupplier.cpfCnpj ?? '',
+          rgIe: fullSupplier.rgIe ?? '',
+          email: fullSupplier.email ?? '',
+          phone: fullSupplier.phone ?? '',
+          ativo: fullSupplier.active ?? true,
+
+          cep: fullSupplier.cep ?? '',
+          logradouro: fullSupplier.logradouro ?? '',
+          numero: fullSupplier.numero ?? '',
+          complemento: fullSupplier.complemento ?? '',
+          bairro: fullSupplier.bairro ?? '',
+          cidade: fullSupplier.cidade ?? '',
+          uf: fullSupplier.uf ?? '',
+
+          // Comercial
+          categoria: fullSupplier.categoria ?? '',
+          condicaoPagamento: fullSupplier.condicaoPagamentoPadrao ?? '',
+          prazoEntrega: fullSupplier.prazoEntregaDias ?? null,
+          valorMinimoPedido: valorMin ?? null,
+          observacoesComerciais: fullSupplier.observacoesComerciais ?? '',
+
+          // Bancário (Lendo de dentro de bankDetails)
+          banco: fullSupplier.bankDetails?.banco ?? '',
+          agencia: fullSupplier.bankDetails?.agencia ?? '',
+          conta: fullSupplier.bankDetails?.conta ?? '',
+          tipoConta: fullSupplier.bankDetails?.tipoConta ?? '',
+          chavePix: fullSupplier.bankDetails?.chavePix ?? ''
+        });
+
+        this.isLoading.set(false);
+        this.activeTab.set('identification');
+        this.showFormModal.set(true);
+      },
+      error: () => {
+        this.isLoading.set(false);
+        this.notification.error('Erro ao carregar os dados completos do fornecedor.');
+      }
     });
-
-    this.form.patchValue({
-      tipoPessoa: supplier.tipoPessoa ,
-      name: supplier.name ?? '',
-      nomeFantasia: supplier.nomeFantasia ?? '',
-      cpfCnpj: supplier.cpfCnpj ?? '',
-      rgIe: supplier.rgIe ?? '',
-      email: supplier.email ?? '',
-      phone: supplier.phone ?? '',
-      ativo: supplier.ativo ?? true,
-      cep: supplier.cep ?? '',
-      logradouro: supplier.logradouro ?? '',
-      numero: supplier.numero ?? '',
-      complemento: supplier.complemento ?? '',
-      bairro: supplier.bairro ?? '',
-      cidade: supplier.cidade ?? '',
-      uf: supplier.uf ?? '',
-      categoria: supplier.categoria ?? '',
-      condicaoPagamento: supplier.condicaoPagamento ?? '',
-      prazoEntrega: supplier.prazoEntrega ?? null,
-      valorMinimoPedido: supplier.valorMinimoPedido ?? null,
-      observacoesComerciais: supplier.observacoesComerciais ?? '',
-      banco: supplier.banco ?? '',
-      agencia: supplier.agencia ?? '',
-      conta: supplier.conta ?? '',
-      tipoConta: supplier.tipoConta ?? '',
-      chavePix: supplier.chavePix ?? ''
-    });
-
-    this.activeTab.set('identification');
-    this.showFormModal.set(true);
   }
 
   closeFormModal(): void {
@@ -245,17 +267,6 @@ export class SupplierComponent implements OnInit {
     });
   }
 
-  // Contatos
-  private buildContatoGroup(c: SupplierContact = { nome: '', cargo: '', email: '', telefone: '', departamento: '' }): FormGroup {
-    return this.fb.group({
-      nome: [c.nome ?? '', Validators.required],
-      cargo: [c.cargo ?? ''],
-      email: [c.email ?? '', Validators.email],
-      telefone: [c.telefone ?? ''],
-      departamento: [c.departamento ?? '']
-    });
-  }
-
   addContato(): void {
     this.contatos.push(this.buildContatoGroup());
   }
@@ -270,15 +281,70 @@ export class SupplierComponent implements OnInit {
     ctrl?.setValue(!ctrl.value);
   }
 
-  private normalizePayload(raw: any): Supplier {
+  private normalizePayload(raw: any): any {
+    // Converte o valor monetário formatado (ex: "R$ 1.500,00") para número puro para o BigDecimal
+    let valorMin = raw.valorMinimoPedido;
+    if (typeof valorMin === 'string') {
+      const cleanVal = valorMin.replace(/[^\d,]/g, '').replace(',', '.');
+      valorMin = cleanVal ? Number(cleanVal) : null;
+    }
+
     return {
-      ...raw,
+      tipoPessoa: raw.tipoPessoa,
+      name: raw.name,
       nomeFantasia: raw.tipoPessoa === 'PJ' ? raw.nomeFantasia : '',
-      // ativo: !!raw.ativo,
-      prazoEntrega: raw.prazoEntrega !== null && raw.prazoEntrega !== '' ? Number(raw.prazoEntrega) : null,
-      valorMinimoPedido: raw.valorMinimoPedido !== null && raw.valorMinimoPedido !== '' ? Number(raw.valorMinimoPedido) : null,
-      contatos: (raw.contatos || []).filter((c: SupplierContact) => c.nome && c.nome.trim().length > 0)
+      cpfCnpj: raw.cpfCnpj,
+      rgIe: raw.rgIe,
+      email: raw.email,
+      phone: raw.phone,
+      cep: raw.cep,
+      logradouro: raw.logradouro,
+      numero: raw.numero,
+      complemento: raw.complemento,
+      bairro: raw.bairro,
+      cidade: raw.cidade,
+      uf: raw.uf,
+
+      // --- Mapeamento Comercial correto para o DTO ---
+      condicaoPagamentoPadrao: raw.condicaoPagamento || null,
+      prazoEntregaDias: raw.prazoEntrega !== null && raw.prazoEntrega !== '' ? Number(raw.prazoEntrega) : null,
+      valorMinimoPedido: valorMin,
+      categoria: raw.categoria || null,
+      observacoesComerciais: raw.observacoesComerciais || '',
+
+      // --- Mapeamento Bancário como objeto aninhado (BankDetailsDto) ---
+      bankDetails: {
+        banco: raw.banco || null,
+        agencia: raw.agencia || null,
+        conta: raw.conta || null,
+        tipoConta: raw.tipoConta || null,
+        chavePix: raw.chavePix || null
+      },
+
+      // --- Mapeamento de Contatos (convertendo departamento para setor) ---
+      contatos: (raw.contatos || [])
+        .filter((c: any) => c.nome && c.nome.trim().length > 0)
+        .map((c: any) => ({
+          nome: c.nome,
+          cargo: c.cargo || '',
+          email: c.email || '',
+          telefone: c.telefone || '',
+          setor: c.departamento || c.setor || '' // Mapeia 'departamento' do form para 'setor' do DTO
+        })),
+
+      active: raw.ativo ?? true
     };
+  }
+
+  // Ajuste também a leitura do contato ao abrir a edição para mapear setor -> departamento
+  private buildContatoGroup(c: any = { nome: '', cargo: '', email: '', telefone: '', setor: '' }): FormGroup {
+    return this.fb.group({
+      nome: [c.nome ?? '', Validators.required],
+      cargo: [c.cargo ?? ''],
+      email: [c.email ?? '', Validators.email],
+      telefone: [c.telefone ?? ''],
+      departamento: [c.setor ?? c.departamento ?? ''] // Lê 'setor' do backend e coloca no input 'departamento'
+    });
   }
 
   // Máscaras e Formatações
