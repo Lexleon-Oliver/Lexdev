@@ -1,0 +1,488 @@
+<!-- ============================================================
+     fornecedores-page.html
+     ============================================================ -->
+<div class="suppliers-page">
+  <!-- Cabeçalho -->
+  <div class="page-header">
+    <h2>Fornecedores</h2>
+    <div class="header-actions">
+      <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input
+          type="text"
+          placeholder="Buscar fornecedores..."
+          [value]="searchTerm()"
+          (input)="searchTerm.set($any($event.target).value)"
+        />
+      </div>
+      <button class="btn-primary" (click)="openCreateModal()">
+        <i class="fas fa-plus"></i> Novo Fornecedor
+      </button>
+    </div>
+  </div>
+
+  <!-- Erro -->
+  @if (errorMessage()) {
+    <div class="alert-error">
+      <i class="fas fa-exclamation-circle"></i>
+      {{ errorMessage() }}
+    </div>
+  }
+
+  <!-- Loading / Tabela -->
+  @if (isLoading()) {
+    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>
+  } @else {
+    @if (filteredSuppliers().length === 0) {
+      <div class="empty-state">
+        <i class="fas fa-truck"></i>
+        <p>Nenhum fornecedor encontrado.</p>
+      </div>
+    } @else {
+      <div class="table-wrapper">
+        <table class="suppliers-table">
+          <thead>
+            <tr>
+              <th>Nome / Razão Social</th>
+              <th>CPF / CNPJ</th>
+              <th>E-mail</th>
+              <th>Telefone</th>
+              <th>Categoria</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (supplier of filteredSuppliers(); track supplier.id) {
+              <tr>
+                <td data-label="Nome/Razão">{{ supplier.name }}</td>
+                <td data-label="CPF/CNPJ">{{ supplier.cpfCnpj }}</td>
+                <td data-label="E-mail">{{ supplier.email }}</td>
+                <td data-label="Telefone">{{ supplier.phone }}</td>
+                <td data-label="Categoria">{{ supplier.categoria || '—' }}</td>
+                <td data-label="Ações">
+                  <div class="action-buttons">
+                    <button class="btn-edit" (click)="openEditModal(supplier)" title="Editar">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-delete" (click)="confirmDelete(supplier)" title="Excluir">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+
+  <!-- ===================== Modal de formulário ===================== -->
+  @if (showFormModal()) {
+    <div class="modal-overlay" (click)="closeFormModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>{{ editingSupplier() ? 'Editar Fornecedor' : 'Novo Fornecedor' }}</h3>
+          <button class="close-btn" (click)="closeFormModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <!-- Abas -->
+        <div class="tabs">
+          <button class="tab-btn" [class.active]="activeTab() === 'identification'" (click)="activeTab.set('identification')">
+            Identificação
+          </button>
+          <button class="tab-btn" [class.active]="activeTab() === 'address'" (click)="activeTab.set('address')">
+            Endereço
+          </button>
+          <button class="tab-btn" [class.active]="activeTab() === 'commercial'" (click)="activeTab.set('commercial')">
+            Comercial
+          </button>
+          <button class="tab-btn" [class.active]="activeTab() === 'bank'" (click)="activeTab.set('bank')">
+            Bancário
+          </button>
+          <button class="tab-btn" [class.active]="activeTab() === 'contacts'" (click)="activeTab.set('contacts')">
+            Contatos
+            @if (contatos.length > 0) {
+              <span class="tab-badge">{{ contatos.length }}</span>
+            }
+          </button>
+        </div>
+
+        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="supplier-form">
+
+          <!-- ==================== Aba Identificação ==================== -->
+          <div class="tab-panel" [hidden]="activeTab() !== 'identification'">
+            <p class="form-section-title">Dados Principais</p>
+
+             <!-- Tipo de Pessoa -->
+            <div class="form-row full-width">
+              <label>Tipo de Pessoa</label>
+              <div class="radio-group">
+                <label>
+                  <input type="radio" formControlName="tipoPessoa" value="PF" />
+                  Pessoa Física
+                </label>
+                <label>
+                  <input type="radio" formControlName="tipoPessoa" value="PJ" />
+                  Pessoa Jurídica
+                </label>
+              </div>
+            </div>
+
+            <!-- Nome / Razão Social -->
+            <div class="form-row full-width">
+              <label for="name">
+                {{ form.get('tipoPessoa')?.value === 'PJ' ? 'Razão Social' : 'Nome Completo' }}
+              </label>
+              <input id="name" type="text" formControlName="name" placeholder="Digite..." />
+              @if (form.get('name')?.invalid && form.get('name')?.touched) {
+                <small class="field-error">Campo obrigatório.</small>
+              }
+            </div>
+
+            <!-- Nome Fantasia (preferencialmente PJ) -->
+            @if (form.get('tipoPessoa')?.value === 'PJ') {
+              <div class="form-row full-width">
+                <label for="nomeFantasia">Nome Fantasia</label>
+                <input id="nomeFantasia" type="text" formControlName="nomeFantasia" placeholder="Opcional" />
+              </div>
+            }
+
+            <!-- CPF / CNPJ -->
+            <div class="form-row full-width">
+              <label for="cpfCnpj">
+                {{ form.get('tipoPessoa')?.value === 'PJ' ? 'CNPJ' : 'CPF' }}
+              </label>
+              <input
+                id="cpfCnpj"
+                type="text"
+                formControlName="cpfCnpj"
+                (input)="formatCpfCnpj($event)"
+                maxlength="18"
+                [placeholder]="form.get('tipoPessoa')?.value === 'PJ' ? '00.000.000/0000-00' : '000.000.000-00'"
+              />
+              @if (form.get('cpfCnpj')?.touched) {
+                @if (form.get('cpfCnpj')?.hasError('required')) {
+                  <small class="field-error">Campo obrigatório.</small>
+                } @else if (form.get('cpfCnpj')?.hasError('invalidCpfCnpj')) {
+                  <small class="field-error">
+                    {{ form.get('tipoPessoa')?.value === 'PJ' ? 'CNPJ inválido.' : 'CPF inválido.' }}
+                  </small>
+                }
+              }
+            </div>
+
+            <!-- RG / Inscrição Estadual -->
+            <div class="form-row full-width">
+              <label for="rgIe">
+                {{ form.get('tipoPessoa')?.value === 'PJ' ? 'Inscrição Estadual' : 'RG' }}
+              </label>
+              <input id="rgIe" type="text" formControlName="rgIe" placeholder="Opcional" />
+            </div>
+
+            <!-- E-mail -->
+            <div class="form-row full-width">
+              <label for="email">E-mail</label>
+              <input id="email" type="email" formControlName="email" placeholder="exemplo@dominio.com" />
+              @if (form.get('email')?.invalid && form.get('email')?.touched) {
+                <small class="field-error">E-mail inválido.</small>
+              }
+            </div>
+
+            <!-- Telefone -->
+            <div class="form-row full-width">
+              <label for="phone">Telefone / Celular</label>
+              <input
+                id="phone"
+                type="text"
+                formControlName="phone"
+                placeholder="(00) 00000-0000"
+                maxlength="15"
+                (input)="formatPhone($event)"
+              />
+              @if (form.get('phone')?.invalid && form.get('phone')?.touched) {
+                <small class="field-error">Campo obrigatório.</small>
+              }
+            </div>
+
+          </div>
+
+          <!-- ==================== Aba Endereço ==================== -->
+          <div class="tab-panel" [hidden]="activeTab() !== 'address'">
+            <p class="form-section-title">Endereço</p>
+
+            <div class="form-row full-width">
+              <label for="cep">CEP</label>
+              <div class="cep-group">
+                <input
+                  id="cep"
+                  type="text"
+                  formControlName="cep"
+                  placeholder="00000-000"
+                  maxlength="9"
+                  (input)="formatCep($event)"
+                  (blur)="buscarCep()"
+                />
+                <button type="button" class="btn-cep" (click)="buscarCep()" title="Buscar CEP">
+                  @if (isSearchingCep()) {
+                    <i class="fas fa-spinner fa-spin"></i>
+                  } @else {
+                    <i class="fas fa-search"></i>
+                  }
+                </button>
+              </div>
+            </div>
+
+            <div class="form-row full-width">
+              <label for="logradouro">Logradouro</label>
+              <input id="logradouro" type="text" formControlName="logradouro" />
+            </div>
+
+            <div class="form-row">
+              <div>
+                <label for="numero">Número</label>
+                <input id="numero" type="text" formControlName="numero" />
+                @if (form.get('numero')?.invalid && form.get('numero')?.touched) {
+                  <small class="field-error">Obrigatório.</small>
+                }
+              </div>
+              <div>
+                <label for="complemento">Complemento</label>
+                <input id="complemento" type="text" formControlName="complemento" placeholder="Opcional" />
+              </div>
+            </div>
+
+            <div class="form-row three">
+              <div>
+                <label for="bairro">Bairro</label>
+                <input id="bairro" type="text" formControlName="bairro" />
+              </div>
+              <div>
+                <label for="cidade">Cidade</label>
+                <input id="cidade" type="text" formControlName="cidade" />
+              </div>
+              <div>
+                <label for="uf">UF</label>
+                <select id="uf" formControlName="uf">
+                  <option value="">Selecione</option>
+                  @for (sigla of ufList; track sigla) {
+                    <option [value]="sigla">{{ sigla }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- ==================== Aba Comercial ==================== -->
+          <div class="tab-panel" [hidden]="activeTab() !== 'commercial'">
+            <p class="form-section-title">Dados Comerciais</p>
+
+            <div class="form-row">
+              <div>
+                <label for="categoria">Categoria</label>
+                <select id="categoria" formControlName="categoria">
+                  <option value="">Selecione</option>
+                  @for (cat of categoriaList; track cat) {
+                    <option [value]="cat">{{ cat }}</option>
+                  }
+                </select>
+              </div>
+              <div>
+                <label for="condicaoPagamento">Condição de Pagamento Padrão</label>
+                <select id="condicaoPagamento" formControlName="condicaoPagamento">
+                  <option value="">Selecione</option>
+                  @for (cond of condicaoPagamentoList; track cond) {
+                    <option [value]="cond">{{ cond }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div>
+                <label for="prazoEntrega">Prazo de Entrega (dias)</label>
+                <input
+                  id="prazoEntrega"
+                  type="number"
+                  min="0"
+                  step="1"
+                  formControlName="prazoEntrega"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label for="valorMinimoPedido">Valor Mínimo do Pedido</label>
+                <input
+                  id="valorMinimoPedido"
+                  type="text"
+                  inputmode="numeric"
+                  formControlName="valorMinimoPedido"
+                  placeholder="R$ 0,00"
+                  (input)="formatCurrency($event)"
+                />
+              </div>
+            </div>
+
+            <div class="form-row full-width">
+              <label for="observacoesComerciais">Observações Comerciais</label>
+              <textarea
+                id="observacoesComerciais"
+                formControlName="observacoesComerciais"
+                rows="4"
+                placeholder="Informações adicionais sobre negociação, prazos, frete..."
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- ==================== Aba Bancário ==================== -->
+          <div class="tab-panel" [hidden]="activeTab() !== 'bank'">
+            <p class="form-section-title">Dados Bancários</p>
+
+            <div class="form-row full-width">
+              <label for="banco">Banco</label>
+              <input id="banco" type="text" formControlName="banco" placeholder="Ex.: 341 - Itaú" />
+            </div>
+
+            <div class="form-row">
+              <div>
+                <label for="agencia">Agência</label>
+                <input id="agencia" type="text" formControlName="agencia" placeholder="0000-0" />
+              </div>
+              <div>
+                <label for="conta">Conta</label>
+                <input id="conta" type="text" formControlName="conta" placeholder="00000-0" />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div>
+                <label for="tipoConta">Tipo de Conta</label>
+                <select id="tipoConta" formControlName="tipoConta">
+                  <option value="">Selecione</option>
+                  <option value="CORRENTE">Corrente</option>
+                  <option value="POUPANCA">Poupança</option>
+                </select>
+              </div>
+              <div>
+                <label for="chavePix">Chave PIX / CPF-CNPJ PIX</label>
+                <input id="chavePix" type="text" formControlName="chavePix" placeholder="Opcional" />
+              </div>
+            </div>
+          </div>
+
+          <!-- ==================== Aba Contatos ==================== -->
+          <div class="tab-panel" [hidden]="activeTab() !== 'contacts'">
+            <div class="contacts-toolbar">
+              <span class="hint">Contatos comerciais vinculados a este fornecedor.</span>
+              <button type="button" class="btn-add-contact" (click)="addContato()">
+                <i class="fas fa-plus"></i> Adicionar Contato
+              </button>
+            </div>
+
+            <div formArrayName="contatos">
+              @if (contatos.length === 0) {
+                <div class="contacts-empty">
+                  <i class="fas fa-address-book"></i>
+                  <p>Nenhum contato adicionado.</p>
+                </div>
+              }
+
+              @for (contato of contatos.controls; track contato; let i = $index) {
+                <div class="contact-card" [formGroupName]="i">
+                  <div class="contact-card-header">
+                    <span><i class="fas fa-user"></i> Contato {{ i + 1 }}</span>
+                    <button
+                      type="button"
+                      class="btn-remove-contact"
+                      (click)="removeContato(i)"
+                      title="Remover contato"
+                    >
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </div>
+
+                  <div class="form-row">
+                    <div>
+                      <label>Nome do Contato</label>
+                      <input type="text" formControlName="nome" placeholder="Nome completo" />
+                      @if (contato.get('nome')?.invalid && contato.get('nome')?.touched) {
+                        <small class="field-error">Campo obrigatório.</small>
+                      }
+                    </div>
+                    <div>
+                      <label>Cargo</label>
+                      <input type="text" formControlName="cargo" placeholder="Ex.: Gerente Comercial" />
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <div>
+                      <label>E-mail</label>
+                      <input type="email" formControlName="email" placeholder="contato@fornecedor.com" />
+                      @if (contato.get('email')?.invalid && contato.get('email')?.touched) {
+                        <small class="field-error">E-mail inválido.</small>
+                      }
+                    </div>
+                    <div>
+                      <label>Telefone</label>
+                      <input
+                        type="text"
+                        formControlName="telefone"
+                        placeholder="(00) 00000-0000"
+                        maxlength="15"
+                        (input)="formatPhoneControl(contato.get('telefone'), $event)"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="form-row full-width">
+                    <div>
+                      <label>Departamento</label>
+                      <input type="text" formControlName="departamento" placeholder="Ex.: Comercial, Financeiro" />
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Botão salvar -->
+          <button type="submit" class="btn-submit" [disabled]="form.invalid || isSaving()">
+            @if (isSaving()) {
+              <i class="fas fa-spinner fa-spin"></i> Salvando...
+            } @else {
+              Salvar
+            }
+          </button>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- ===================== Modal de exclusão ===================== -->
+  @if (showDeleteModal()) {
+    <div class="modal-overlay" (click)="closeDeleteModal()">
+      <div class="modal-content delete-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Confirmar Exclusão</h3>
+          <button class="close-btn" (click)="closeDeleteModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="delete-message">
+          <p>
+            Tem certeza que deseja excluir o fornecedor
+            <strong>{{ deletingSupplier()?.name }}</strong>?
+          </p>
+          <p class="warning-text">Esta ação não pode ser desfeita.</p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-cancel" (click)="closeDeleteModal()">Cancelar</button>
+          <button class="btn-confirm-delete" (click)="deleteSupplier()">Excluir</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

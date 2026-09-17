@@ -6,6 +6,7 @@ import { NotificationService } from '../../../core/services/notification-service
 import { cpfCnpjValidator } from '../../../core/validators/cpf-cnpj.validator';
 import { Client } from '../../models/client';
 import { ClientService } from '../../../core/services/client-service';
+import { CepService } from '../../../core/services/cep-service';
 
 @Component({
   imports: [CommonModule, ReactiveFormsModule],
@@ -15,6 +16,7 @@ import { ClientService } from '../../../core/services/client-service';
 })
 export class ClientsComponent implements OnInit {
   private readonly clientService = inject(ClientService);
+  private readonly cepService = inject(CepService);
   private readonly fb = inject(FormBuilder);
   private readonly notification = inject(NotificationService);
 
@@ -23,6 +25,7 @@ export class ClientsComponent implements OnInit {
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
   searchTerm = signal('');
+  isSearchingCep = signal(false);
 
   // Paginação
   currentPage = signal(0);
@@ -233,11 +236,13 @@ export class ClientsComponent implements OnInit {
   }
 
   buscarCep(): void {
-    const cep = this.form.get('cep')?.value;
-    if (!cep || cep.replace(/\D/g, '').length !== 8) return;
+    const cep = (this.form.get('cep')?.value || '').replace(/\D/g, '');
+    if (cep.length !== 8) return;
 
-    this.clientService.getAddressByCep(cep).subscribe({
+    this.isSearchingCep.set(true);
+    this.cepService.buscarCep(cep).subscribe({
       next: (data) => {
+        this.isSearchingCep.set(false);
         if (!data.erro) {
           this.form.patchValue({
             logradouro: data.logradouro || '',
@@ -249,7 +254,10 @@ export class ClientsComponent implements OnInit {
           this.notification.show('CEP não encontrado.', 'warning');
         }
       },
-      error: () => this.notification.error('Erro ao buscar CEP.')
+      error: () => {
+        this.isSearchingCep.set(false);
+        this.notification.error('Erro ao buscar CEP.');
+      }
     });
   }
 }

@@ -97,8 +97,11 @@
         </div>
 
         <form [formGroup]="form" (ngSubmit)="onSubmit()" class="client-form">
-          <!-- Aba Identificação -->
+
+          <!-- ==================== Aba Identificação ==================== -->
           <div class="tab-panel" [hidden]="activeTab() !== 'identification'">
+            <p class="form-section-title">Dados Principais</p>
+
             <!-- Tipo de Pessoa -->
             <div class="form-row full-width">
               <label>Tipo de Pessoa</label>
@@ -133,7 +136,6 @@
               </div>
             }
 
-
             <!-- CPF / CNPJ -->
             <div class="form-row full-width">
               <label for="cpfCnpj">
@@ -149,7 +151,7 @@
               />
               @if (form.get('cpfCnpj')?.touched) {
                 @if (form.get('cpfCnpj')?.hasError('required')) {
-                <small class="field-error">Campo obrigatório.</small>
+                  <small class="field-error">Campo obrigatório.</small>
                 } @else if (form.get('cpfCnpj')?.hasError('invalidCpfCnpj')) {
                   <small class="field-error">
                     {{ form.get('tipoPessoa')?.value === 'PJ' ? 'CNPJ inválido.' : 'CPF inválido.' }}
@@ -167,8 +169,10 @@
             </div>
           </div>
 
-          <!-- Aba Contato -->
+          <!-- ==================== Aba Contato ==================== -->
           <div class="tab-panel" [hidden]="activeTab() !== 'contact'">
+            <p class="form-section-title">Dados de Contato</p>
+
             <div class="form-row full-width">
               <label for="email">E-mail</label>
               <input id="email" type="email" formControlName="email" placeholder="exemplo@dominio.com" />
@@ -176,6 +180,7 @@
                 <small class="field-error">E-mail inválido.</small>
               }
             </div>
+
             <div class="form-row full-width">
               <label for="phone">Telefone / Celular</label>
               <input
@@ -192,23 +197,38 @@
             </div>
           </div>
 
-          <!-- Aba Endereço -->
+          <!-- ==================== Aba Endereço ==================== -->
           <div class="tab-panel" [hidden]="activeTab() !== 'address'">
+            <p class="form-section-title">Endereço</p>
+
+            <!-- CEP com botão de busca -->
             <div class="form-row full-width">
               <label for="cep">CEP</label>
-              <input
-                id="cep"
-                type="text"
-                formControlName="cep"
-                placeholder="00000-000"
-                mask="00000-000"
-                (blur)="buscarCep()"
-              />
+              <div class="cep-group">
+                <input
+                  id="cep"
+                  type="text"
+                  formControlName="cep"
+                  placeholder="00000-000"
+                  maxlength="9"
+                  (input)="formatCep($event)"
+                  (blur)="buscarCep()"
+                />
+                <button type="button" class="btn-cep" (click)="buscarCep()" title="Buscar CEP">
+                  @if (isSearchingCep()) {
+                    <i class="fas fa-spinner fa-spin"></i>
+                  } @else {
+                    <i class="fas fa-search"></i>
+                  }
+                </button>
+              </div>
             </div>
+
             <div class="form-row full-width">
               <label for="logradouro">Logradouro</label>
               <input id="logradouro" type="text" formControlName="logradouro" />
             </div>
+
             <div class="form-row">
               <div>
                 <label for="numero">Número</label>
@@ -219,9 +239,10 @@
               </div>
               <div>
                 <label for="complemento">Complemento</label>
-                <input id="complemento" type="text" formControlName="complemento" />
+                <input id="complemento" type="text" formControlName="complemento" placeholder="Opcional" />
               </div>
             </div>
+
             <div class="form-row three">
               <div>
                 <label for="bairro">Bairro</label>
@@ -235,12 +256,13 @@
                 <label for="uf">UF</label>
                 <select id="uf" formControlName="uf">
                   <option value="">Selecione</option>
-                  <option *ngFor="let sigla of ufList" [value]="sigla">{{ sigla }}</option>
+                  @for (sigla of ufList; track sigla) {
+                    <option [value]="sigla">{{ sigla }}</option>
+                  }
                 </select>
               </div>
             </div>
           </div>
-
 
           <!-- Botão salvar -->
           <button type="submit" class="btn-submit" [disabled]="form.invalid || isSaving()">
@@ -251,28 +273,6 @@
             }
           </button>
         </form>
-      </div>
-    </div>
-  }
-
-  <!-- Modal de exclusão -->
-  @if (showDeleteModal()) {
-    <div class="modal-overlay" (click)="closeDeleteModal()">
-      <div class="modal-content delete-modal" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <h3>Confirmar Exclusão</h3>
-          <button class="close-btn" (click)="closeDeleteModal()">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-        <div class="delete-message">
-          <p>Tem certeza que deseja excluir o cliente <strong>{{ deletingClient()?.name }}</strong>?</p>
-          <p class="warning-text">Esta ação não pode ser desfeita.</p>
-        </div>
-        <div class="modal-actions">
-          <button class="btn-cancel" (click)="closeDeleteModal()">Cancelar</button>
-          <button class="btn-confirm-delete" (click)="deleteClient()">Excluir</button>
-        </div>
       </div>
     </div>
   }

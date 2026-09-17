@@ -46,21 +46,19 @@ export const routes: Routes = [
           import('./features/clients/clients-component/clients-component')
             .then(m => m.ClientsComponent)
       },
-/*
-      {
-        path: 'clientes',
-        loadComponent: () =>
-          import('./features/clientes/clientes-component/clientes-component')
-            .then(m => m.ClientesComponent)
-      },
 
       {
         path: 'fornecedores',
         loadComponent: () =>
-          import('./features/fornecedores/fornecedores-component/fornecedores-component')
-            .then(m => m.FornecedoresComponent)
+          import('./features/supplier/supplier-component/supplier-component')
+            .then(m => m.SupplierComponent)
+      },
+      {
+        path: 'produtos',
+        loadComponent: () =>
+          import('./features/products/product-page/product-page')
+            .then(m => m.ProductPage)
       }
-*/
     ]
   },
 

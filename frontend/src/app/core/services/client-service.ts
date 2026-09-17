@@ -30,9 +30,4 @@ export class ClientService {
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
-
-  getAddressByCep(cep: string): Observable<ViaCepResponse> {
-    const cleanCep = cep.replace(/\D/g, '');
-    return this.http.get<ViaCepResponse>(`https://viacep.com.br/ws/${cleanCep}/json/`);
-  }
 }
