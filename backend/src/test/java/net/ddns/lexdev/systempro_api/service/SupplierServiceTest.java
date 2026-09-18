@@ -35,6 +35,7 @@ import net.ddns.lexdev.systempro_api.domain.PersonAddress;
 import net.ddns.lexdev.systempro_api.domain.PersonContact;
 import net.ddns.lexdev.systempro_api.domain.Supplier;
 import net.ddns.lexdev.systempro_api.dto.BankDetailsDto;
+import net.ddns.lexdev.systempro_api.dto.IndividualPersonRequestDto;
 import net.ddns.lexdev.systempro_api.dto.LegalEntityRequestDto;
 import net.ddns.lexdev.systempro_api.dto.PersonAddressRequestDto;
 import net.ddns.lexdev.systempro_api.dto.PersonContactRequestDto;
@@ -135,7 +136,11 @@ class SupplierServiceTest {
 
         Person person = new Person();
 
-        ReflectionTestUtils.setField(person, "id", id);
+        ReflectionTestUtils.setField(
+            person,
+            "id",
+            id
+        );
 
         person.setTipoPessoa(TipoPessoa.PJ);
         person.setName("Fornecedor Tech Ltda");
@@ -162,7 +167,10 @@ class SupplierServiceTest {
         whatsapp.setPrincipal(false);
 
         person.setContacts(
-            new ArrayList<>(List.of(email, whatsapp))
+            new ArrayList<>(List.of(
+                email,
+                whatsapp
+            ))
         );
 
         PersonAddress address = new PersonAddress();
@@ -242,7 +250,9 @@ class SupplierServiceTest {
             .when(personService)
             .updateFromDto(
                 person,
-                dto.person()
+                dto.person(),
+                dto.individual(),
+                dto.legalEntity()
             );
 
         when(supplierRepository.save(
@@ -296,7 +306,9 @@ class SupplierServiceTest {
         verify(personService)
             .updateFromDto(
                 person,
-                dto.person()
+                dto.person(),
+                dto.individual(),
+                dto.legalEntity()
             );
     }
 
@@ -516,15 +528,16 @@ class SupplierServiceTest {
             .when(personService)
             .updateFromDto(
                 person,
-                personDto
+                personDto,
+                null,
+                legalEntity
             );
 
         when(supplierRepository.save(
             any(Supplier.class)
         ))
             .thenAnswer(
-                invocation ->
-                    invocation.getArgument(0)
+                invocation -> invocation.getArgument(0)
             );
 
         SupplierResponseDto result =
@@ -542,7 +555,9 @@ class SupplierServiceTest {
         verify(personService)
             .updateFromDto(
                 person,
-                personDto
+                personDto,
+                null,
+                legalEntity
             );
 
         verify(supplierRepository)
@@ -583,7 +598,9 @@ class SupplierServiceTest {
             .when(personService)
             .updateFromDto(
                 personCurrent,
-                dto.person()
+                dto.person(),
+                dto.individual(),
+                dto.legalEntity()
             );
 
         assertThatThrownBy(
@@ -600,7 +617,9 @@ class SupplierServiceTest {
         verify(personService)
             .updateFromDto(
                 personCurrent,
-                dto.person()
+                dto.person(),
+                dto.individual(),
+                dto.legalEntity()
             );
 
         verify(supplierRepository, never())
@@ -637,15 +656,16 @@ class SupplierServiceTest {
             .when(personService)
             .updateFromDto(
                 person,
-                dto.person()
+                dto.person(),
+                dto.individual(),
+                dto.legalEntity()
             );
 
         when(supplierRepository.save(
             any(Supplier.class)
         ))
             .thenAnswer(
-                invocation ->
-                    invocation.getArgument(0)
+                invocation -> invocation.getArgument(0)
             );
 
         SupplierResponseDto result =
@@ -663,7 +683,9 @@ class SupplierServiceTest {
         verify(personService)
             .updateFromDto(
                 person,
-                dto.person()
+                dto.person(),
+                dto.individual(),
+                dto.legalEntity()
             );
 
         verify(supplierRepository)
@@ -698,7 +720,9 @@ class SupplierServiceTest {
         verify(personService, never())
             .updateFromDto(
                 any(Person.class),
-                any(PersonRequestDto.class)
+                any(PersonRequestDto.class),
+                any(IndividualPersonRequestDto.class),
+                any(LegalEntityRequestDto.class)
             );
 
         verify(supplierRepository, never())

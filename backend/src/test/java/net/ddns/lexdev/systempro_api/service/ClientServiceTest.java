@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.doNothing;
@@ -27,10 +28,12 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import jakarta.persistence.EntityNotFoundException;
 import net.ddns.lexdev.systempro_api.domain.Client;
+import net.ddns.lexdev.systempro_api.domain.IndividualPerson;
 import net.ddns.lexdev.systempro_api.domain.Person;
 import net.ddns.lexdev.systempro_api.dto.ClientRequestDto;
 import net.ddns.lexdev.systempro_api.dto.ClientResponseDto;
 import net.ddns.lexdev.systempro_api.dto.IndividualPersonRequestDto;
+import net.ddns.lexdev.systempro_api.dto.LegalEntityRequestDto;
 import net.ddns.lexdev.systempro_api.dto.PersonAddressRequestDto;
 import net.ddns.lexdev.systempro_api.dto.PersonContactRequestDto;
 import net.ddns.lexdev.systempro_api.dto.PersonRequestDto;
@@ -118,6 +121,12 @@ class ClientServiceTest {
         person.setCpfCnpj(cpfCnpj);
         person.setActive(true);
 
+        IndividualPerson individual = new IndividualPerson();
+        individual.setPerson(person);
+        individual.setRg("495493478");
+
+        person.setIndividualPerson(individual);
+
         return person;
     }
 
@@ -125,6 +134,7 @@ class ClientServiceTest {
         Long id,
         Person person
     ) {
+
         Client client = new Client();
 
         ReflectionTestUtils.setField(
@@ -142,6 +152,7 @@ class ClientServiceTest {
     private ClientResponseDto buildClientResponse(
         Client client
     ) {
+
         return ClientResponseDto.fromEntity(client);
     }
 
@@ -177,11 +188,13 @@ class ClientServiceTest {
         ).thenReturn(person);
 
         doNothing()
-            .when(personService)
-            .updateFromDto(
-                any(Person.class),
-                any(PersonRequestDto.class)
-            );
+        .when(personService)
+        .updateFromDto(
+            any(Person.class),
+            any(PersonRequestDto.class),
+            any(IndividualPersonRequestDto.class),
+            isNull(LegalEntityRequestDto.class)
+        );
 
         when(
             clientRepository.save(
@@ -242,7 +255,9 @@ class ClientServiceTest {
         verify(personService)
             .updateFromDto(
                 person,
-                dto.person()
+                dto.person(),
+                dto.individual(),
+                dto.legalEntity()
             );
     }
 
@@ -281,7 +296,6 @@ class ClientServiceTest {
             personService,
             never()
         ).getOrCreateForRegistration(any());
-
     }
 
     @Test
@@ -334,7 +348,6 @@ class ClientServiceTest {
             clientRepository,
             never()
         ).save(any(Client.class));
-
     }
 
     @Test
@@ -443,7 +456,9 @@ class ClientServiceTest {
             .when(personService)
             .updateFromDto(
                 person,
-                dto.person()
+                dto.person(),
+                dto.individual(),
+                dto.legalEntity()
             );
 
         when(
@@ -474,7 +489,9 @@ class ClientServiceTest {
         verify(personService)
             .updateFromDto(
                 person,
-                dto.person()
+                dto.person(),
+                dto.individual(),
+                dto.legalEntity()
             );
 
         verify(clientRepository)
@@ -517,7 +534,9 @@ class ClientServiceTest {
             .when(personService)
             .updateFromDto(
                 eq(personCurrent),
-                any(PersonRequestDto.class)
+                any(PersonRequestDto.class),
+                any(IndividualPersonRequestDto.class),
+                isNull(LegalEntityRequestDto.class)
             );
 
         assertThatThrownBy(() ->
@@ -539,7 +558,9 @@ class ClientServiceTest {
         verify(personService)
             .updateFromDto(
                 eq(personCurrent),
-                any(PersonRequestDto.class)
+                any(PersonRequestDto.class),
+                any(IndividualPersonRequestDto.class),
+                isNull(LegalEntityRequestDto.class)
             );
 
         verify(
@@ -580,7 +601,9 @@ class ClientServiceTest {
             .when(personService)
             .updateFromDto(
                 eq(person),
-                eq(dto.person())
+                eq(dto.person()),
+                eq(dto.individual()),
+                eq(dto.legalEntity())
             );
 
         when(
@@ -611,7 +634,9 @@ class ClientServiceTest {
         verify(personService)
             .updateFromDto(
                 person,
-                dto.person()
+                dto.person(),
+                dto.individual(),
+                dto.legalEntity()
             );
 
         verify(clientRepository)
@@ -653,7 +678,9 @@ class ClientServiceTest {
             never()
         ).updateFromDto(
             any(Person.class),
-            any(PersonRequestDto.class)
+            any(PersonRequestDto.class),
+            any(IndividualPersonRequestDto.class),
+            any(LegalEntityRequestDto.class)
         );
 
         verify(
@@ -690,8 +717,7 @@ class ClientServiceTest {
         assertThat(client.isActive())
             .isFalse();
 
-        // Importante:
-        // a Person continua ativa.
+        // A Person continua ativa.
         assertThat(person.isActive())
             .isTrue();
 

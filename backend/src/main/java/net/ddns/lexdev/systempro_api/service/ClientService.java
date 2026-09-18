@@ -10,20 +10,15 @@ import org.springframework.transaction.annotation.Transactional;
 import jakarta.persistence.EntityNotFoundException;
 import net.ddns.lexdev.systempro_api.config.CpfCnpjNormalizer;
 import net.ddns.lexdev.systempro_api.domain.Client;
-import net.ddns.lexdev.systempro_api.domain.IndividualPerson;
-import net.ddns.lexdev.systempro_api.domain.LegalEntity;
 import net.ddns.lexdev.systempro_api.domain.Person;
 import net.ddns.lexdev.systempro_api.domain.PersonAddress;
 import net.ddns.lexdev.systempro_api.domain.PersonContact;
 import net.ddns.lexdev.systempro_api.dto.ClientRequestDto;
 import net.ddns.lexdev.systempro_api.dto.ClientResponseDto;
-import net.ddns.lexdev.systempro_api.dto.IndividualPersonRequestDto;
-import net.ddns.lexdev.systempro_api.dto.LegalEntityRequestDto;
 import net.ddns.lexdev.systempro_api.dto.PersonAddressRequestDto;
 import net.ddns.lexdev.systempro_api.dto.PersonContactRequestDto;
 import net.ddns.lexdev.systempro_api.enums.AddressType;
 import net.ddns.lexdev.systempro_api.enums.ContactType;
-import net.ddns.lexdev.systempro_api.enums.TipoPessoa;
 import net.ddns.lexdev.systempro_api.exception.BusinessException;
 import net.ddns.lexdev.systempro_api.repository.ClientRepository;
 
@@ -43,12 +38,14 @@ public class ClientService {
 
     @Transactional(readOnly = true)
     public Page<ClientResponseDto> findAll(Pageable pageable) {
+
         return clientRepository.findAllWithPerson(pageable)
             .map(ClientResponseDto::fromEntity);
     }
 
     @Transactional(readOnly = true)
     public ClientResponseDto findById(Long id) {
+
         Client client = clientRepository.findByIdWithPerson(id)
             .orElseThrow(() -> new EntityNotFoundException(
                 "Cliente não encontrado com o ID: " + id
@@ -70,17 +67,26 @@ public class ClientService {
             );
         }
 
-        Person person = personService.getOrCreateForRegistration(cpfCnpj);
+        Person person = personService.getOrCreateForRegistration(
+            cpfCnpj
+        );
 
         personService.updateFromDto(
             person,
-            dto.person()
+            dto.person(),
+            dto.individual(),
+            dto.legalEntity()
         );
 
-        applyPersonSpecialization(person, dto);
+        updatePersonContacts(
+            person,
+            dto.contacts()
+        );
 
-        updatePersonContacts(person, dto.contacts());
-        updatePersonAddresses(person, dto.addresses());
+        updatePersonAddresses(
+            person,
+            dto.addresses()
+        );
 
         Client client = new Client();
         client.setPerson(person);
@@ -109,17 +115,23 @@ public class ClientService {
 
         personService.updateFromDto(
             person,
-            dto.person()
+            dto.person(),
+            dto.individual(),
+            dto.legalEntity()
         );
 
-        applyPersonSpecialization(person, dto);
-
         if (dto.contacts() != null) {
-            updatePersonContacts(person, dto.contacts());
+            updatePersonContacts(
+                person,
+                dto.contacts()
+            );
         }
 
         if (dto.addresses() != null) {
-            updatePersonAddresses(person, dto.addresses());
+            updatePersonAddresses(
+                person,
+                dto.addresses()
+            );
         }
 
         if (dto.active() != null) {
@@ -144,102 +156,6 @@ public class ClientService {
         clientRepository.save(client);
     }
 
-    private void applyPersonSpecialization(
-        Person person,
-        ClientRequestDto dto
-    ) {
-
-        TipoPessoa tipoPessoa = person.getTipoPessoa();
-
-        if (tipoPessoa == null) {
-            throw new BusinessException(
-                "O tipo de pessoa deve ser informado."
-            );
-        }
-
-        switch (tipoPessoa) {
-
-            case PF -> applyIndividualPerson(
-                person,
-                dto.individual(),
-                dto.legalEntity()
-            );
-
-            case PJ -> applyLegalEntity(
-                person,
-                dto.legalEntity(),
-                dto.individual()
-            );
-        }
-    }
-
-    private void applyIndividualPerson(
-        Person person,
-        IndividualPersonRequestDto dto,
-        LegalEntityRequestDto legalEntityDto
-    ) {
-
-        if (legalEntityDto != null) {
-            throw new BusinessException(
-                "Dados de pessoa jurídica não podem ser informados para uma pessoa física."
-            );
-        }
-
-        if (dto == null) {
-            throw new BusinessException(
-                "Os dados de pessoa física devem ser informados."
-            );
-        }
-
-        if (person.getLegalEntity() != null) {
-            person.setLegalEntity(null);
-        }
-
-        IndividualPerson individual = person.getIndividualPerson();
-
-        if (individual == null) {
-            individual = new IndividualPerson();
-            individual.setPerson(person);
-            person.setIndividualPerson(individual);
-        }
-
-        individual.setRg(dto.rg());
-    }
-
-    private void applyLegalEntity(
-        Person person,
-        LegalEntityRequestDto dto,
-        IndividualPersonRequestDto individualDto
-    ) {
-
-        if (individualDto != null) {
-            throw new BusinessException(
-                "Dados de pessoa física não podem ser informados para uma pessoa jurídica."
-            );
-        }
-
-        if (dto == null) {
-            throw new BusinessException(
-                "Os dados de pessoa jurídica devem ser informados."
-            );
-        }
-
-        if (person.getIndividualPerson() != null) {
-            person.setIndividualPerson(null);
-        }
-
-        LegalEntity legalEntity = person.getLegalEntity();
-
-        if (legalEntity == null) {
-            legalEntity = new LegalEntity();
-            legalEntity.setPerson(person);
-            person.setLegalEntity(legalEntity);
-        }
-
-        legalEntity.setNomeFantasia(dto.nomeFantasia());
-        legalEntity.setInscricaoEstadual(dto.inscricaoEstadual());
-    }
-
     private void updatePersonContacts(
         Person person,
         List<PersonContactRequestDto> contactDtos
@@ -255,12 +171,21 @@ public class ClientService {
 
             PersonContact contact = new PersonContact();
 
-            contact.setType(parseContactType(dto.type()));
-            contact.setValue(dto.value());
+            contact.setType(
+                parseContactType(dto.type())
+            );
+
+            contact.setValue(
+                dto.value()
+            );
+
             contact.setPrincipal(
                 Boolean.TRUE.equals(dto.principal())
             );
-            contact.setDescription(dto.description());
+
+            contact.setDescription(
+                dto.description()
+            );
 
             person.addContact(contact);
         });
@@ -281,14 +206,38 @@ public class ClientService {
 
             PersonAddress address = new PersonAddress();
 
-            address.setType(parseAddressType(dto.type()));
-            address.setCep(dto.cep());
-            address.setLogradouro(dto.logradouro());
-            address.setNumero(dto.numero());
-            address.setComplemento(dto.complemento());
-            address.setBairro(dto.bairro());
-            address.setCidade(dto.cidade());
-            address.setUf(dto.uf());
+            address.setType(
+                parseAddressType(dto.type())
+            );
+
+            address.setCep(
+                dto.cep()
+            );
+
+            address.setLogradouro(
+                dto.logradouro()
+            );
+
+            address.setNumero(
+                dto.numero()
+            );
+
+            address.setComplemento(
+                dto.complemento()
+            );
+
+            address.setBairro(
+                dto.bairro()
+            );
+
+            address.setCidade(
+                dto.cidade()
+            );
+
+            address.setUf(
+                dto.uf()
+            );
+
             address.setPrincipal(
                 Boolean.TRUE.equals(dto.principal())
             );

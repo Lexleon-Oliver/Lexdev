@@ -18,6 +18,7 @@ import net.ddns.lexdev.systempro_api.mapper.IndividualPersonMapper;
 import net.ddns.lexdev.systempro_api.mapper.LegalEntityMapper;
 import net.ddns.lexdev.systempro_api.mapper.PersonMapper;
 import net.ddns.lexdev.systempro_api.repository.PersonRepository;
+import net.ddns.lexdev.systempro_api.validator.CpfCnpjValidator;
 
 @Service
 public class PersonService {
@@ -86,7 +87,12 @@ public class PersonService {
     ) {
 
         TipoPessoa tipoPessoa =
-            TipoPessoaParser.parse(personDto.tipoPessoa());
+        TipoPessoaParser.parse(personDto.tipoPessoa());
+
+        validateCpfCnpj(
+            personDto.cpfCnpj(),
+            tipoPessoa
+        );
 
         validateStructure(
             tipoPessoa,
@@ -167,19 +173,42 @@ public class PersonService {
     /**
      * Atualiza uma Person existente a partir do DTO.
      */
+    @Transactional
     public void updateFromDto(
         Person person,
-        PersonRequestDto dto
+        PersonRequestDto personDto,
+        IndividualPersonRequestDto individualDto,
+        LegalEntityRequestDto legalEntityDto
     ) {
-
         ensureCpfCnpjAvailable(
-            dto.cpfCnpj(),
+            personDto.cpfCnpj(),
             person.getId()
+        );
+
+        TipoPessoa tipoPessoa =
+        TipoPessoaParser.parse(personDto.tipoPessoa());
+
+        validateCpfCnpj(
+            personDto.cpfCnpj(),
+            tipoPessoa
+        );
+
+        validateStructure(
+            tipoPessoa,
+            individualDto,
+            legalEntityDto
         );
 
         personMapper.updateEntity(
             person,
-            dto
+            personDto
+        );
+
+        updateSpecialization(
+            person,
+            tipoPessoa,
+            individualDto,
+            legalEntityDto
         );
     }
 
@@ -229,5 +258,82 @@ public class PersonService {
         }
 
         return personRepository.save(person);
+    }
+
+    private void updateSpecialization(
+        Person person,
+        TipoPessoa tipoPessoa,
+        IndividualPersonRequestDto individualDto,
+        LegalEntityRequestDto legalEntityDto
+    ) {
+
+        if (tipoPessoa == TipoPessoa.PF) {
+
+            person.setLegalEntity(null);
+
+            IndividualPerson individual =
+                person.getIndividualPerson();
+
+            if (individual == null) {
+                individual =
+                    individualPersonMapper.toEntity(
+                        individualDto,
+                        person
+                    );
+
+                person.setIndividualPerson(individual);
+
+            } else {
+                individualPersonMapper.updateEntity(
+                    individual,
+                    individualDto
+                );
+            }
+
+            return;
+        }
+
+        person.setIndividualPerson(null);
+
+        LegalEntity legalEntity =
+            person.getLegalEntity();
+
+        if (legalEntity == null) {
+
+            legalEntity =
+                legalEntityMapper.toEntity(
+                    legalEntityDto,
+                    person
+                );
+
+            person.setLegalEntity(legalEntity);
+
+        } else {
+            legalEntityMapper.updateEntity(
+                legalEntity,
+                legalEntityDto
+            );
+        }
+    }
+    private void validateCpfCnpj(
+        String cpfCnpj,
+        TipoPessoa tipoPessoa
+    ) {
+        if (tipoPessoa == TipoPessoa.PF) {
+
+            if (!CpfCnpjValidator.isValidCpf(cpfCnpj)) {
+                throw new BusinessException(
+                    "CPF inválido."
+                );
+            }
+
+            return;
+        }
+
+        if (!CpfCnpjValidator.isValidCnpj(cpfCnpj)) {
+            throw new BusinessException(
+                "CNPJ inválido."
+            );
+        }
     }
 }
