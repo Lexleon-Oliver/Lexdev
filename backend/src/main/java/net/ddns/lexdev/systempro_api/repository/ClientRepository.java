@@ -18,4 +18,15 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
 
     @Query("SELECT c FROM Client c JOIN FETCH c.person")
     Page<Client> findAllWithPerson(Pageable pageable);
+
+    @Query(value = """
+        SELECT c.id
+        FROM tb_client c
+        JOIN tb_person p ON p.id = c.person_id
+        WHERE p.cpf_cnpj = :cpfCnpj
+        LIMIT 1
+        """, nativeQuery = true)
+    Optional<Long> findAnyByPersonCpfCnpj(
+        @Param("cpfCnpj") String cpfCnpj
+    );
 }

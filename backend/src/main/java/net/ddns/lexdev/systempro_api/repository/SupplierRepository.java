@@ -19,4 +19,15 @@ public interface SupplierRepository extends JpaRepository<Supplier, Long> {
 
     @Query("SELECT DISTINCT s FROM Supplier s JOIN FETCH s.person")
     Page<Supplier> findAllWithPerson(Pageable pageable);
+
+    @Query(value = """
+        SELECT s.id
+        FROM tb_supplier s
+        JOIN tb_person p ON p.id = s.person_id
+        WHERE p.cpf_cnpj = :cpfCnpj
+        LIMIT 1
+        """, nativeQuery = true)
+    Optional<Long> findAnyByPersonCpfCnpj(
+        @Param("cpfCnpj") String cpfCnpj
+    );
 }

@@ -13,50 +13,56 @@ import net.ddns.lexdev.systempro_api.domain.SupplierContact;
 import net.ddns.lexdev.systempro_api.domain.SupplierDocument;
 import net.ddns.lexdev.systempro_api.dto.SupplierRequestDto;
 import net.ddns.lexdev.systempro_api.dto.SupplierResponseDto;
+import net.ddns.lexdev.systempro_api.enums.TipoContaBancaria;
 import net.ddns.lexdev.systempro_api.exception.BusinessException;
-import net.ddns.lexdev.systempro_api.repository.PersonRepository;
 import net.ddns.lexdev.systempro_api.repository.SupplierRepository;
 
 @Service
 public class SupplierService {
 
     private final SupplierRepository supplierRepository;
-    private final PersonRepository personRepository;
+    private final PersonService personService;
 
-    public SupplierService(SupplierRepository supplierRepository, PersonRepository personRepository) {
+    public SupplierService(
+        SupplierRepository supplierRepository,
+        PersonService personService
+    ) {
         this.supplierRepository = supplierRepository;
-        this.personRepository = personRepository;
+        this.personService = personService;
     }
 
     @Transactional(readOnly = true)
     public Page<SupplierResponseDto> findAll(Pageable pageable) {
-        return supplierRepository.findAllWithPerson(pageable).map(SupplierResponseDto::fromEntity);
+        return supplierRepository.findAllWithPerson(pageable)
+            .map(SupplierResponseDto::fromEntity);
     }
 
     @Transactional(readOnly = true)
     public SupplierResponseDto findById(Long id) {
         Supplier supplier = supplierRepository.findByIdWithPerson(id)
-                .orElseThrow(() -> new EntityNotFoundException("Fornecedor não encontrado com o ID: " + id));
+            .orElseThrow(() -> new EntityNotFoundException(
+                "Fornecedor não encontrado com o ID: " + id
+            ));
+
         return SupplierResponseDto.fromEntity(supplier);
     }
 
     @Transactional
     public SupplierResponseDto create(SupplierRequestDto dto) {
-        String cleanCpfCnpj = sanitize(dto.cpfCnpj());
+        String cleanCpfCnpj = dto.person().cleanCpfCnpj();
 
         if (supplierRepository.existsByPersonCpfCnpj(cleanCpfCnpj)) {
-            throw new BusinessException("Esta pessoa/empresa já está cadastrada como fornecedor ativo.");
+            throw new BusinessException(
+                "Esta pessoa/empresa já está cadastrada como fornecedor ativo."
+            );
         }
 
-        // Busca Person existente pelo CPF/CNPJ ou instancia uma nova
-        Person person = personRepository.findByCpfCnpj(cleanCpfCnpj)
-                .orElseGet(Person::new);
-
-        copyDtoToPerson(dto, person);
-        person.setCpfCnpj(cleanCpfCnpj);
+        Person person = personService.getOrCreateForRegistration(cleanCpfCnpj);
+        personService.copyDtoToPerson(dto.person(), person);
 
         Supplier supplier = new Supplier();
         supplier.setPerson(person);
+
         copyDtoToSupplier(dto, supplier);
 
         return SupplierResponseDto.fromEntity(supplierRepository.save(supplier));
@@ -65,19 +71,18 @@ public class SupplierService {
     @Transactional
     public SupplierResponseDto update(Long id, SupplierRequestDto dto) {
         Supplier supplier = supplierRepository.findByIdWithPerson(id)
-                .orElseThrow(() -> new EntityNotFoundException("Fornecedor não encontrado com o ID: " + id));
+            .orElseThrow(() -> new EntityNotFoundException(
+                "Fornecedor não encontrado com o ID: " + id
+            ));
 
-        String cleanCpfCnpj = sanitize(dto.cpfCnpj());
         Person person = supplier.getPerson();
 
-        personRepository.findByCpfCnpj(cleanCpfCnpj).ifPresent(existingPerson -> {
-            if (!existingPerson.getId().equals(person.getId())) {
-                throw new BusinessException("CPF/CNPJ já cadastrado para outra pessoa no sistema.");
-            }
-        });
+        personService.ensureCpfCnpjAvailable(
+            dto.person().cleanCpfCnpj(),
+            person.getId()
+        );
 
-        copyDtoToPerson(dto, person);
-        person.setCpfCnpj(cleanCpfCnpj);
+        personService.copyDtoToPerson(dto.person(), person);
         copyDtoToSupplier(dto, supplier);
 
         return SupplierResponseDto.fromEntity(supplierRepository.save(supplier));
@@ -86,33 +91,12 @@ public class SupplierService {
     @Transactional
     public void delete(Long id) {
         Supplier supplier = supplierRepository.findByIdWithPerson(id)
-                .orElseThrow(() -> new EntityNotFoundException("Fornecedor não encontrado com o ID: " + id));
+            .orElseThrow(() -> new EntityNotFoundException(
+                "Fornecedor não encontrado com o ID: " + id
+            ));
 
         supplier.setActive(false);
         supplierRepository.save(supplier);
-    }
-
-    private String sanitize(String value) {
-        return value != null ? value.replaceAll("\\D", "") : null;
-    }
-
-    private void copyDtoToPerson(SupplierRequestDto dto, Person person) {
-        person.setTipoPessoa(dto.tipoPessoa());
-        person.setName(dto.name());
-        person.setNomeFantasia(dto.nomeFantasia());
-        person.setRgIe(dto.rgIe());
-        person.setEmail(dto.email());
-        person.setPhone(dto.phone());
-        person.setCep(dto.cep());
-        person.setLogradouro(dto.logradouro());
-        person.setNumero(dto.numero());
-        person.setComplemento(dto.complemento());
-        person.setBairro(dto.bairro());
-        person.setCidade(dto.cidade());
-        person.setUf(dto.uf());
-        if (dto.active() != null) {
-            person.setActive(dto.active());
-        }
     }
 
     private void copyDtoToSupplier(SupplierRequestDto dto, Supplier supplier) {
@@ -127,7 +111,7 @@ public class SupplierService {
                 dto.bankDetails().banco(),
                 dto.bankDetails().agencia(),
                 dto.bankDetails().conta(),
-                dto.bankDetails().tipoConta(),
+                parseTipoConta(dto.bankDetails().tipoConta()),
                 dto.bankDetails().chavePix()
             );
             supplier.setBankDetails(bank);
@@ -136,15 +120,37 @@ public class SupplierService {
         if (dto.contatos() != null) {
             supplier.getContatos().clear();
             dto.contatos().forEach(c -> supplier.getContatos().add(
-                new SupplierContact(c.nome(), c.cargo(), c.email(), c.telefone(), c.setor())
+                new SupplierContact(
+                    c.nome(),
+                    c.cargo(),
+                    c.email(),
+                    c.telefone(),
+                    c.setor()
+                )
             ));
         }
 
         if (dto.documentos() != null) {
             supplier.getDocumentos().clear();
             dto.documentos().forEach(d -> supplier.getDocumentos().add(
-                new SupplierDocument(d.tipoDocumento(), d.numeroOuUrl(), d.dataValidade())
+                new SupplierDocument(
+                    d.tipoDocumento(),
+                    d.numeroOuUrl(),
+                    d.dataValidade()
+                )
             ));
+        }
+    }
+
+    private TipoContaBancaria parseTipoConta(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        try {
+            return TipoContaBancaria.valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException("Tipo de conta bancária inválido: " + value);
         }
     }
 }

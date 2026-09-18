@@ -4,6 +4,7 @@ import net.ddns.lexdev.systempro_api.domain.Client;
 import net.ddns.lexdev.systempro_api.domain.Person;
 
 public record ClientResponseDto(
+
     Long id,
     Long personId,
     String tipoPessoa,
@@ -21,13 +22,17 @@ public record ClientResponseDto(
     String cidade,
     String uf,
     Boolean active
+
 ) {
+
     public static ClientResponseDto fromEntity(Client client) {
+
         Person p = client.getPerson();
+
         return new ClientResponseDto(
             client.getId(),
             p.getId(),
-            p.getTipoPessoa(),
+            p.getTipoPessoa() != null ? p.getTipoPessoa().name() : null,
             p.getName(),
             p.getNomeFantasia(),
             p.getCpfCnpj(),
@@ -41,7 +46,7 @@ public record ClientResponseDto(
             p.getBairro(),
             p.getCidade(),
             p.getUf(),
-            client.getActive()
+            client.isActive()
         );
     }
 }

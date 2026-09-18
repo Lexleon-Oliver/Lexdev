@@ -11,8 +11,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -21,16 +25,18 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import jakarta.persistence.EntityNotFoundException;
 import net.ddns.lexdev.systempro_api.domain.Person;
 import net.ddns.lexdev.systempro_api.domain.Supplier;
 import net.ddns.lexdev.systempro_api.dto.BankDetailsDto;
+import net.ddns.lexdev.systempro_api.dto.PersonRequestDto;
 import net.ddns.lexdev.systempro_api.dto.SupplierContactDto;
 import net.ddns.lexdev.systempro_api.dto.SupplierRequestDto;
 import net.ddns.lexdev.systempro_api.dto.SupplierResponseDto;
+import net.ddns.lexdev.systempro_api.enums.TipoPessoa;
 import net.ddns.lexdev.systempro_api.exception.BusinessException;
-import net.ddns.lexdev.systempro_api.repository.PersonRepository;
 import net.ddns.lexdev.systempro_api.repository.SupplierRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,43 +46,47 @@ class SupplierServiceTest {
     private SupplierRepository supplierRepository;
 
     @Mock
-    private PersonRepository personRepository;
+    private PersonService personService;
 
     @InjectMocks
     private SupplierService service;
 
     private SupplierRequestDto buildSupplierRequestDto(String cpfCnpj) {
-        return new SupplierRequestDto(
-                "PJ",
-                "Fornecedor Tech Ltda",
-                "Tech Fornecimentos",
-                cpfCnpj,
-                "123456789",
-                "contato@techfornecimentos.com",
-                "31988888888",
-                "30100000",
-                "Rua dos Fornecedores",
-                "500",
-                "Sala 101",
-                "Centro",
-                "Belo Horizonte",
-                "MG",
-                "30 DIAS",
-                5,
-                new BigDecimal("1000.00"),
-                "Tecnologia",
-                "Prazo de entrega rigoroso",
-                new BankDetailsDto("001", "1234", "56789-0", "CORRENTE", "12345678000195"),
-                List.of(new SupplierContactDto("Carlos", "Gerente", "carlos@tech.com", "31977777777", "Comercial")),
-                List.of(),
-                true
-        );
-    }
+    PersonRequestDto personDto = new PersonRequestDto(
+            cpfCnpj,
+            "PJ",
+            "Fornecedor Tech Ltda",
+            "Tech Fornecimentos",
+            "123456789",
+            "contato@techfornecimentos.com",
+            "31988888888",
+            "30100000",
+            "Rua dos Fornecedores",
+            "500",
+            "Sala 101",
+            "Centro",
+            "Belo Horizonte",
+            "MG"
+    );
+
+    return new SupplierRequestDto(
+            personDto,
+            "30 DIAS",
+            5,
+            new BigDecimal("1000.00"),
+            "Tecnologia",
+            "Prazo de entrega rigoroso",
+            new BankDetailsDto("001", "1234", "56789-0", "CORRENTE", "12345678000195"),
+            List.of(new SupplierContactDto("Carlos", "Gerente", "carlos@tech.com", "31977777777", "Comercial")),
+            List.of(),
+            true
+    );
+}
 
     private Person buildPerson(Long id, String cpfCnpj) {
         Person person = new Person();
-        person.setId(id);
-        person.setTipoPessoa("PJ");
+        ReflectionTestUtils.setField(person, "id", id);
+        person.setTipoPessoa(TipoPessoa.PJ);
         person.setName("Fornecedor Tech Ltda");
         person.setNomeFantasia("Tech Fornecimentos");
         person.setCpfCnpj(cpfCnpj);
@@ -96,7 +106,7 @@ class SupplierServiceTest {
 
     private Supplier buildSupplier(Long id, Person person) {
         Supplier supplier = new Supplier();
-        supplier.setId(id);
+        ReflectionTestUtils.setField(supplier, "id", id);
         supplier.setPerson(person);
         supplier.setCondicaoPagamentoPadrao("30 DIAS");
         supplier.setPrazoEntregaDias(5);
@@ -115,7 +125,8 @@ class SupplierServiceTest {
         Supplier supplierSalvo = buildSupplier(1L, person);
 
         when(supplierRepository.existsByPersonCpfCnpj("12345678000195")).thenReturn(false);
-        when(personRepository.findByCpfCnpj("12345678000195")).thenReturn(Optional.of(person));
+        when(personService.getOrCreateForRegistration("12345678000195")).thenReturn(person);
+        doCallRealMethod().when(personService).copyDtoToPerson(any(), any());
         when(supplierRepository.save(any(Supplier.class))).thenReturn(supplierSalvo);
 
         SupplierResponseDto result = service.create(dto);
@@ -130,7 +141,8 @@ class SupplierServiceTest {
         assertThat(result.name()).isEqualTo("Fornecedor Tech Ltda");
 
         verify(supplierRepository).existsByPersonCpfCnpj("12345678000195");
-        verify(personRepository).findByCpfCnpj("12345678000195");
+        verify(personService).getOrCreateForRegistration("12345678000195");
+        verify(personService).copyDtoToPerson(any(), eq(person));
     }
 
     @Test
@@ -145,6 +157,27 @@ class SupplierServiceTest {
                 .hasMessage("Esta pessoa/empresa já está cadastrada como fornecedor ativo.");
 
         verify(supplierRepository).existsByPersonCpfCnpj("12345678000195");
+        verify(supplierRepository, never()).save(any(Supplier.class));
+    }
+
+    @Test
+    @DisplayName("Não deve criar fornecedor quando já existir Person inativa com o CPF/CNPJ")
+    void naoDeveCriarFornecedorQuandoJaExistirPersonInativa() {
+        SupplierRequestDto dto = buildSupplierRequestDto("12.345.678/0001-95");
+
+        when(supplierRepository.existsByPersonCpfCnpj("12345678000195")).thenReturn(false);
+        when(personService.getOrCreateForRegistration("12345678000195"))
+                .thenThrow(new BusinessException(
+                        "Já existe um cadastro inativado para este CPF/CNPJ. " +
+                        "Solicite a reativação ao Suporte."
+                ));
+
+        assertThatThrownBy(() -> service.create(dto))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Já existe um cadastro inativado para este CPF/CNPJ. Solicite a reativação ao Suporte.");
+
+        verify(supplierRepository).existsByPersonCpfCnpj("12345678000195");
+        verify(personService).getOrCreateForRegistration("12345678000195");
         verify(supplierRepository, never()).save(any(Supplier.class));
     }
 
@@ -187,11 +220,11 @@ class SupplierServiceTest {
         Person person = buildPerson(10L, "12345678000195");
         Supplier supplier = buildSupplier(1L, person);
 
-        SupplierRequestDto dto = new SupplierRequestDto(
+        PersonRequestDto personDto = new PersonRequestDto(
+                "98.765.432/0001-10",
                 "PJ",
                 "Fornecedor Tech Ltda Atualizado",
                 "Tech Fornecimentos ME",
-                "98.765.432/0001-10",
                 "987654321",
                 "novo@techfornecimentos.com",
                 "31977777777",
@@ -201,7 +234,11 @@ class SupplierServiceTest {
                 "Apt 200",
                 "Centro",
                 "Belo Horizonte",
-                "MG",
+                "MG"
+        );
+
+        SupplierRequestDto dto = new SupplierRequestDto(
+                personDto,
                 "60 DIAS",
                 10,
                 new BigDecimal("2000.00"),
@@ -214,7 +251,8 @@ class SupplierServiceTest {
         );
 
         when(supplierRepository.findByIdWithPerson(1L)).thenReturn(Optional.of(supplier));
-        when(personRepository.findByCpfCnpj("98765432000110")).thenReturn(Optional.empty());
+        doNothing().when(personService).ensureCpfCnpjAvailable("98765432000110", 10L);
+        doCallRealMethod().when(personService).copyDtoToPerson(any(), any());
         when(supplierRepository.save(any(Supplier.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         SupplierResponseDto result = service.update(1L, dto);
@@ -227,7 +265,8 @@ class SupplierServiceTest {
         assertThat(result.email()).isEqualTo("novo@techfornecimentos.com");
 
         verify(supplierRepository).findByIdWithPerson(1L);
-        verify(personRepository).findByCpfCnpj("98765432000110");
+        verify(personService).ensureCpfCnpjAvailable("98765432000110", 10L);
+        verify(personService).copyDtoToPerson(any(), eq(person));
         verify(supplierRepository).save(supplier);
     }
 
@@ -237,19 +276,18 @@ class SupplierServiceTest {
         Person personCurrent = buildPerson(10L, "12345678000195");
         Supplier supplier = buildSupplier(1L, personCurrent);
 
-        Person personOther = buildPerson(20L, "98765432000110");
-
         SupplierRequestDto dto = buildSupplierRequestDto("98.765.432/0001-10");
 
         when(supplierRepository.findByIdWithPerson(1L)).thenReturn(Optional.of(supplier));
-        when(personRepository.findByCpfCnpj("98765432000110")).thenReturn(Optional.of(personOther));
+        doThrow(new BusinessException("CPF/CNPJ já cadastrado para outra pessoa no sistema."))
+                .when(personService).ensureCpfCnpjAvailable("98765432000110", 10L);
 
         assertThatThrownBy(() -> service.update(1L, dto))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("CPF/CNPJ já cadastrado para outra pessoa no sistema.");
 
         verify(supplierRepository).findByIdWithPerson(1L);
-        verify(personRepository).findByCpfCnpj("98765432000110");
+        verify(personService).ensureCpfCnpjAvailable("98765432000110", 10L);
         verify(supplierRepository, never()).save(any(Supplier.class));
     }
 
@@ -261,7 +299,8 @@ class SupplierServiceTest {
         SupplierRequestDto dto = buildSupplierRequestDto("12.345.678/0001-95");
 
         when(supplierRepository.findByIdWithPerson(1L)).thenReturn(Optional.of(supplier));
-        when(personRepository.findByCpfCnpj("12345678000195")).thenReturn(Optional.of(person));
+        doNothing().when(personService).ensureCpfCnpjAvailable("12345678000195", 10L);
+        doCallRealMethod().when(personService).copyDtoToPerson(any(), any());
         when(supplierRepository.save(any(Supplier.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         SupplierResponseDto result = service.update(1L, dto);
@@ -271,7 +310,7 @@ class SupplierServiceTest {
         assertThat(result.cpfCnpj()).isEqualTo("12345678000195");
 
         verify(supplierRepository).findByIdWithPerson(1L);
-        verify(personRepository).findByCpfCnpj("12345678000195");
+        verify(personService).ensureCpfCnpjAvailable("12345678000195", 10L);
         verify(supplierRepository).save(supplier);
     }
 
@@ -287,7 +326,7 @@ class SupplierServiceTest {
                 .hasMessage("Fornecedor não encontrado com o ID: 999");
 
         verify(supplierRepository).findByIdWithPerson(999L);
-        verify(personRepository, never()).findByCpfCnpj(any());
+        verify(personService, never()).ensureCpfCnpjAvailable(any(), any());
         verify(supplierRepository, never()).save(any(Supplier.class));
     }
 
@@ -301,7 +340,7 @@ class SupplierServiceTest {
 
         service.delete(1L);
 
-        assertThat(supplier.getActive()).isFalse();
+        assertThat(supplier.isActive()).isFalse();
 
         verify(supplierRepository).findByIdWithPerson(1L);
         verify(supplierRepository).save(supplier);

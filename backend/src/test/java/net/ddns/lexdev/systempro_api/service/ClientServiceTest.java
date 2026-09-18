@@ -12,6 +12,9 @@ import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -20,15 +23,17 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import jakarta.persistence.EntityNotFoundException;
 import net.ddns.lexdev.systempro_api.domain.Client;
 import net.ddns.lexdev.systempro_api.domain.Person;
 import net.ddns.lexdev.systempro_api.dto.ClientRequestDto;
 import net.ddns.lexdev.systempro_api.dto.ClientResponseDto;
+import net.ddns.lexdev.systempro_api.dto.PersonRequestDto;
+import net.ddns.lexdev.systempro_api.enums.TipoPessoa;
 import net.ddns.lexdev.systempro_api.exception.BusinessException;
 import net.ddns.lexdev.systempro_api.repository.ClientRepository;
-import net.ddns.lexdev.systempro_api.repository.PersonRepository;
 
 
 
@@ -39,17 +44,17 @@ class ClientServiceTest {
     private ClientRepository clientRepository;
 
     @Mock
-    private PersonRepository personRepository;
+    private PersonService personService;
 
     @InjectMocks
     private ClientService service;
 
     private ClientRequestDto buildClientRequestDto(String cpfCnpj) {
-        return new ClientRequestDto(
-                "FISICA",
+        PersonRequestDto personDto = new PersonRequestDto(
+                cpfCnpj,
+                "PF",
                 "João da Silva",
                 null,
-                cpfCnpj,
                 null,
                 "joao@email.com",
                 "31999999999",
@@ -59,15 +64,16 @@ class ClientServiceTest {
                 null,
                 "Centro",
                 "Barbacena",
-                "MG",
-                true
+                "MG"
         );
+
+        return new ClientRequestDto(personDto, true);
     }
 
     private Person buildPerson(Long id, String cpfCnpj) {
         Person person = new Person();
-        person.setId(id);
-        person.setTipoPessoa("FISICA");
+        ReflectionTestUtils.setField(person, "id", id);
+        person.setTipoPessoa(TipoPessoa.PF);
         person.setName("João da Silva");
         person.setCpfCnpj(cpfCnpj);
         person.setEmail("joao@email.com");
@@ -84,7 +90,7 @@ class ClientServiceTest {
 
     private Client buildClient(Long id, Person person) {
         Client client = new Client();
-        client.setId(id);
+        ReflectionTestUtils.setField(client, "id", id);
         client.setPerson(person);
         client.setActive(true);
         return client;
@@ -98,7 +104,8 @@ class ClientServiceTest {
         Client clientSalvo = buildClient(1L, person);
 
         when(clientRepository.existsByPersonCpfCnpj("12345678900")).thenReturn(false);
-        when(personRepository.findByCpfCnpj("12345678900")).thenReturn(Optional.of(person));
+        when(personService.getOrCreateForRegistration("12345678900")).thenReturn(person);
+        doCallRealMethod().when(personService).copyDtoToPerson(any(), any());
         when(clientRepository.save(any(Client.class))).thenReturn(clientSalvo);
 
         ClientResponseDto result = service.create(dto);
@@ -113,7 +120,8 @@ class ClientServiceTest {
         assertThat(result.name()).isEqualTo("João da Silva");
 
         verify(clientRepository).existsByPersonCpfCnpj("12345678900");
-        verify(personRepository).findByCpfCnpj("12345678900");
+        verify(personService).getOrCreateForRegistration("12345678900");
+        verify(personService).copyDtoToPerson(dto.person(), person);
     }
 
     @Test
@@ -132,6 +140,27 @@ class ClientServiceTest {
     }
 
     @Test
+    @DisplayName("Não deve criar cliente quando já existir Person inativa com o CPF/CNPJ")
+    void naoDeveCriarClienteQuandoJaExistirPersonInativa() {
+        ClientRequestDto dto = buildClientRequestDto("123.456.789-00");
+
+        when(clientRepository.existsByPersonCpfCnpj("12345678900")).thenReturn(false);
+        when(personService.getOrCreateForRegistration("12345678900"))
+                .thenThrow(new BusinessException(
+                        "Já existe um cadastro inativado para este CPF/CNPJ. " +
+                        "Solicite a reativação ao Suporte."
+                ));
+
+        assertThatThrownBy(() -> service.create(dto))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Já existe um cadastro inativado para este CPF/CNPJ. Solicite a reativação ao Suporte.");
+
+        verify(clientRepository).existsByPersonCpfCnpj("12345678900");
+        verify(personService).getOrCreateForRegistration("12345678900");
+        verify(clientRepository, never()).save(any(Client.class));
+    }
+
+    @Test
     @DisplayName("Deve retornar cliente quando o ID existir")
     void deveRetornarClienteQuandoIdExistir() {
         Person person = buildPerson(10L, "12345678900");
@@ -143,7 +172,7 @@ class ClientServiceTest {
 
         assertThat(result).isNotNull();
         assertThat(result.id()).isEqualTo(1L);
-        assertThat(result.tipoPessoa()).isEqualTo("FISICA");
+        assertThat(result.tipoPessoa()).isEqualTo("PF");
         assertThat(result.name()).isEqualTo("João da Silva");
         assertThat(result.cpfCnpj()).isEqualTo("12345678900");
         assertThat(result.email()).isEqualTo("joao@email.com");
@@ -170,11 +199,11 @@ class ClientServiceTest {
         Person person = buildPerson(10L, "12345678900");
         Client client = buildClient(1L, person);
 
-        ClientRequestDto dto = new ClientRequestDto(
-                "FISICA",
+        PersonRequestDto personDto = new PersonRequestDto(
+                "987.654.321-00",
+                "PF",
                 "João da Silva Atualizado",
                 "João da Silva ME",
-                "987.654.321-00",
                 "MG123456",
                 "joao.atualizado@email.com",
                 "31988888888",
@@ -184,12 +213,13 @@ class ClientServiceTest {
                 "Apt. 3",
                 "Centro",
                 "Barbacena",
-                "MG",
-                true
+                "MG"
         );
+        ClientRequestDto dto = new ClientRequestDto(personDto, true);
 
         when(clientRepository.findByIdWithPerson(1L)).thenReturn(Optional.of(client));
-        when(personRepository.findByCpfCnpj("98765432100")).thenReturn(Optional.empty());
+        doNothing().when(personService).ensureCpfCnpjAvailable("98765432100", 10L);
+        doCallRealMethod().when(personService).copyDtoToPerson(any(), any());
         when(clientRepository.save(any(Client.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         ClientResponseDto result = service.update(1L, dto);
@@ -202,7 +232,8 @@ class ClientServiceTest {
         assertThat(result.email()).isEqualTo("joao.atualizado@email.com");
 
         verify(clientRepository).findByIdWithPerson(1L);
-        verify(personRepository).findByCpfCnpj("98765432100");
+        verify(personService).ensureCpfCnpjAvailable("98765432100", 10L);
+        verify(personService).copyDtoToPerson(dto.person(), person);
         verify(clientRepository).save(client);
     }
 
@@ -212,19 +243,18 @@ class ClientServiceTest {
         Person personCurrent = buildPerson(10L, "12345678900");
         Client client = buildClient(1L, personCurrent);
 
-        Person personOther = buildPerson(20L, "98765432100");
-
         ClientRequestDto dto = buildClientRequestDto("987.654.321-00");
 
         when(clientRepository.findByIdWithPerson(1L)).thenReturn(Optional.of(client));
-        when(personRepository.findByCpfCnpj("98765432100")).thenReturn(Optional.of(personOther));
+        doThrow(new BusinessException("CPF/CNPJ já cadastrado para outra pessoa no sistema."))
+                .when(personService).ensureCpfCnpjAvailable("98765432100", 10L);
 
         assertThatThrownBy(() -> service.update(1L, dto))
                 .isInstanceOf(BusinessException.class)
-                .hasMessage("CPF/CNPJ já cadastrado para outra pessoa.");
+                .hasMessage("CPF/CNPJ já cadastrado para outra pessoa no sistema.");
 
         verify(clientRepository).findByIdWithPerson(1L);
-        verify(personRepository).findByCpfCnpj("98765432100");
+        verify(personService).ensureCpfCnpjAvailable("98765432100", 10L);
         verify(clientRepository, never()).save(any(Client.class));
     }
 
@@ -236,7 +266,8 @@ class ClientServiceTest {
         ClientRequestDto dto = buildClientRequestDto("123.456.789-00");
 
         when(clientRepository.findByIdWithPerson(1L)).thenReturn(Optional.of(client));
-        when(personRepository.findByCpfCnpj("12345678900")).thenReturn(Optional.of(person));
+        doNothing().when(personService).ensureCpfCnpjAvailable("12345678900", 10L);
+        doCallRealMethod().when(personService).copyDtoToPerson(any(), any());
         when(clientRepository.save(any(Client.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         ClientResponseDto result = service.update(1L, dto);
@@ -246,7 +277,7 @@ class ClientServiceTest {
         assertThat(result.cpfCnpj()).isEqualTo("12345678900");
 
         verify(clientRepository).findByIdWithPerson(1L);
-        verify(personRepository).findByCpfCnpj("12345678900");
+        verify(personService).ensureCpfCnpjAvailable("12345678900", 10L);
         verify(clientRepository).save(client);
     }
 
@@ -262,7 +293,7 @@ class ClientServiceTest {
                 .hasMessage("Cliente não encontrado com o ID: 999");
 
         verify(clientRepository).findByIdWithPerson(999L);
-        verify(personRepository, never()).findByCpfCnpj(any());
+        verify(personService, never()).ensureCpfCnpjAvailable(any(), any());
         verify(clientRepository, never()).save(any(Client.class));
     }
 
@@ -276,7 +307,7 @@ class ClientServiceTest {
 
         service.delete(1L);
 
-        assertThat(client.getActive()).isFalse();
+        assertThat(client.isActive()).isFalse();
 
         verify(clientRepository).findByIdWithPerson(1L);
         verify(clientRepository).save(client);
@@ -302,7 +333,7 @@ class ClientServiceTest {
         Client client1 = buildClient(1L, person1);
 
         Person person2 = buildPerson(20L, "12345678000199");
-        person2.setTipoPessoa("JURIDICA");
+        person2.setTipoPessoa(TipoPessoa.PJ);
         Client client2 = buildClient(2L, person2);
 
         Pageable pageable = PageRequest.of(0, 10);
@@ -316,6 +347,8 @@ class ClientServiceTest {
         assertThat(result.getContent()).hasSize(2);
         assertThat(result.getContent().get(0).id()).isEqualTo(1L);
         assertThat(result.getContent().get(1).id()).isEqualTo(2L);
+        assertThat(result.getContent().get(0).tipoPessoa()).isEqualTo("PF");
+        assertThat(result.getContent().get(1).tipoPessoa()).isEqualTo("PJ");
         assertThat(result.getTotalElements()).isEqualTo(2);
 
         verify(clientRepository).findAllWithPerson(pageable);

@@ -1,0 +1,42 @@
+import { ProductSupplier } from "./product-supplier";
+
+export interface Product {
+  id?: number;
+  codigo: string;
+  nome: string;
+  descricao?: string;
+  categoria?: string;
+  subcategoria?: string;
+  marca?: string;
+  modelo?: string;
+  fabricante?: string;
+  codigoFabricante?: string;
+  gtin?: string;
+  status: 'ATIVO' | 'INATIVO' | 'DESCONTINUADO';
+  precoVenda?: number;
+  markup?: number;
+  margem?: number;
+  fornecedorPrincipal?: number;
+  precoMinimo?: number;
+  quantidadeMinima?: number;
+  unidade?: string;
+  controlaEstoque?: boolean;
+  estoqueMinimo?: number;
+  estoqueMaximo?: number;
+  pontoReposicao?: number;
+  lote?: string;
+  validade?: string;
+  numeroSerie?: string;
+  ncm?: string;
+  cest?: string;
+  origem?: string;
+  perfilTributario?: string;
+  pesoBruto?: number;
+  pesoLiquido?: number;
+  altura?: number;
+  largura?: number;
+  comprimento?: number;
+  fornecedores?: ProductSupplier[];
+  imagemPrincipal?: string;
+  galeria?: string[];
+}

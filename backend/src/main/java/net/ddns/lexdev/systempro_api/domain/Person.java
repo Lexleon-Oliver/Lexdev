@@ -5,47 +5,47 @@ import org.hibernate.annotations.SQLRestriction;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import net.ddns.lexdev.systempro_api.enums.TipoPessoa;
 
 @Entity
 @Table(name = "tb_person")
-@SQLDelete(sql = "UPDATE tb_person SET active = false WHERE id = ?")
+@SQLDelete(sql = "UPDATE tb_person SET active = false WHERE id = ? AND version = ?")
 @SQLRestriction("active = true")
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
-public class Person {
+public class Person extends AuditableEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_pessoa", nullable = false, length = 2)
+    private TipoPessoa tipoPessoa;
 
-    @Column(name = "tipo_pessoa", length = 2, nullable = false)
-    private String tipoPessoa;
-
-    @Column(nullable = false)
+    @NotBlank
+    @Column(nullable = false, length = 150)
     private String name;
 
-    @Column(name = "nome_fantasia")
+    @Column(name = "nome_fantasia", length = 150)
     private String nomeFantasia;
 
+    @NotBlank
     @Column(name = "cpf_cnpj", length = 14, nullable = false, unique = true)
     private String cpfCnpj;
 
     @Column(name = "rg_ie", length = 20)
     private String rgIe;
 
-    @Column(nullable = false)
+    @Email
+    @Column(length = 255)
     private String email;
 
     @Column(length = 11)
@@ -54,24 +54,48 @@ public class Person {
     @Column(length = 8)
     private String cep;
 
+    @Column(length = 150)
     private String logradouro;
+
+    @Column(length = 20)
     private String numero;
+
+    @Column(length = 100)
     private String complemento;
+
+    @Column(length = 100)
     private String bairro;
+
+    @Column(length = 100)
     private String cidade;
 
     @Column(length = 2)
     private String uf;
 
     @Column(nullable = false)
-    private Boolean active = true;
+    private boolean active = true;
 
     @PrePersist
     @PreUpdate
-    public void sanitizeFields() {
-        if (this.cpfCnpj != null) this.cpfCnpj = this.cpfCnpj.replaceAll("\\D", "");
-        if (this.phone != null) this.phone = this.phone.replaceAll("\\D", "");
-        if (this.cep != null) this.cep = this.cep.replaceAll("\\D", "");
-        if (this.rgIe != null) this.rgIe = this.rgIe.replaceAll("\\D", "");
+    private void normalizeFields() {
+        if (cpfCnpj != null) {
+            cpfCnpj = cpfCnpj.replaceAll("\\D", "");
+        }
+
+        if (phone != null) {
+            phone = phone.replaceAll("\\D", "");
+        }
+
+        if (cep != null) {
+            cep = cep.replaceAll("\\D", "");
+        }
+
+        if (rgIe != null) {
+            rgIe = rgIe.replaceAll("\\D", "");
+        }
+
+        if (uf != null) {
+            uf = uf.trim().toUpperCase();
+        }
     }
 }
