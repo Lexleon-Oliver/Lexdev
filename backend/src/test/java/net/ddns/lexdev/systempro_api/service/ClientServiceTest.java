@@ -30,6 +30,8 @@ import jakarta.persistence.EntityNotFoundException;
 import net.ddns.lexdev.systempro_api.domain.Client;
 import net.ddns.lexdev.systempro_api.domain.IndividualPerson;
 import net.ddns.lexdev.systempro_api.domain.Person;
+import net.ddns.lexdev.systempro_api.domain.PersonAddress;
+import net.ddns.lexdev.systempro_api.domain.PersonContact;
 import net.ddns.lexdev.systempro_api.dto.ClientRequestDto;
 import net.ddns.lexdev.systempro_api.dto.ClientResponseDto;
 import net.ddns.lexdev.systempro_api.dto.IndividualPersonRequestDto;
@@ -37,6 +39,8 @@ import net.ddns.lexdev.systempro_api.dto.LegalEntityRequestDto;
 import net.ddns.lexdev.systempro_api.dto.PersonAddressRequestDto;
 import net.ddns.lexdev.systempro_api.dto.PersonContactRequestDto;
 import net.ddns.lexdev.systempro_api.dto.PersonRequestDto;
+import net.ddns.lexdev.systempro_api.enums.AddressType;
+import net.ddns.lexdev.systempro_api.enums.ContactType;
 import net.ddns.lexdev.systempro_api.enums.TipoPessoa;
 import net.ddns.lexdev.systempro_api.exception.BusinessException;
 import net.ddns.lexdev.systempro_api.repository.ClientRepository;
@@ -241,6 +245,63 @@ class ClientServiceTest {
 
         assertThat(result.individual().rg())
             .isEqualTo("495493478");
+
+        assertThat(person.getContacts())
+        .hasSize(2);
+
+        assertThat(person.getContacts().get(0).getType())
+            .isEqualTo(ContactType.EMAIL);
+
+        assertThat(person.getContacts().get(0).getValue())
+            .isEqualTo("joao@email.com");
+
+        assertThat(person.getContacts().get(0).isPrincipal())
+            .isTrue();
+
+        assertThat(person.getContacts().get(0).getPerson())
+            .isSameAs(person);
+
+        assertThat(person.getContacts().get(1).getType())
+            .isEqualTo(ContactType.WHATSAPP);
+
+        assertThat(person.getContacts().get(1).getValue())
+            .isEqualTo("31999999999");
+
+        assertThat(person.getContacts().get(1).isPrincipal())
+            .isFalse();
+
+        assertThat(person.getContacts().get(1).getPerson())
+            .isSameAs(person);
+
+        assertThat(person.getAddresses())
+            .hasSize(1);
+
+        assertThat(person.getAddresses().get(0).getType())
+            .isEqualTo(AddressType.RESIDENCIAL);
+
+        assertThat(person.getAddresses().get(0).getCep())
+            .isEqualTo("36200-000");
+
+        assertThat(person.getAddresses().get(0).getLogradouro())
+            .isEqualTo("Rua A");
+
+        assertThat(person.getAddresses().get(0).getNumero())
+            .isEqualTo("100");
+
+        assertThat(person.getAddresses().get(0).getBairro())
+            .isEqualTo("Centro");
+
+        assertThat(person.getAddresses().get(0).getCidade())
+            .isEqualTo("Barbacena");
+
+        assertThat(person.getAddresses().get(0).getUf())
+            .isEqualTo("MG");
+
+        assertThat(person.getAddresses().get(0).isPrincipal())
+            .isTrue();
+
+        assertThat(person.getAddresses().get(0).getPerson())
+            .isSameAs(person);
 
         verify(clientRepository)
             .existsByPersonCpfCnpj(
@@ -901,4 +962,758 @@ class ClientServiceTest {
         verify(clientRepository)
             .findAllWithPerson(pageable);
     }
+
+    @Test
+    @DisplayName("Deve substituir os contatos ao atualizar cliente")
+    void deveSubstituirContatosAoAtualizarCliente() {
+
+        Person person =
+            buildPerson(
+                10L,
+                "12345678900"
+            );
+
+        PersonContact oldContact =
+            new PersonContact();
+
+        oldContact.setType(ContactType.EMAIL);
+        oldContact.setValue("antigo@email.com");
+        oldContact.setPrincipal(true);
+
+        person.addContact(oldContact);
+
+        Client client =
+            buildClient(
+                1L,
+                person
+            );
+
+        ClientRequestDto dto =
+            buildClientRequestDto(
+                "12345678900"
+            );
+
+        when(
+            clientRepository.findByIdWithPerson(1L)
+        )
+            .thenReturn(Optional.of(client));
+
+        doNothing()
+            .when(personService)
+            .updateFromDto(
+                person,
+                dto.person(),
+                dto.individual(),
+                dto.legalEntity()
+            );
+
+        when(
+            clientRepository.save(
+                any(Client.class)
+            )
+        )
+            .thenAnswer(
+                invocation -> invocation.getArgument(0)
+            );
+
+        service.update(
+            1L,
+            dto
+        );
+
+        assertThat(person.getContacts())
+            .hasSize(2);
+
+        assertThat(
+            person.getContacts()
+                .stream()
+                .map(PersonContact::getValue)
+        )
+            .containsExactly(
+                "joao@email.com",
+                "31999999999"
+            );
+
+        assertThat(person.getContacts())
+            .allMatch(contact ->
+                contact.getPerson() == person
+            );
+    }
+
+    @Test
+    @DisplayName("Deve manter contatos quando a lista não for informada na atualização")
+    void deveManterContatosQuandoListaNaoForInformadaNaAtualizacao() {
+
+        Person person =
+            buildPerson(
+                10L,
+                "12345678900"
+            );
+
+        PersonContact contact =
+            new PersonContact();
+
+        contact.setType(ContactType.EMAIL);
+        contact.setValue("joao@email.com");
+        contact.setPrincipal(true);
+
+        person.addContact(contact);
+
+        Client client =
+            buildClient(
+                1L,
+                person
+            );
+
+        ClientRequestDto dto =
+            new ClientRequestDto(
+                new PersonRequestDto(
+                    "12345678900",
+                    "PF",
+                    "João Atualizado"
+                ),
+                new IndividualPersonRequestDto(
+                    "495493478"
+                ),
+                null,
+                null,
+                null,
+                true
+            );
+
+        when(
+            clientRepository.findByIdWithPerson(1L)
+        )
+            .thenReturn(Optional.of(client));
+
+        doNothing()
+            .when(personService)
+            .updateFromDto(
+                person,
+                dto.person(),
+                dto.individual(),
+                dto.legalEntity()
+            );
+
+        when(
+            clientRepository.save(
+                any(Client.class)
+            )
+        )
+            .thenAnswer(
+                invocation -> invocation.getArgument(0)
+            );
+
+        service.update(
+            1L,
+            dto
+        );
+
+        assertThat(person.getContacts())
+            .hasSize(1);
+
+        assertThat(person.getContacts().get(0).getValue())
+            .isEqualTo("joao@email.com");
+
+        assertThat(person.getContacts().get(0).isPrincipal())
+            .isTrue();
+    }
+
+    @Test
+    @DisplayName("Deve remover todos os contatos quando a lista estiver vazia")
+    void deveRemoverTodosOsContatosQuandoListaEstiverVazia() {
+
+        Person person =
+            buildPerson(
+                10L,
+                "12345678900"
+            );
+
+        PersonContact contact =
+            new PersonContact();
+
+        contact.setType(ContactType.EMAIL);
+        contact.setValue("joao@email.com");
+        contact.setPrincipal(true);
+
+        person.addContact(contact);
+
+        Client client =
+            buildClient(
+                1L,
+                person
+            );
+
+        ClientRequestDto dto =
+            new ClientRequestDto(
+                new PersonRequestDto(
+                    "12345678900",
+                    "PF",
+                    "João da Silva"
+                ),
+                new IndividualPersonRequestDto(
+                    "495493478"
+                ),
+                null,
+                List.of(),
+                null,
+                true
+            );
+
+        when(
+            clientRepository.findByIdWithPerson(1L)
+        )
+            .thenReturn(Optional.of(client));
+
+        doNothing()
+            .when(personService)
+            .updateFromDto(
+                person,
+                dto.person(),
+                dto.individual(),
+                dto.legalEntity()
+            );
+
+        when(
+            clientRepository.save(
+                any(Client.class)
+            )
+        )
+            .thenAnswer(
+                invocation -> invocation.getArgument(0)
+            );
+
+        service.update(
+            1L,
+            dto
+        );
+
+        assertThat(person.getContacts())
+            .isEmpty();
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar tipo de contato inválido")
+    void deveRejeitarTipoDeContatoInvalido() {
+
+        Person person =
+            buildPerson(
+                10L,
+                "12345678900"
+            );
+
+        Client client =
+            buildClient(
+                1L,
+                person
+            );
+
+        ClientRequestDto dto =
+            new ClientRequestDto(
+                new PersonRequestDto(
+                    "12345678900",
+                    "PF",
+                    "João da Silva"
+                ),
+                new IndividualPersonRequestDto(
+                    "495493478"
+                ),
+                null,
+                List.of(
+                    new PersonContactRequestDto(
+                        "FAX",
+                        "31999999999",
+                        false,
+                        null
+                    )
+                ),
+                null,
+                true
+            );
+
+        when(
+            clientRepository.findByIdWithPerson(1L)
+        )
+            .thenReturn(Optional.of(client));
+
+        doNothing()
+            .when(personService)
+            .updateFromDto(
+                person,
+                dto.person(),
+                dto.individual(),
+                dto.legalEntity()
+            );
+
+        assertThatThrownBy(() ->
+            service.update(1L, dto)
+        )
+            .isInstanceOf(BusinessException.class)
+            .hasMessage(
+                "Tipo de contato inválido: FAX"
+            );
+
+        verify(
+            clientRepository,
+            never()
+        ).save(any(Client.class));
+    }
+
+    @Test
+    @DisplayName("Deve substituir os endereços ao atualizar cliente")
+    void deveSubstituirEnderecosAoAtualizarCliente() {
+
+        Person person =
+            buildPerson(
+                10L,
+                "12345678900"
+            );
+
+        PersonAddress oldAddress =
+            new PersonAddress();
+
+        oldAddress.setType(
+            AddressType.RESIDENCIAL
+        );
+
+        oldAddress.setCep(
+            "36200000"
+        );
+
+        oldAddress.setLogradouro(
+            "Rua Antiga"
+        );
+
+        oldAddress.setNumero(
+            "10"
+        );
+
+        person.addAddress(oldAddress);
+
+        Client client =
+            buildClient(
+                1L,
+                person
+            );
+
+        ClientRequestDto dto =
+            new ClientRequestDto(
+                new PersonRequestDto(
+                    "12345678900",
+                    "PF",
+                    "João da Silva"
+                ),
+                new IndividualPersonRequestDto(
+                    "495493478"
+                ),
+                null,
+                null,
+                List.of(
+                    new PersonAddressRequestDto(
+                        "COMERCIAL",
+                        "30130-010",
+                        "Avenida Nova",
+                        "500",
+                        "Sala 10",
+                        "Centro",
+                        "Belo Horizonte",
+                        "MG",
+                        true
+                    )
+                ),
+                true
+            );
+
+        when(
+            clientRepository.findByIdWithPerson(1L)
+        )
+            .thenReturn(
+                Optional.of(client)
+            );
+
+        doNothing()
+            .when(personService)
+            .updateFromDto(
+                person,
+                dto.person(),
+                dto.individual(),
+                dto.legalEntity()
+            );
+
+        when(
+            clientRepository.save(
+                any(Client.class)
+            )
+        )
+            .thenAnswer(
+                invocation -> invocation.getArgument(0)
+            );
+
+        service.update(
+            1L,
+            dto
+        );
+
+        assertThat(
+            person.getAddresses()
+        )
+            .hasSize(1);
+
+        PersonAddress address =
+            person.getAddresses().get(0);
+
+        assertThat(address.getType())
+            .isEqualTo(
+                AddressType.COMERCIAL
+            );
+
+        assertThat(address.getCep())
+            .isEqualTo(
+                "30130-010"
+            );
+
+        assertThat(address.getLogradouro())
+            .isEqualTo(
+                "Avenida Nova"
+            );
+
+        assertThat(address.getNumero())
+            .isEqualTo(
+                "500"
+            );
+
+        assertThat(address.getComplemento())
+            .isEqualTo(
+                "Sala 10"
+            );
+
+        assertThat(address.getBairro())
+            .isEqualTo(
+                "Centro"
+            );
+
+        assertThat(address.getCidade())
+            .isEqualTo(
+                "Belo Horizonte"
+            );
+
+        assertThat(address.getUf())
+            .isEqualTo(
+                "MG"
+            );
+
+        assertThat(address.isPrincipal())
+            .isTrue();
+
+        assertThat(address.getPerson())
+            .isSameAs(person);
+    }
+
+
+    @Test
+    @DisplayName("Deve manter endereços quando a lista não for informada na atualização")
+    void deveManterEnderecosQuandoListaNaoForInformadaNaAtualizacao() {
+
+        Person person =
+            buildPerson(
+                10L,
+                "12345678900"
+            );
+
+        PersonAddress address =
+            new PersonAddress();
+
+        address.setType(
+            AddressType.RESIDENCIAL
+        );
+
+        address.setCep(
+            "36200000"
+        );
+
+        address.setLogradouro(
+            "Rua A"
+        );
+
+        address.setNumero(
+            "100"
+        );
+
+        address.setCidade(
+            "Barbacena"
+        );
+
+        address.setUf(
+            "MG"
+        );
+
+        person.addAddress(address);
+
+        Client client =
+            buildClient(
+                1L,
+                person
+            );
+
+        ClientRequestDto dto =
+            new ClientRequestDto(
+                new PersonRequestDto(
+                    "12345678900",
+                    "PF",
+                    "João Atualizado"
+                ),
+                new IndividualPersonRequestDto(
+                    "495493478"
+                ),
+                null,
+                null,
+                null,
+                true
+            );
+
+        when(
+            clientRepository.findByIdWithPerson(1L)
+        )
+            .thenReturn(
+                Optional.of(client)
+            );
+
+        doNothing()
+            .when(personService)
+            .updateFromDto(
+                person,
+                dto.person(),
+                dto.individual(),
+                dto.legalEntity()
+            );
+
+        when(
+            clientRepository.save(
+                any(Client.class)
+            )
+        )
+            .thenAnswer(
+                invocation -> invocation.getArgument(0)
+            );
+
+        service.update(
+            1L,
+            dto
+        );
+
+        assertThat(
+            person.getAddresses()
+        )
+            .hasSize(1);
+
+        PersonAddress preservedAddress =
+            person.getAddresses().get(0);
+
+        assertThat(
+            preservedAddress.getType()
+        )
+            .isEqualTo(
+                AddressType.RESIDENCIAL
+            );
+
+        assertThat(
+            preservedAddress.getCep()
+        )
+            .isEqualTo(
+                "36200000"
+            );
+
+        assertThat(
+            preservedAddress.getLogradouro()
+        )
+            .isEqualTo(
+                "Rua A"
+            );
+
+        assertThat(
+            preservedAddress.getNumero()
+        )
+            .isEqualTo(
+                "100"
+            );
+
+        assertThat(
+            preservedAddress.getPerson()
+        )
+            .isSameAs(person);
+    }
+
+
+    @Test
+    @DisplayName("Deve remover todos os endereços quando a lista estiver vazia")
+    void deveRemoverTodosOsEnderecosQuandoListaEstiverVazia() {
+
+        Person person =
+            buildPerson(
+                10L,
+                "12345678900"
+            );
+
+        PersonAddress address =
+            new PersonAddress();
+
+        address.setType(
+            AddressType.RESIDENCIAL
+        );
+
+        address.setCep(
+            "36200000"
+        );
+
+        address.setLogradouro(
+            "Rua A"
+        );
+
+        address.setNumero(
+            "100"
+        );
+
+        person.addAddress(address);
+
+        Client client =
+            buildClient(
+                1L,
+                person
+            );
+
+        ClientRequestDto dto =
+            new ClientRequestDto(
+                new PersonRequestDto(
+                    "12345678900",
+                    "PF",
+                    "João da Silva"
+                ),
+                new IndividualPersonRequestDto(
+                    "495493478"
+                ),
+                null,
+                null,
+                List.of(),
+                true
+            );
+
+        when(
+            clientRepository.findByIdWithPerson(1L)
+        )
+            .thenReturn(
+                Optional.of(client)
+            );
+
+        doNothing()
+            .when(personService)
+            .updateFromDto(
+                person,
+                dto.person(),
+                dto.individual(),
+                dto.legalEntity()
+            );
+
+        when(
+            clientRepository.save(
+                any(Client.class)
+            )
+        )
+            .thenAnswer(
+                invocation -> invocation.getArgument(0)
+            );
+
+        service.update(
+            1L,
+            dto
+        );
+
+        assertThat(
+            person.getAddresses()
+        )
+            .isEmpty();
+    }
+
+
+    @Test
+    @DisplayName("Deve rejeitar tipo de endereço inválido")
+    void deveRejeitarTipoDeEnderecoInvalido() {
+
+        Person person =
+            buildPerson(
+                10L,
+                "12345678900"
+            );
+
+        Client client =
+            buildClient(
+                1L,
+                person
+            );
+
+        ClientRequestDto dto =
+            new ClientRequestDto(
+                new PersonRequestDto(
+                    "12345678900",
+                    "PF",
+                    "João da Silva"
+                ),
+                new IndividualPersonRequestDto(
+                    "495493478"
+                ),
+                null,
+                null,
+                List.of(
+                    new PersonAddressRequestDto(
+                        "INVALIDO",
+                        "36200000",
+                        "Rua A",
+                        "100",
+                        null,
+                        "Centro",
+                        "Barbacena",
+                        "MG",
+                        true
+                    )
+                ),
+                true
+            );
+
+        when(
+            clientRepository.findByIdWithPerson(1L)
+        )
+            .thenReturn(
+                Optional.of(client)
+            );
+
+        doNothing()
+            .when(personService)
+            .updateFromDto(
+                person,
+                dto.person(),
+                dto.individual(),
+                dto.legalEntity()
+            );
+
+        assertThatThrownBy(() ->
+            service.update(
+                1L,
+                dto
+            )
+        )
+            .isInstanceOf(
+                BusinessException.class
+            )
+            .hasMessage(
+                "Tipo de endereço inválido: INVALiDO"
+            );
+
+        verify(
+            clientRepository,
+            never()
+        )
+            .save(
+                any(Client.class)
+            );
+    }
+
 }
