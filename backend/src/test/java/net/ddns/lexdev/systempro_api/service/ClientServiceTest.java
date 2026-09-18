@@ -30,6 +30,9 @@ import net.ddns.lexdev.systempro_api.domain.Client;
 import net.ddns.lexdev.systempro_api.domain.Person;
 import net.ddns.lexdev.systempro_api.dto.ClientRequestDto;
 import net.ddns.lexdev.systempro_api.dto.ClientResponseDto;
+import net.ddns.lexdev.systempro_api.dto.IndividualPersonRequestDto;
+import net.ddns.lexdev.systempro_api.dto.PersonAddressRequestDto;
+import net.ddns.lexdev.systempro_api.dto.PersonContactRequestDto;
 import net.ddns.lexdev.systempro_api.dto.PersonRequestDto;
 import net.ddns.lexdev.systempro_api.enums.TipoPessoa;
 import net.ddns.lexdev.systempro_api.exception.BusinessException;
@@ -50,378 +53,826 @@ class ClientServiceTest {
     private ClientService service;
 
     private ClientRequestDto buildClientRequestDto(String cpfCnpj) {
-        PersonRequestDto personDto = new PersonRequestDto(
+
+        PersonRequestDto personDto =
+            new PersonRequestDto(
                 cpfCnpj,
                 "PF",
-                "João da Silva",
-                null,
-                null,
-                "joao@email.com",
-                "31999999999",
-                "36200-000",
-                "Rua A",
-                "100",
-                null,
-                "Centro",
-                "Barbacena",
-                "MG"
-        );
+                "João da Silva"
+            );
 
-        return new ClientRequestDto(personDto, true);
+        IndividualPersonRequestDto individual =
+            new IndividualPersonRequestDto(
+                "495493478"
+            );
+
+        return new ClientRequestDto(
+            personDto,
+            individual,
+            null,
+            List.of(
+                new PersonContactRequestDto(
+                    "EMAIL",
+                    "joao@email.com",
+                    true,
+                    null
+                ),
+                new PersonContactRequestDto(
+                    "WHATSAPP",
+                    "31999999999",
+                    false,
+                    null
+                )
+            ),
+            List.of(
+                new PersonAddressRequestDto(
+                    "RESIDENCIAL",
+                    "36200-000",
+                    "Rua A",
+                    "100",
+                    null,
+                    "Centro",
+                    "Barbacena",
+                    "MG",
+                    true
+                )
+            ),
+            true
+        );
     }
 
-    private Person buildPerson(Long id, String cpfCnpj) {
+    private Person buildPerson(
+        Long id,
+        String cpfCnpj
+    ) {
         Person person = new Person();
-        ReflectionTestUtils.setField(person, "id", id);
+
+        ReflectionTestUtils.setField(
+            person,
+            "id",
+            id
+        );
+
         person.setTipoPessoa(TipoPessoa.PF);
         person.setName("João da Silva");
         person.setCpfCnpj(cpfCnpj);
-        person.setEmail("joao@email.com");
-        person.setPhone("31999999999");
-        person.setCep("36200-000");
-        person.setLogradouro("Rua A");
-        person.setNumero("100");
-        person.setBairro("Centro");
-        person.setCidade("Barbacena");
-        person.setUf("MG");
         person.setActive(true);
+
         return person;
     }
 
-    private Client buildClient(Long id, Person person) {
+    private Client buildClient(
+        Long id,
+        Person person
+    ) {
         Client client = new Client();
-        ReflectionTestUtils.setField(client, "id", id);
+
+        ReflectionTestUtils.setField(
+            client,
+            "id",
+            id
+        );
+
         client.setPerson(person);
         client.setActive(true);
+
         return client;
+    }
+
+    private ClientResponseDto buildClientResponse(
+        Client client
+    ) {
+        return ClientResponseDto.fromEntity(client);
     }
 
     @Test
     @DisplayName("Deve criar cliente com CPF/CNPJ sanitizado")
     void deveCriarClienteComCpfCnpjSanitizado() {
-        ClientRequestDto dto = buildClientRequestDto("123.456.789-00");
-        Person person = buildPerson(10L, "12345678900");
-        Client clientSalvo = buildClient(1L, person);
 
-        when(clientRepository.existsByPersonCpfCnpj("12345678900")).thenReturn(false);
-        when(personService.getOrCreateForRegistration("12345678900")).thenReturn(person);
-        doNothing().when(personService).updateFromDto(any(), any());
-        when(clientRepository.save(any(Client.class))).thenReturn(clientSalvo);
+        ClientRequestDto dto =
+            buildClientRequestDto("123.456.789-00");
 
-        ClientResponseDto result = service.create(dto);
+        Person person =
+            buildPerson(
+                10L,
+                "12345678900"
+            );
 
-        ArgumentCaptor<Client> clientCaptor = ArgumentCaptor.forClass(Client.class);
-        verify(clientRepository).save(clientCaptor.capture());
+        Client clientSalvo =
+            buildClient(
+                1L,
+                person
+            );
 
-        Client clientEnviadoParaRepository = clientCaptor.getValue();
-        assertThat(clientEnviadoParaRepository.getPerson().getCpfCnpj()).isEqualTo("12345678900");
+        when(
+            clientRepository.existsByPersonCpfCnpj(
+                "12345678900"
+            )
+        ).thenReturn(false);
 
-        assertThat(result.id()).isEqualTo(1L);
-        assertThat(result.name()).isEqualTo("João da Silva");
+        when(
+            personService.getOrCreateForRegistration(
+                "12345678900"
+            )
+        ).thenReturn(person);
 
-        verify(clientRepository).existsByPersonCpfCnpj("12345678900");
-        verify(personService).getOrCreateForRegistration("12345678900");
-        verify(personService).updateFromDto(person, dto.person());
+        doNothing()
+            .when(personService)
+            .updateFromDto(
+                any(Person.class),
+                any(PersonRequestDto.class)
+            );
+
+        when(
+            clientRepository.save(
+                any(Client.class)
+            )
+        ).thenReturn(clientSalvo);
+
+        ClientResponseDto result =
+            service.create(dto);
+
+        ArgumentCaptor<Client> clientCaptor =
+            ArgumentCaptor.forClass(Client.class);
+
+        verify(clientRepository)
+            .save(clientCaptor.capture());
+
+        Client clientEnviadoParaRepository =
+            clientCaptor.getValue();
+
+        assertThat(
+            clientEnviadoParaRepository
+                .getPerson()
+                .getCpfCnpj()
+        )
+            .isEqualTo("12345678900");
+
+        assertThat(result.id())
+            .isEqualTo(1L);
+
+        assertThat(result.person().id())
+            .isEqualTo(10L);
+
+        assertThat(result.person().tipoPessoa())
+            .isEqualTo("PF");
+
+        assertThat(result.person().name())
+            .isEqualTo("João da Silva");
+
+        assertThat(result.person().cpfCnpj())
+            .isEqualTo("12345678900");
+
+        assertThat(result.individual())
+            .isNotNull();
+
+        assertThat(result.individual().rg())
+            .isEqualTo("495493478");
+
+        verify(clientRepository)
+            .existsByPersonCpfCnpj(
+                "12345678900"
+            );
+
+        verify(personService)
+            .getOrCreateForRegistration(
+                "12345678900"
+            );
+
+        verify(personService)
+            .updateFromDto(
+                person,
+                dto.person()
+            );
     }
 
     @Test
     @DisplayName("Não deve criar cliente quando CPF/CNPJ já estiver cadastrado")
     void naoDeveCriarClienteQuandoCpfCnpjJaExiste() {
-        ClientRequestDto dto = buildClientRequestDto("123.456.789-00");
 
-        when(clientRepository.existsByPersonCpfCnpj("12345678900")).thenReturn(true);
+        ClientRequestDto dto =
+            buildClientRequestDto(
+                "123.456.789-00"
+            );
 
-        assertThatThrownBy(() -> service.create(dto))
-                .isInstanceOf(BusinessException.class)
-                .hasMessage("Esta pessoa/empresa já está cadastrada como cliente ativo.");
+        when(
+            clientRepository.existsByPersonCpfCnpj(
+                "12345678900"
+            )
+        ).thenReturn(true);
 
-        verify(clientRepository).existsByPersonCpfCnpj("12345678900");
-        verify(clientRepository, never()).save(any(Client.class));
+        assertThatThrownBy(() ->
+            service.create(dto)
+        )
+            .isInstanceOf(BusinessException.class)
+            .hasMessage(
+                "Esta pessoa/empresa já está cadastrada como cliente ativo."
+            );
+
+        verify(clientRepository)
+            .existsByPersonCpfCnpj(
+                "12345678900"
+            );
+
+        verify(clientRepository, never())
+            .save(any(Client.class));
+
+        verify(
+            personService,
+            never()
+        ).getOrCreateForRegistration(any());
+
     }
 
     @Test
     @DisplayName("Não deve criar cliente quando já existir Person inativa com o CPF/CNPJ")
     void naoDeveCriarClienteQuandoJaExistirPersonInativa() {
-        ClientRequestDto dto = buildClientRequestDto("123.456.789-00");
 
-        when(clientRepository.existsByPersonCpfCnpj("12345678900")).thenReturn(false);
-        when(personService.getOrCreateForRegistration("12345678900"))
-                .thenThrow(new BusinessException(
-                        "Já existe um cadastro inativado para este CPF/CNPJ. " +
-                        "Solicite a reativação ao Suporte."
-                ));
+        ClientRequestDto dto =
+            buildClientRequestDto(
+                "123.456.789-00"
+            );
 
-        assertThatThrownBy(() -> service.create(dto))
-                .isInstanceOf(BusinessException.class)
-                .hasMessage("Já existe um cadastro inativado para este CPF/CNPJ. Solicite a reativação ao Suporte.");
+        when(
+            clientRepository.existsByPersonCpfCnpj(
+                "12345678900"
+            )
+        ).thenReturn(false);
 
-        verify(clientRepository).existsByPersonCpfCnpj("12345678900");
-        verify(personService).getOrCreateForRegistration("12345678900");
-        verify(clientRepository, never()).save(any(Client.class));
+        when(
+            personService.getOrCreateForRegistration(
+                "12345678900"
+            )
+        )
+            .thenThrow(
+                new BusinessException(
+                    "Já existe um cadastro inativado para este CPF/CNPJ. " +
+                    "Solicite a reativação ao Suporte."
+                )
+            );
+
+        assertThatThrownBy(() ->
+            service.create(dto)
+        )
+            .isInstanceOf(BusinessException.class)
+            .hasMessage(
+                "Já existe um cadastro inativado para este CPF/CNPJ. " +
+                "Solicite a reativação ao Suporte."
+            );
+
+        verify(clientRepository)
+            .existsByPersonCpfCnpj(
+                "12345678900"
+            );
+
+        verify(personService)
+            .getOrCreateForRegistration(
+                "12345678900"
+            );
+
+        verify(
+            clientRepository,
+            never()
+        ).save(any(Client.class));
+
     }
 
     @Test
     @DisplayName("Deve retornar cliente quando o ID existir")
     void deveRetornarClienteQuandoIdExistir() {
-        Person person = buildPerson(10L, "12345678900");
-        Client client = buildClient(1L, person);
 
-        when(clientRepository.findByIdWithPerson(1L)).thenReturn(Optional.of(client));
+        Person person =
+            buildPerson(
+                10L,
+                "12345678900"
+            );
 
-        ClientResponseDto result = service.findById(1L);
+        Client client =
+            buildClient(
+                1L,
+                person
+            );
 
-        assertThat(result).isNotNull();
-        assertThat(result.id()).isEqualTo(1L);
-        assertThat(result.tipoPessoa()).isEqualTo("PF");
-        assertThat(result.name()).isEqualTo("João da Silva");
-        assertThat(result.cpfCnpj()).isEqualTo("12345678900");
-        assertThat(result.email()).isEqualTo("joao@email.com");
-        assertThat(result.phone()).isEqualTo("31999999999");
+        when(
+            clientRepository.findByIdWithPerson(1L)
+        )
+            .thenReturn(
+                Optional.of(client)
+            );
 
-        verify(clientRepository).findByIdWithPerson(1L);
+        ClientResponseDto result =
+            service.findById(1L);
+
+        assertThat(result)
+            .isNotNull();
+
+        assertThat(result.id())
+            .isEqualTo(1L);
+
+        assertThat(result.person().id())
+            .isEqualTo(10L);
+
+        assertThat(result.person().tipoPessoa())
+            .isEqualTo("PF");
+
+        assertThat(result.person().name())
+            .isEqualTo("João da Silva");
+
+        assertThat(result.person().cpfCnpj())
+            .isEqualTo("12345678900");
+
+        assertThat(result.active())
+            .isTrue();
+
+        verify(clientRepository)
+            .findByIdWithPerson(1L);
     }
 
     @Test
     @DisplayName("Deve lançar exceção quando o cliente não existir")
     void deveLancarExcecaoQuandoClienteNaoExistir() {
-        when(clientRepository.findByIdWithPerson(999L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.findById(999L))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessage("Cliente não encontrado com o ID: 999");
+        when(
+            clientRepository.findByIdWithPerson(999L)
+        )
+            .thenReturn(Optional.empty());
 
-        verify(clientRepository).findByIdWithPerson(999L);
+        assertThatThrownBy(() ->
+            service.findById(999L)
+        )
+            .isInstanceOf(
+                EntityNotFoundException.class
+            )
+            .hasMessage(
+                "Cliente não encontrado com o ID: 999"
+            );
+
+        verify(clientRepository)
+            .findByIdWithPerson(999L);
     }
 
     @Test
     @DisplayName("Deve atualizar cliente quando os dados forem válidos")
     void deveAtualizarClienteQuandoDadosForemValidos() {
 
-        Person person = buildPerson(10L, "12345678900");
+        Person person =
+            buildPerson(
+                10L,
+                "12345678900"
+            );
 
-        Client client = buildClient(1L, person);
+        Client client =
+            buildClient(
+                1L,
+                person
+            );
 
-        PersonRequestDto personDto = new PersonRequestDto(
-                "987.654.321-00",
-                "PF",
-                "João da Silva Atualizado",
-                "João da Silva ME",
-                "MG123456",
-                "joao.atualizado@email.com",
-                "31988888888",
-                "36200-000",
-                "Rua Nova",
-                "200",
-                "Apt. 3",
-                "Centro",
-                "Barbacena",
-                "MG"
-        );
+        ClientRequestDto dto =
+            buildClientRequestDto(
+                "987.654.321-00"
+            );
 
-        ClientRequestDto dto = new ClientRequestDto(personDto, true);
-
-        when(clientRepository.findByIdWithPerson(1L))
-                .thenReturn(Optional.of(client));
+        when(
+            clientRepository.findByIdWithPerson(1L)
+        )
+            .thenReturn(
+                Optional.of(client)
+            );
 
         doNothing()
-                .when(personService)
-                .updateFromDto(person, personDto);
+            .when(personService)
+            .updateFromDto(
+                person,
+                dto.person()
+            );
 
-        when(clientRepository.save(any(Client.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(
+            clientRepository.save(
+                any(Client.class)
+            )
+        )
+            .thenAnswer(
+                invocation ->
+                    invocation.getArgument(0)
+            );
 
-        ClientResponseDto result = service.update(1L, dto);
+        ClientResponseDto result =
+            service.update(
+                1L,
+                dto
+            );
 
-        assertThat(result).isNotNull();
-        assertThat(result.id()).isEqualTo(1L);
+        assertThat(result)
+            .isNotNull();
 
-        verify(clientRepository).findByIdWithPerson(1L);
+        assertThat(result.id())
+            .isEqualTo(1L);
+
+        verify(clientRepository)
+            .findByIdWithPerson(1L);
 
         verify(personService)
-                .updateFromDto(person, personDto);
+            .updateFromDto(
+                person,
+                dto.person()
+            );
 
-        verify(clientRepository).save(client);
+        verify(clientRepository)
+            .save(client);
     }
-
 
     @Test
     @DisplayName("Não deve atualizar quando CPF/CNPJ pertencer a outra pessoa")
     void naoDeveAtualizarQuandoCpfCnpjPertencerAOutraPessoa() {
 
         Person personCurrent =
-                buildPerson(10L, "12345678900");
+            buildPerson(
+                10L,
+                "12345678900"
+            );
 
         Client client =
-                buildClient(1L, personCurrent);
+            buildClient(
+                1L,
+                personCurrent
+            );
 
         ClientRequestDto dto =
-                buildClientRequestDto("987.654.321-00");
+            buildClientRequestDto(
+                "987.654.321-00"
+            );
 
-        when(clientRepository.findByIdWithPerson(1L))
-                .thenReturn(Optional.of(client));
+        when(
+            clientRepository.findByIdWithPerson(1L)
+        )
+            .thenReturn(
+                Optional.of(client)
+            );
 
-        doThrow(new BusinessException(
+        doThrow(
+            new BusinessException(
                 "CPF/CNPJ já cadastrado para outra pessoa no sistema."
-        ))
-                .when(personService)
-                .updateFromDto(
-                        eq(personCurrent),
-                        any(PersonRequestDto.class)
-                );
+            )
+        )
+            .when(personService)
+            .updateFromDto(
+                eq(personCurrent),
+                any(PersonRequestDto.class)
+            );
 
-        assertThatThrownBy(() -> service.update(1L, dto))
-                .isInstanceOf(BusinessException.class)
-                .hasMessage(
-                        "CPF/CNPJ já cadastrado para outra pessoa no sistema."
-                );
+        assertThatThrownBy(() ->
+            service.update(
+                1L,
+                dto
+            )
+        )
+            .isInstanceOf(
+                BusinessException.class
+            )
+            .hasMessage(
+                "CPF/CNPJ já cadastrado para outra pessoa no sistema."
+            );
 
         verify(clientRepository)
-                .findByIdWithPerson(1L);
+            .findByIdWithPerson(1L);
 
         verify(personService)
-                .updateFromDto(
-                        eq(personCurrent),
-                        any(PersonRequestDto.class)
-                );
+            .updateFromDto(
+                eq(personCurrent),
+                any(PersonRequestDto.class)
+            );
 
-        verify(clientRepository, never())
-                .save(any(Client.class));
+        verify(
+            clientRepository,
+            never()
+        ).save(any(Client.class));
     }
-
-
 
     @Test
     @DisplayName("Deve permitir atualizar mantendo seu próprio CPF/CNPJ")
     void devePermitirAtualizarMantendoProprioCpfCnpj() {
 
         Person person =
-                buildPerson(10L, "12345678900");
+            buildPerson(
+                10L,
+                "12345678900"
+            );
 
         Client client =
-                buildClient(1L, person);
+            buildClient(
+                1L,
+                person
+            );
 
         ClientRequestDto dto =
-                buildClientRequestDto("123.456.789-00");
+            buildClientRequestDto(
+                "123.456.789-00"
+            );
 
-        when(clientRepository.findByIdWithPerson(1L))
-                .thenReturn(Optional.of(client));
+        when(
+            clientRepository.findByIdWithPerson(1L)
+        )
+            .thenReturn(
+                Optional.of(client)
+            );
 
         doNothing()
-                .when(personService)
-                .updateFromDto(
-                        eq(person),
-                        eq(dto.person())
-                );
+            .when(personService)
+            .updateFromDto(
+                eq(person),
+                eq(dto.person())
+            );
 
-        when(clientRepository.save(any(Client.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(
+            clientRepository.save(
+                any(Client.class)
+            )
+        )
+            .thenAnswer(
+                invocation ->
+                    invocation.getArgument(0)
+            );
 
         ClientResponseDto result =
-                service.update(1L, dto);
+            service.update(
+                1L,
+                dto
+            );
 
-        assertThat(result).isNotNull();
-        assertThat(result.id()).isEqualTo(1L);
+        assertThat(result)
+            .isNotNull();
+
+        assertThat(result.id())
+            .isEqualTo(1L);
 
         verify(clientRepository)
-                .findByIdWithPerson(1L);
+            .findByIdWithPerson(1L);
 
         verify(personService)
-                .updateFromDto(
-                        person,
-                        dto.person()
-                );
+            .updateFromDto(
+                person,
+                dto.person()
+            );
 
         verify(clientRepository)
-                .save(client);
+            .save(client);
     }
-
 
     @Test
     @DisplayName("Deve lançar exceção ao atualizar cliente inexistente")
     void deveLancarExcecaoAoAtualizarClienteInexistente() {
-        ClientRequestDto dto = buildClientRequestDto("123.456.789-00");
 
-        when(clientRepository.findByIdWithPerson(999L)).thenReturn(Optional.empty());
+        ClientRequestDto dto =
+            buildClientRequestDto(
+                "123.456.789-00"
+            );
 
-        assertThatThrownBy(() -> service.update(999L, dto))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessage("Cliente não encontrado com o ID: 999");
+        when(
+            clientRepository.findByIdWithPerson(999L)
+        )
+            .thenReturn(Optional.empty());
 
-        verify(clientRepository).findByIdWithPerson(999L);
-        verify(personService, never()).ensureCpfCnpjAvailable(any(), any());
-        verify(clientRepository, never()).save(any(Client.class));
+        assertThatThrownBy(() ->
+            service.update(
+                999L,
+                dto
+            )
+        )
+            .isInstanceOf(
+                EntityNotFoundException.class
+            )
+            .hasMessage(
+                "Cliente não encontrado com o ID: 999"
+            );
+
+        verify(clientRepository)
+            .findByIdWithPerson(999L);
+
+        verify(
+            personService,
+            never()
+        ).updateFromDto(
+            any(Person.class),
+            any(PersonRequestDto.class)
+        );
+
+        verify(
+            clientRepository,
+            never()
+        ).save(any(Client.class));
     }
 
     @Test
     @DisplayName("Deve realizar soft delete do cliente")
     void deveRealizarSoftDeleteDoCliente() {
-        Person person = buildPerson(10L, "12345678900");
-        Client client = buildClient(1L, person);
 
-        when(clientRepository.findByIdWithPerson(1L)).thenReturn(Optional.of(client));
+        Person person =
+            buildPerson(
+                10L,
+                "12345678900"
+            );
+
+        Client client =
+            buildClient(
+                1L,
+                person
+            );
+
+        when(
+            clientRepository.findByIdWithPerson(1L)
+        )
+            .thenReturn(
+                Optional.of(client)
+            );
 
         service.delete(1L);
 
-        assertThat(client.isActive()).isFalse();
+        assertThat(client.isActive())
+            .isFalse();
 
-        verify(clientRepository).findByIdWithPerson(1L);
-        verify(clientRepository).save(client);
+        // Importante:
+        // a Person continua ativa.
+        assertThat(person.isActive())
+            .isTrue();
+
+        verify(clientRepository)
+            .findByIdWithPerson(1L);
+
+        verify(clientRepository)
+            .save(client);
     }
 
     @Test
     @DisplayName("Deve lançar exceção ao excluir cliente inexistente")
     void deveLancarExcecaoAoExcluirClienteInexistente() {
-        when(clientRepository.findByIdWithPerson(999L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.delete(999L))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessage("Cliente não encontrado com o ID: 999");
+        when(
+            clientRepository.findByIdWithPerson(999L)
+        )
+            .thenReturn(Optional.empty());
 
-        verify(clientRepository).findByIdWithPerson(999L);
-        verify(clientRepository, never()).save(any(Client.class));
+        assertThatThrownBy(() ->
+            service.delete(999L)
+        )
+            .isInstanceOf(
+                EntityNotFoundException.class
+            )
+            .hasMessage(
+                "Cliente não encontrado com o ID: 999"
+            );
+
+        verify(clientRepository)
+            .findByIdWithPerson(999L);
+
+        verify(
+            clientRepository,
+            never()
+        ).save(any(Client.class));
     }
 
     @Test
     @DisplayName("Deve retornar clientes paginados")
     void deveRetornarClientesPaginados() {
-        Person person1 = buildPerson(10L, "12345678900");
-        Client client1 = buildClient(1L, person1);
 
-        Person person2 = buildPerson(20L, "12345678000199");
-        person2.setTipoPessoa(TipoPessoa.PJ);
-        Client client2 = buildClient(2L, person2);
+        Person person1 =
+            buildPerson(
+                10L,
+                "12345678900"
+            );
 
-        Pageable pageable = PageRequest.of(0, 10);
-        Page<Client> clientPage = new PageImpl<>(List.of(client1, client2), pageable, 2);
+        Client client1 =
+            buildClient(
+                1L,
+                person1
+            );
 
-        when(clientRepository.findAllWithPerson(pageable)).thenReturn(clientPage);
+        Person person2 =
+            buildPerson(
+                20L,
+                "12345678000199"
+            );
 
-        Page<ClientResponseDto> result = service.findAll(pageable);
+        person2.setTipoPessoa(
+            TipoPessoa.PJ
+        );
 
-        assertThat(result).isNotNull();
-        assertThat(result.getContent()).hasSize(2);
-        assertThat(result.getContent().get(0).id()).isEqualTo(1L);
-        assertThat(result.getContent().get(1).id()).isEqualTo(2L);
-        assertThat(result.getContent().get(0).tipoPessoa()).isEqualTo("PF");
-        assertThat(result.getContent().get(1).tipoPessoa()).isEqualTo("PJ");
-        assertThat(result.getTotalElements()).isEqualTo(2);
+        Client client2 =
+            buildClient(
+                2L,
+                person2
+            );
 
-        verify(clientRepository).findAllWithPerson(pageable);
+        Pageable pageable =
+            PageRequest.of(0, 10);
+
+        Page<Client> clientPage =
+            new PageImpl<>(
+                List.of(
+                    client1,
+                    client2
+                ),
+                pageable,
+                2
+            );
+
+        when(
+            clientRepository.findAllWithPerson(
+                pageable
+            )
+        )
+            .thenReturn(clientPage);
+
+        Page<ClientResponseDto> result =
+            service.findAll(pageable);
+
+        assertThat(result)
+            .isNotNull();
+
+        assertThat(result.getContent())
+            .hasSize(2);
+
+        assertThat(
+            result.getContent()
+                .get(0)
+                .id()
+        )
+            .isEqualTo(1L);
+
+        assertThat(
+            result.getContent()
+                .get(1)
+                .id()
+        )
+            .isEqualTo(2L);
+
+        assertThat(
+            result.getContent()
+                .get(0)
+                .person()
+                .tipoPessoa()
+        )
+            .isEqualTo("PF");
+
+        assertThat(
+            result.getContent()
+                .get(1)
+                .person()
+                .tipoPessoa()
+        )
+            .isEqualTo("PJ");
+
+        assertThat(
+            result.getContent()
+                .get(0)
+                .person()
+                .name()
+        )
+            .isEqualTo("João da Silva");
+
+        assertThat(
+            result.getContent()
+                .get(1)
+                .person()
+                .cpfCnpj()
+        )
+            .isEqualTo("12345678000199");
+
+        assertThat(result.getTotalElements())
+            .isEqualTo(2);
+
+        verify(clientRepository)
+            .findAllWithPerson(pageable);
     }
 
     @Test
     @DisplayName("Deve retornar página vazia quando não houver clientes")
     void deveRetornarPaginaVaziaQuandoNaoHouverClientes() {
-        Pageable pageable = PageRequest.of(0, 10);
 
-        when(clientRepository.findAllWithPerson(pageable)).thenReturn(Page.empty(pageable));
+        Pageable pageable =
+            PageRequest.of(0, 10);
 
-        Page<ClientResponseDto> result = service.findAll(pageable);
+        when(
+            clientRepository.findAllWithPerson(
+                pageable
+            )
+        )
+            .thenReturn(
+                Page.empty(pageable)
+            );
 
-        assertThat(result).isNotNull();
-        assertThat(result.getContent()).isEmpty();
-        assertThat(result.getTotalElements()).isZero();
+        Page<ClientResponseDto> result =
+            service.findAll(pageable);
 
-        verify(clientRepository).findAllWithPerson(pageable);
+        assertThat(result)
+            .isNotNull();
+
+        assertThat(result.getContent())
+            .isEmpty();
+
+        assertThat(result.getTotalElements())
+            .isZero();
+
+        verify(clientRepository)
+            .findAllWithPerson(pageable);
     }
 }

@@ -1,16 +1,22 @@
 package net.ddns.lexdev.systempro_api.domain;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -34,46 +40,44 @@ public class Person extends AuditableEntity {
     @Column(nullable = false, length = 150)
     private String name;
 
-    @Column(name = "nome_fantasia", length = 150)
-    private String nomeFantasia;
-
     @NotBlank
     @Column(name = "cpf_cnpj", length = 14, nullable = false, unique = true)
     private String cpfCnpj;
 
-    @Column(name = "rg_ie", length = 20)
-    private String rgIe;
-
-    @Email
-    @Column(length = 255)
-    private String email;
-
-    @Column(length = 11)
-    private String phone;
-
-    @Column(length = 8)
-    private String cep;
-
-    @Column(length = 150)
-    private String logradouro;
-
-    @Column(length = 20)
-    private String numero;
-
-    @Column(length = 100)
-    private String complemento;
-
-    @Column(length = 100)
-    private String bairro;
-
-    @Column(length = 100)
-    private String cidade;
-
-    @Column(length = 2)
-    private String uf;
-
     @Column(nullable = false)
     private boolean active = true;
+
+    @OneToMany(
+        mappedBy = "person",
+        cascade = CascadeType.ALL,
+        orphanRemoval = true
+    )
+    @Getter
+    private List<PersonContact> contacts = new ArrayList<>();
+    
+
+    @OneToOne(
+        mappedBy = "person",
+        fetch = FetchType.LAZY,
+        cascade = CascadeType.ALL,
+        orphanRemoval = true
+    )
+    private IndividualPerson individualPerson;
+
+    @OneToOne(
+        mappedBy = "person",
+        fetch = FetchType.LAZY,
+        cascade = CascadeType.ALL,
+        orphanRemoval = true
+    )
+    private LegalEntity legalEntity;
+
+    @OneToMany(
+        mappedBy = "person",
+        cascade = CascadeType.ALL,
+        orphanRemoval = true
+    )
+    private List<PersonAddress> addresses = new ArrayList<>();
 
     @PrePersist
     @PreUpdate
@@ -81,21 +85,25 @@ public class Person extends AuditableEntity {
         if (cpfCnpj != null) {
             cpfCnpj = cpfCnpj.replaceAll("\\D", "");
         }
+    }
 
-        if (phone != null) {
-            phone = phone.replaceAll("\\D", "");
-        }
+    public void addContact(PersonContact contact) {
+        contacts.add(contact);
+        contact.setPerson(this);
+    }
 
-        if (cep != null) {
-            cep = cep.replaceAll("\\D", "");
-        }
+    public void removeContact(PersonContact contact) {
+        contacts.remove(contact);
+        contact.setPerson(null);
+    }
 
-        if (rgIe != null) {
-            rgIe = rgIe.replaceAll("\\D", "");
-        }
+    public void addAddress(PersonAddress address) {
+        addresses.add(address);
+        address.setPerson(this);
+    }
 
-        if (uf != null) {
-            uf = uf.trim().toUpperCase();
-        }
+    public void removeAddress(PersonAddress address) {
+        addresses.remove(address);
+        address.setPerson(null);
     }
 }

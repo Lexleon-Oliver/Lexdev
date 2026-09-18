@@ -8,42 +8,27 @@ import net.ddns.lexdev.systempro_api.domain.Supplier;
 
 // Response DTO
 public record SupplierResponseDto(
-
     Long id,
-    Long personId,
-
-    String tipoPessoa,
-    String name,
-    String nomeFantasia,
-    String cpfCnpj,
-    String rgIe,
-    String email,
-    String phone,
-    String cep,
-    String logradouro,
-    String numero,
-    String complemento,
-    String bairro,
-    String cidade,
-    String uf,
-
+    PersonResponseDto person,
+    IndividualPersonResponseDto individual,
+    LegalEntityResponseDto legalEntity,
+    List<PersonContactResponseDto> contacts,
+    List<PersonAddressResponseDto> addresses,
     String condicaoPagamentoPadrao,
     Integer prazoEntregaDias,
     BigDecimal valorMinimoPedido,
     String categoria,
     String observacoesComerciais,
-
     BankDetailsDto bankDetails,
     List<SupplierContactDto> contatos,
     List<SupplierDocumentDto> documentos,
-
     Boolean active
-
 ) {
 
-    public static SupplierResponseDto fromEntity(Supplier supplier) {
-
-        Person p = supplier.getPerson();
+    public static SupplierResponseDto fromEntity(
+        Supplier supplier
+    ) {
+        Person person = supplier.getPerson();
 
         BankDetailsDto bankDto =
             supplier.getBankDetails() != null
@@ -52,13 +37,15 @@ public record SupplierResponseDto(
                     supplier.getBankDetails().getAgencia(),
                     supplier.getBankDetails().getConta(),
                     supplier.getBankDetails().getTipoConta() != null
-                        ? supplier.getBankDetails().getTipoConta().name()
+                        ? supplier.getBankDetails()
+                            .getTipoConta()
+                            .name()
                         : null,
                     supplier.getBankDetails().getChavePix()
                 )
                 : null;
 
-        List<SupplierContactDto> contactsDto =
+        List<SupplierContactDto> supplierContacts =
             supplier.getContatos()
                 .stream()
                 .map(c -> new SupplierContactDto(
@@ -70,7 +57,7 @@ public record SupplierResponseDto(
                 ))
                 .toList();
 
-        List<SupplierDocumentDto> docsDto =
+        List<SupplierDocumentDto> documents =
             supplier.getDocumentos()
                 .stream()
                 .map(d -> new SupplierDocumentDto(
@@ -80,31 +67,37 @@ public record SupplierResponseDto(
                 ))
                 .toList();
 
+        List<PersonContactResponseDto> contacts =
+            person.getContacts()
+                .stream()
+                .map(PersonContactResponseDto::fromEntity)
+                .toList();
+
+        List<PersonAddressResponseDto> addresses =
+            person.getAddresses()
+                .stream()
+                .map(PersonAddressResponseDto::fromEntity)
+                .toList();
+
         return new SupplierResponseDto(
             supplier.getId(),
-            p.getId(),
-            p.getTipoPessoa() != null ? p.getTipoPessoa().name() : null,
-            p.getName(),
-            p.getNomeFantasia(),
-            p.getCpfCnpj(),
-            p.getRgIe(),
-            p.getEmail(),
-            p.getPhone(),
-            p.getCep(),
-            p.getLogradouro(),
-            p.getNumero(),
-            p.getComplemento(),
-            p.getBairro(),
-            p.getCidade(),
-            p.getUf(),
+            PersonResponseDto.fromEntity(person),
+            IndividualPersonResponseDto.fromEntity(
+                person.getIndividualPerson()
+            ),
+            LegalEntityResponseDto.fromEntity(
+                person.getLegalEntity()
+            ),
+            contacts,
+            addresses,
             supplier.getCondicaoPagamentoPadrao(),
             supplier.getPrazoEntregaDias(),
             supplier.getValorMinimoPedido(),
             supplier.getCategoria(),
             supplier.getObservacoesComerciais(),
             bankDto,
-            contactsDto,
-            docsDto,
+            supplierContacts,
+            documents,
             supplier.isActive()
         );
     }

@@ -20,6 +20,8 @@ import net.ddns.lexdev.systempro_api.domain.Person;
 import net.ddns.lexdev.systempro_api.dto.PersonRequestDto;
 import net.ddns.lexdev.systempro_api.enums.TipoPessoa;
 import net.ddns.lexdev.systempro_api.exception.BusinessException;
+import net.ddns.lexdev.systempro_api.mapper.IndividualPersonMapper;
+import net.ddns.lexdev.systempro_api.mapper.LegalEntityMapper;
 import net.ddns.lexdev.systempro_api.mapper.PersonMapper;
 import net.ddns.lexdev.systempro_api.repository.PersonRepository;
 
@@ -32,11 +34,22 @@ class PersonServiceTest {
     private PersonMapper personMapper;
 
     private PersonService service;
+    private IndividualPersonMapper individualPersonMapper;
+    private LegalEntityMapper legalEntityMapper;
 
     @BeforeEach
     void setUp() {
+
         personMapper = new PersonMapper();
-        service = new PersonService(personRepository, personMapper);
+        individualPersonMapper = new IndividualPersonMapper();
+        legalEntityMapper = new LegalEntityMapper();
+
+        service = new PersonService(
+            personRepository,
+            personMapper,
+            individualPersonMapper,
+            legalEntityMapper
+        );
     }
 
     private Person buildPerson(
@@ -116,6 +129,34 @@ class PersonServiceTest {
     }
 
     @Test
+    @DisplayName("Deve normalizar CPF/CNPJ ao criar nova Person")
+    void deveNormalizarCpfCnpjAoCriarNovaPerson() {
+
+        when(personRepository.findByCpfCnpj("12345678900"))
+            .thenReturn(Optional.empty());
+
+        when(personRepository.findIncludingInactiveByCpfCnpj("12345678900"))
+            .thenReturn(Optional.empty());
+
+        Person result =
+            service.getOrCreateForRegistration(
+                "123.456.789-00"
+            );
+
+        assertThat(result.getCpfCnpj())
+            .isEqualTo("12345678900");
+
+        assertThat(result.isActive())
+            .isTrue();
+
+        verify(personRepository)
+            .findByCpfCnpj("12345678900");
+
+        verify(personRepository)
+            .findIncludingInactiveByCpfCnpj("12345678900");
+    }
+
+    @Test
     @DisplayName("Não deve criar nova Person quando CPF/CNPJ pertencer a cadastro inativado")
     void naoDeveCriarNovaPersonQuandoCpfCnpjPertencerACadastroInativado() {
 
@@ -147,45 +188,37 @@ class PersonServiceTest {
             .save(any(Person.class));
     }
 
-
     @Test
     @DisplayName("Deve permitir manter o próprio CPF/CNPJ durante atualização")
     void devePermitirManterOProprioCpfCnpjDuranteAtualizacao() {
 
         Person person =
-                buildPerson(10L, "12345678900", true);
+            buildPerson(10L, "12345678900", true);
 
-        PersonRequestDto dto = new PersonRequestDto(
+        PersonRequestDto dto =
+            new PersonRequestDto(
                 "123.456.789-00",
                 "PF",
-                "João da Silva",
-                null,
-                null,
-                "joao@email.com",
-                "31999999999",
-                "36200-000",
-                "Rua A",
-                "100",
-                null,
-                "Centro",
-                "Barbacena",
-                "MG"
-        );
+                "João da Silva"
+            );
 
         when(personRepository.findIncludingInactiveByCpfCnpj(
-                "12345678900"
+            "12345678900"
         )).thenReturn(Optional.of(person));
 
         service.updateFromDto(person, dto);
 
         assertThat(person.getCpfCnpj())
-                .isEqualTo("12345678900");
+            .isEqualTo("12345678900");
+
+        assertThat(person.getTipoPessoa())
+            .isEqualTo(TipoPessoa.PF);
 
         assertThat(person.getName())
-                .isEqualTo("João da Silva");
+            .isEqualTo("João da Silva");
 
         verify(personRepository)
-                .findIncludingInactiveByCpfCnpj("12345678900");
+            .findIncludingInactiveByCpfCnpj("12345678900");
     }
 
     @Test
@@ -193,45 +226,35 @@ class PersonServiceTest {
     void naoDevePermitirCpfCnpjPertencenteAOutraPerson() {
 
         Person currentPerson =
-                buildPerson(10L, "12345678900", true);
+            buildPerson(10L, "12345678900", true);
 
         Person existingPerson =
-                buildPerson(20L, "98765432100", true);
+            buildPerson(20L, "98765432100", true);
 
-        PersonRequestDto dto = new PersonRequestDto(
+        PersonRequestDto dto =
+            new PersonRequestDto(
                 "987.654.321-00",
                 "PF",
-                "João da Silva",
-                null,
-                null,
-                "joao@email.com",
-                "31999999999",
-                "36200-000",
-                "Rua A",
-                "100",
-                null,
-                "Centro",
-                "Barbacena",
-                "MG"
-        );
+                "João da Silva"
+            );
 
         when(personRepository.findIncludingInactiveByCpfCnpj(
-                "98765432100"
+            "98765432100"
         )).thenReturn(Optional.of(existingPerson));
 
         assertThatThrownBy(() ->
-                service.updateFromDto(currentPerson, dto)
+            service.updateFromDto(currentPerson, dto)
         )
-                .isInstanceOf(BusinessException.class)
-                .hasMessage(
-                        "CPF/CNPJ já cadastrado para outra pessoa no sistema."
-                );
+            .isInstanceOf(BusinessException.class)
+            .hasMessage(
+                "CPF/CNPJ já cadastrado para outra pessoa no sistema."
+            );
 
         assertThat(currentPerson.getCpfCnpj())
-                .isEqualTo("12345678900");
+            .isEqualTo("12345678900");
 
         verify(personRepository)
-                .findIncludingInactiveByCpfCnpj("98765432100");
+            .findIncludingInactiveByCpfCnpj("98765432100");
     }
 
     @Test
@@ -239,44 +262,33 @@ class PersonServiceTest {
     void devePermitirCpfCnpjQuandoNaoExistirOutraPerson() {
 
         Person person =
-                buildPerson(10L, "12345678900", true);
+            buildPerson(10L, "12345678900", true);
 
-        PersonRequestDto dto = new PersonRequestDto(
+        PersonRequestDto dto =
+            new PersonRequestDto(
                 "987.654.321-00",
                 "PF",
-                "João da Silva Atualizado",
-                null,
-                null,
-                "novo@email.com",
-                "31988888888",
-                "36200-000",
-                "Rua Nova",
-                "200",
-                null,
-                "Centro",
-                "Barbacena",
-                "MG"
-        );
+                "João da Silva Atualizado"
+            );
 
         when(personRepository.findIncludingInactiveByCpfCnpj(
-                "98765432100"
+            "98765432100"
         )).thenReturn(Optional.empty());
 
         service.updateFromDto(person, dto);
 
         assertThat(person.getCpfCnpj())
-                .isEqualTo("98765432100");
+            .isEqualTo("98765432100");
+
+        assertThat(person.getTipoPessoa())
+            .isEqualTo(TipoPessoa.PF);
 
         assertThat(person.getName())
-                .isEqualTo("João da Silva Atualizado");
-
-        assertThat(person.getEmail())
-                .isEqualTo("novo@email.com");
+            .isEqualTo("João da Silva Atualizado");
 
         verify(personRepository)
-                .findIncludingInactiveByCpfCnpj("98765432100");
+            .findIncludingInactiveByCpfCnpj("98765432100");
     }
-
 
     @Test
     @DisplayName("Deve reativar Person inativa")
@@ -323,6 +335,9 @@ class PersonServiceTest {
         Person result =
             service.reactivate(10L);
 
+        assertThat(result)
+            .isSameAs(person);
+
         assertThat(result.isActive())
             .isTrue();
 
@@ -360,75 +375,65 @@ class PersonServiceTest {
     void deveAtualizarPersonComDadosDoDto() {
 
         Person person =
-                buildPerson(10L, "12345678900", true);
+            buildPerson(10L, "12345678900", true);
 
-        PersonRequestDto dto = new PersonRequestDto(
+        PersonRequestDto dto =
+            new PersonRequestDto(
                 "987.654.321-00",
                 "PF",
-                "João da Silva Atualizado",
-                "João da Silva ME",
-                "MG123456",
-                "joao.atualizado@email.com",
-                "31988888888",
-                "36200-000",
-                "Rua Nova",
-                "200",
-                "Apt. 3",
-                "Centro",
-                "Barbacena",
-                "MG"
-        );
+                "João da Silva Atualizado"
+            );
 
         when(personRepository.findIncludingInactiveByCpfCnpj(
-                "98765432100"
+            "98765432100"
         )).thenReturn(Optional.empty());
 
         service.updateFromDto(person, dto);
 
         assertThat(person.getCpfCnpj())
-                .isEqualTo("98765432100");
+            .isEqualTo("98765432100");
 
         assertThat(person.getTipoPessoa())
-                .isEqualTo(TipoPessoa.PF);
+            .isEqualTo(TipoPessoa.PF);
 
         assertThat(person.getName())
-                .isEqualTo("João da Silva Atualizado");
-
-        assertThat(person.getNomeFantasia())
-                .isEqualTo("João da Silva ME");
-
-        assertThat(person.getRgIe())
-                .isEqualTo("MG123456");
-
-        assertThat(person.getEmail())
-                .isEqualTo("joao.atualizado@email.com");
-
-        assertThat(person.getPhone())
-                .isEqualTo("31988888888");
-
-        assertThat(person.getCep())
-        .isEqualTo("36200-000");
-
-        assertThat(person.getLogradouro())
-                .isEqualTo("Rua Nova");
-
-        assertThat(person.getNumero())
-                .isEqualTo("200");
-
-        assertThat(person.getComplemento())
-                .isEqualTo("Apt. 3");
-
-        assertThat(person.getBairro())
-                .isEqualTo("Centro");
-
-        assertThat(person.getCidade())
-                .isEqualTo("Barbacena");
-
-        assertThat(person.getUf())
-                .isEqualTo("MG");
+            .isEqualTo("João da Silva Atualizado");
 
         verify(personRepository)
-                .findIncludingInactiveByCpfCnpj("98765432100");
+            .findIncludingInactiveByCpfCnpj("98765432100");
+    }
+
+    @Test
+    @DisplayName("Deve atualizar Person para PJ")
+    void deveAtualizarPersonParaPj() {
+
+        Person person =
+            buildPerson(10L, "12345678900", true);
+
+        PersonRequestDto dto =
+            new PersonRequestDto(
+                "12.345.678/0001-95",
+                "PJ",
+                "Fornecedor Tech Ltda"
+            );
+
+        when(personRepository.findIncludingInactiveByCpfCnpj(
+            "12345678000195"
+        )).thenReturn(Optional.empty());
+
+        service.updateFromDto(person, dto);
+
+        assertThat(person.getCpfCnpj())
+            .isEqualTo("12345678000195");
+
+        assertThat(person.getTipoPessoa())
+            .isEqualTo(TipoPessoa.PJ);
+
+        assertThat(person.getName())
+            .isEqualTo("Fornecedor Tech Ltda");
+
+        verify(personRepository)
+            .findIncludingInactiveByCpfCnpj("12345678000195");
     }
 
     @Test
@@ -436,34 +441,25 @@ class PersonServiceTest {
     void deveRejeitarTipoDePessoaInvalido() {
 
         Person person =
-                buildPerson(10L, "12345678900", true);
+            buildPerson(10L, "12345678900", true);
 
-        PersonRequestDto dto = new PersonRequestDto(
+        PersonRequestDto dto =
+            new PersonRequestDto(
                 "123.456.789-00",
                 "TIPO_INVALIDO",
-                "João da Silva",
-                null,
-                null,
-                "joao@email.com",
-                "31999999999",
-                "36200-000",
-                "Rua A",
-                "100",
-                null,
-                "Centro",
-                "Barbacena",
-                "MG"
-        );
+                "João da Silva"
+            );
 
         when(personRepository.findIncludingInactiveByCpfCnpj(
-                "12345678900"
+            "12345678900"
         )).thenReturn(Optional.of(person));
 
         assertThatThrownBy(() ->
-                service.updateFromDto(person, dto)
+            service.updateFromDto(person, dto)
         )
-                .isInstanceOf(BusinessException.class)
-                .hasMessage("Tipo de pessoa inválido: TIPO_INVALIDO");
+            .isInstanceOf(BusinessException.class)
+            .hasMessage(
+                "Tipo de pessoa inválido: TIPO_INVALIDO"
+            );
     }
-
 }

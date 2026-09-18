@@ -1,51 +1,46 @@
 package net.ddns.lexdev.systempro_api.dto;
 
+import java.util.List;
+
 import net.ddns.lexdev.systempro_api.domain.Client;
 import net.ddns.lexdev.systempro_api.domain.Person;
 
 public record ClientResponseDto(
-
     Long id,
-    Long personId,
-    String tipoPessoa,
-    String name,
-    String nomeFantasia,
-    String cpfCnpj,
-    String rgIe,
-    String email,
-    String phone,
-    String cep,
-    String logradouro,
-    String numero,
-    String complemento,
-    String bairro,
-    String cidade,
-    String uf,
+    PersonResponseDto person,
+    IndividualPersonResponseDto individual,
+    LegalEntityResponseDto legalEntity,
+    List<PersonContactResponseDto> contacts,
+    List<PersonAddressResponseDto> addresses,
     Boolean active
-
 ) {
 
     public static ClientResponseDto fromEntity(Client client) {
+        Person person = client.getPerson();
 
-        Person p = client.getPerson();
+        List<PersonContactResponseDto> contacts =
+            person.getContacts()
+                .stream()
+                .map(PersonContactResponseDto::fromEntity)
+                .toList();
+
+        List<PersonAddressResponseDto> addresses =
+            person.getAddresses()
+                .stream()
+                .map(PersonAddressResponseDto::fromEntity)
+                .toList();
 
         return new ClientResponseDto(
             client.getId(),
-            p.getId(),
-            p.getTipoPessoa() != null ? p.getTipoPessoa().name() : null,
-            p.getName(),
-            p.getNomeFantasia(),
-            p.getCpfCnpj(),
-            p.getRgIe(),
-            p.getEmail(),
-            p.getPhone(),
-            p.getCep(),
-            p.getLogradouro(),
-            p.getNumero(),
-            p.getComplemento(),
-            p.getBairro(),
-            p.getCidade(),
-            p.getUf(),
+            PersonResponseDto.fromEntity(person),
+            IndividualPersonResponseDto.fromEntity(
+                person.getIndividualPerson()
+            ),
+            LegalEntityResponseDto.fromEntity(
+                person.getLegalEntity()
+            ),
+            contacts,
+            addresses,
             client.isActive()
         );
     }
