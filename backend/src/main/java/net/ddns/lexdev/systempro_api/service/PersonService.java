@@ -4,19 +4,25 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityNotFoundException;
+import net.ddns.lexdev.systempro_api.config.CpfCnpjNormalizer;
 import net.ddns.lexdev.systempro_api.domain.Person;
 import net.ddns.lexdev.systempro_api.dto.PersonRequestDto;
-import net.ddns.lexdev.systempro_api.enums.TipoPessoa;
 import net.ddns.lexdev.systempro_api.exception.BusinessException;
+import net.ddns.lexdev.systempro_api.mapper.PersonMapper;
 import net.ddns.lexdev.systempro_api.repository.PersonRepository;
 
 @Service
 public class PersonService {
 
     private final PersonRepository personRepository;
+    private final PersonMapper personMapper;
 
-    public PersonService(PersonRepository personRepository) {
+    public PersonService(
+        PersonRepository personRepository,
+        PersonMapper personMapper
+    ) {
         this.personRepository = personRepository;
+        this.personMapper = personMapper;
     }
 
     /**
@@ -24,11 +30,16 @@ public class PersonService {
      */
     @Transactional
     public Person getOrCreateForRegistration(String cpfCnpj) {
-        String cleanCpfCnpj = sanitize(cpfCnpj);
+
+        String cleanCpfCnpj = CpfCnpjNormalizer.normalize(cpfCnpj);
 
         return personRepository.findByCpfCnpj(cleanCpfCnpj)
             .orElseGet(() -> {
-                if (personRepository.findIncludingInactiveByCpfCnpj(cleanCpfCnpj).isPresent()) {
+
+                if (personRepository
+                    .findIncludingInactiveByCpfCnpj(cleanCpfCnpj)
+                    .isPresent()) {
+
                     throw new BusinessException(
                         "Já existe um cadastro inativado para este CPF/CNPJ. " +
                         "Solicite a reativação ao Suporte."
@@ -37,42 +48,52 @@ public class PersonService {
 
                 Person person = new Person();
                 person.setCpfCnpj(cleanCpfCnpj);
+
                 return person;
             });
     }
 
     /**
-     * Copia as informações do PersonRequestDto para a entidade Person.
+     * Cria uma nova Person a partir do DTO.
      */
-    public void copyDtoToPerson(PersonRequestDto dto, Person person) {
-        if (dto == null) return;
+    public Person createFromDto(PersonRequestDto dto) {
+        return personMapper.toEntity(dto);
+    }
 
-        person.setTipoPessoa(parseTipoPessoa(dto.tipoPessoa()));
-        person.setName(dto.name());
-        person.setNomeFantasia(dto.nomeFantasia());
-        person.setRgIe(dto.rgIe());
-        person.setEmail(dto.email());
-        person.setPhone(dto.phone());
-        person.setCep(dto.cep());
-        person.setLogradouro(dto.logradouro());
-        person.setNumero(dto.numero());
-        person.setComplemento(dto.complemento());
-        person.setBairro(dto.bairro());
-        person.setCidade(dto.cidade());
-        person.setUf(dto.uf());
-        person.setCpfCnpj(dto.cleanCpfCnpj());
+    /**
+     * Atualiza uma Person existente a partir do DTO.
+     */
+    public void updateFromDto(
+        Person person,
+        PersonRequestDto dto
+    ) {
+        ensureCpfCnpjAvailable(
+            dto.cpfCnpj(),
+            person.getId()
+        );
+
+        personMapper.updateEntity(person, dto);
     }
 
     /**
      * Verifica se o CPF/CNPJ pertence a outra Person.
      */
     @Transactional(readOnly = true)
-    public void ensureCpfCnpjAvailable(String cpfCnpj, Long currentPersonId) {
-        String cleanCpfCnpj = sanitize(cpfCnpj);
+    public void ensureCpfCnpjAvailable(
+        String cpfCnpj,
+        Long currentPersonId
+    ) {
 
-        personRepository.findIncludingInactiveByCpfCnpj(cleanCpfCnpj)
+        String cleanCpfCnpj = CpfCnpjNormalizer.normalize(cpfCnpj);
+
+        personRepository
+            .findIncludingInactiveByCpfCnpj(cleanCpfCnpj)
             .ifPresent(existingPerson -> {
-                if (!existingPerson.getId().equals(currentPersonId)) {
+
+                if (!existingPerson
+                    .getId()
+                    .equals(currentPersonId)) {
+
                     throw new BusinessException(
                         "CPF/CNPJ já cadastrado para outra pessoa no sistema."
                     );
@@ -80,33 +101,24 @@ public class PersonService {
             });
     }
 
+    /**
+     * Reativa uma Person inativa.
+     */
     @Transactional
     public Person reactivate(Long personId) {
-        Person person = personRepository.findIncludingInactiveById(personId)
-            .orElseThrow(() -> new EntityNotFoundException(
-                "Pessoa não encontrada com o ID: " + personId
-            ));
+
+        Person person = personRepository
+            .findIncludingInactiveById(personId)
+            .orElseThrow(() ->
+                new EntityNotFoundException(
+                    "Pessoa não encontrada com o ID: " + personId
+                )
+            );
 
         if (!person.isActive()) {
             person.setActive(true);
         }
 
         return personRepository.save(person);
-    }
-
-    public String sanitize(String value) {
-        return value != null ? value.replaceAll("\\D", "") : null;
-    }
-
-    private TipoPessoa parseTipoPessoa(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-
-        try {
-            return TipoPessoa.valueOf(value.trim().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new BusinessException("Tipo de pessoa inválido: " + value);
-        }
     }
 }

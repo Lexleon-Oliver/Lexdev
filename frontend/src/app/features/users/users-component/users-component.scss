@@ -160,6 +160,7 @@
 }
 
 /* Badges */
+/*
 .role-badge,
 .status-badge {
   padding: 0.3rem 0.8rem;
@@ -178,6 +179,46 @@
   background: rgba(24, 69, 173, 0.2);
   color: #6a9eff;
   border-color: rgba(24, 69, 173, 0.3);
+}
+*/
+
+/* 1. Estrutura Base da Badge */
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+/* 2. Hierarquia por Poder e Nível de Acesso */
+
+/* Usuário - Baseline / Neutro */
+.role-badge.role-user {
+  background: rgba(100, 116, 139, 0.12);
+  color: #64748b;
+  border-color: rgba(100, 116, 139, 0.25);
+}
+
+/* Administrador - Gestão Operacional */
+.role-badge.role-admin {
+  background: rgba(37, 99, 235, 0.15);
+  color: #2563eb;
+  border-color: rgba(37, 99, 235, 0.3);
+}
+
+/* Suporte / Dev (GOD Mode) - Nível Máximo */
+.role-badge.role-support {
+  background: rgba(124, 58, 237, 0.15);
+  color: #7c3aed;
+  border-color: rgba(124, 58, 237, 0.35);
+  box-shadow: 0 0 10px rgba(124, 58, 237, 0.15); /* Brilho discreto para destacar o nível Dev */
 }
 
 .status-badge {

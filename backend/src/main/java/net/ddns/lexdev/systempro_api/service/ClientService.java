@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityNotFoundException;
+import net.ddns.lexdev.systempro_api.config.CpfCnpjNormalizer;
 import net.ddns.lexdev.systempro_api.domain.Client;
 import net.ddns.lexdev.systempro_api.domain.Person;
 import net.ddns.lexdev.systempro_api.dto.ClientRequestDto;
@@ -45,25 +46,35 @@ public class ClientService {
 
     @Transactional
     public ClientResponseDto create(ClientRequestDto dto) {
-        String cleanCpfCnpj = dto.person().cleanCpfCnpj();
 
-        if (clientRepository.existsByPersonCpfCnpj(cleanCpfCnpj)) {
+        String cpfCnpj = CpfCnpjNormalizer.normalize(
+            dto.person().cpfCnpj()
+        );
+
+        if (clientRepository.existsByPersonCpfCnpj(cpfCnpj)) {
             throw new BusinessException(
                 "Esta pessoa/empresa já está cadastrada como cliente ativo."
             );
         }
 
-        Person person = personService.getOrCreateForRegistration(cleanCpfCnpj);
-        personService.copyDtoToPerson(dto.person(), person);
+        Person person = personService.getOrCreateForRegistration(cpfCnpj);
+
+        personService.updateFromDto(
+            person,
+            dto.person()
+        );
 
         Client client = new Client();
         client.setPerson(person);
 
-        return ClientResponseDto.fromEntity(clientRepository.save(client));
+        return ClientResponseDto.fromEntity(
+            clientRepository.save(client)
+        );
     }
 
     @Transactional
     public ClientResponseDto update(Long id, ClientRequestDto dto) {
+
         Client client = clientRepository.findByIdWithPerson(id)
             .orElseThrow(() -> new EntityNotFoundException(
                 "Cliente não encontrado com o ID: " + id
@@ -71,22 +82,23 @@ public class ClientService {
 
         Person person = client.getPerson();
 
-        personService.ensureCpfCnpjAvailable(
-            dto.person().cleanCpfCnpj(),
-            person.getId()
+        personService.updateFromDto(
+            person,
+            dto.person()
         );
-
-        personService.copyDtoToPerson(dto.person(), person);
 
         if (dto.active() != null) {
             client.setActive(dto.active());
         }
 
-        return ClientResponseDto.fromEntity(clientRepository.save(client));
+        return ClientResponseDto.fromEntity(
+            clientRepository.save(client)
+        );
     }
 
     @Transactional
     public void delete(Long id) {
+
         Client client = clientRepository.findByIdWithPerson(id)
             .orElseThrow(() -> new EntityNotFoundException(
                 "Cliente não encontrado com o ID: " + id

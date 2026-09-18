@@ -103,7 +103,7 @@ export class DashboardComponent implements OnInit {
         route: ['/configuracoes']
       }
     ];
-    if (this.isAdmin()) {
+    if (this.authService.hasRole(['ROLE_ADMIN', 'ROLE_SUPPORT'])) {
       this.menus.push({
         key: 'admin',
         label: 'Administração',
@@ -121,9 +121,6 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  private isAdmin(): boolean {
-    return this.authService.currentUser()?.role === 'ROLE_ADMIN';
-  }
 
   toggleProfileMenu() {
     this.profileMenuOpen = !this.profileMenuOpen;

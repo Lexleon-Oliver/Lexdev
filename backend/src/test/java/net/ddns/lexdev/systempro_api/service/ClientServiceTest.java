@@ -10,9 +10,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -105,7 +105,7 @@ class ClientServiceTest {
 
         when(clientRepository.existsByPersonCpfCnpj("12345678900")).thenReturn(false);
         when(personService.getOrCreateForRegistration("12345678900")).thenReturn(person);
-        doCallRealMethod().when(personService).copyDtoToPerson(any(), any());
+        doNothing().when(personService).updateFromDto(any(), any());
         when(clientRepository.save(any(Client.class))).thenReturn(clientSalvo);
 
         ClientResponseDto result = service.create(dto);
@@ -121,7 +121,7 @@ class ClientServiceTest {
 
         verify(clientRepository).existsByPersonCpfCnpj("12345678900");
         verify(personService).getOrCreateForRegistration("12345678900");
-        verify(personService).copyDtoToPerson(dto.person(), person);
+        verify(personService).updateFromDto(person, dto.person());
     }
 
     @Test
@@ -196,7 +196,9 @@ class ClientServiceTest {
     @Test
     @DisplayName("Deve atualizar cliente quando os dados forem válidos")
     void deveAtualizarClienteQuandoDadosForemValidos() {
+
         Person person = buildPerson(10L, "12345678900");
+
         Client client = buildClient(1L, person);
 
         PersonRequestDto personDto = new PersonRequestDto(
@@ -215,71 +217,124 @@ class ClientServiceTest {
                 "Barbacena",
                 "MG"
         );
+
         ClientRequestDto dto = new ClientRequestDto(personDto, true);
 
-        when(clientRepository.findByIdWithPerson(1L)).thenReturn(Optional.of(client));
-        doNothing().when(personService).ensureCpfCnpjAvailable("98765432100", 10L);
-        doCallRealMethod().when(personService).copyDtoToPerson(any(), any());
-        when(clientRepository.save(any(Client.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(clientRepository.findByIdWithPerson(1L))
+                .thenReturn(Optional.of(client));
+
+        doNothing()
+                .when(personService)
+                .updateFromDto(person, personDto);
+
+        when(clientRepository.save(any(Client.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         ClientResponseDto result = service.update(1L, dto);
 
         assertThat(result).isNotNull();
         assertThat(result.id()).isEqualTo(1L);
-        assertThat(result.name()).isEqualTo("João da Silva Atualizado");
-        assertThat(result.nomeFantasia()).isEqualTo("João da Silva ME");
-        assertThat(result.cpfCnpj()).isEqualTo("98765432100");
-        assertThat(result.email()).isEqualTo("joao.atualizado@email.com");
 
         verify(clientRepository).findByIdWithPerson(1L);
-        verify(personService).ensureCpfCnpjAvailable("98765432100", 10L);
-        verify(personService).copyDtoToPerson(dto.person(), person);
+
+        verify(personService)
+                .updateFromDto(person, personDto);
+
         verify(clientRepository).save(client);
     }
+
 
     @Test
     @DisplayName("Não deve atualizar quando CPF/CNPJ pertencer a outra pessoa")
     void naoDeveAtualizarQuandoCpfCnpjPertencerAOutraPessoa() {
-        Person personCurrent = buildPerson(10L, "12345678900");
-        Client client = buildClient(1L, personCurrent);
 
-        ClientRequestDto dto = buildClientRequestDto("987.654.321-00");
+        Person personCurrent =
+                buildPerson(10L, "12345678900");
 
-        when(clientRepository.findByIdWithPerson(1L)).thenReturn(Optional.of(client));
-        doThrow(new BusinessException("CPF/CNPJ já cadastrado para outra pessoa no sistema."))
-                .when(personService).ensureCpfCnpjAvailable("98765432100", 10L);
+        Client client =
+                buildClient(1L, personCurrent);
+
+        ClientRequestDto dto =
+                buildClientRequestDto("987.654.321-00");
+
+        when(clientRepository.findByIdWithPerson(1L))
+                .thenReturn(Optional.of(client));
+
+        doThrow(new BusinessException(
+                "CPF/CNPJ já cadastrado para outra pessoa no sistema."
+        ))
+                .when(personService)
+                .updateFromDto(
+                        eq(personCurrent),
+                        any(PersonRequestDto.class)
+                );
 
         assertThatThrownBy(() -> service.update(1L, dto))
                 .isInstanceOf(BusinessException.class)
-                .hasMessage("CPF/CNPJ já cadastrado para outra pessoa no sistema.");
+                .hasMessage(
+                        "CPF/CNPJ já cadastrado para outra pessoa no sistema."
+                );
 
-        verify(clientRepository).findByIdWithPerson(1L);
-        verify(personService).ensureCpfCnpjAvailable("98765432100", 10L);
-        verify(clientRepository, never()).save(any(Client.class));
+        verify(clientRepository)
+                .findByIdWithPerson(1L);
+
+        verify(personService)
+                .updateFromDto(
+                        eq(personCurrent),
+                        any(PersonRequestDto.class)
+                );
+
+        verify(clientRepository, never())
+                .save(any(Client.class));
     }
 
+
+
     @Test
-    @DisplayName("Deve permitir atualizar o cliente mantendo seu próprio CPF/CNPJ")
+    @DisplayName("Deve permitir atualizar mantendo seu próprio CPF/CNPJ")
     void devePermitirAtualizarMantendoProprioCpfCnpj() {
-        Person person = buildPerson(10L, "12345678900");
-        Client client = buildClient(1L, person);
-        ClientRequestDto dto = buildClientRequestDto("123.456.789-00");
 
-        when(clientRepository.findByIdWithPerson(1L)).thenReturn(Optional.of(client));
-        doNothing().when(personService).ensureCpfCnpjAvailable("12345678900", 10L);
-        doCallRealMethod().when(personService).copyDtoToPerson(any(), any());
-        when(clientRepository.save(any(Client.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        Person person =
+                buildPerson(10L, "12345678900");
 
-        ClientResponseDto result = service.update(1L, dto);
+        Client client =
+                buildClient(1L, person);
+
+        ClientRequestDto dto =
+                buildClientRequestDto("123.456.789-00");
+
+        when(clientRepository.findByIdWithPerson(1L))
+                .thenReturn(Optional.of(client));
+
+        doNothing()
+                .when(personService)
+                .updateFromDto(
+                        eq(person),
+                        eq(dto.person())
+                );
+
+        when(clientRepository.save(any(Client.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ClientResponseDto result =
+                service.update(1L, dto);
 
         assertThat(result).isNotNull();
         assertThat(result.id()).isEqualTo(1L);
-        assertThat(result.cpfCnpj()).isEqualTo("12345678900");
 
-        verify(clientRepository).findByIdWithPerson(1L);
-        verify(personService).ensureCpfCnpjAvailable("12345678900", 10L);
-        verify(clientRepository).save(client);
+        verify(clientRepository)
+                .findByIdWithPerson(1L);
+
+        verify(personService)
+                .updateFromDto(
+                        person,
+                        dto.person()
+                );
+
+        verify(clientRepository)
+                .save(client);
     }
+
 
     @Test
     @DisplayName("Deve lançar exceção ao atualizar cliente inexistente")

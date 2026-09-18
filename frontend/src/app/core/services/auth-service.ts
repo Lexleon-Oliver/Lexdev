@@ -66,4 +66,19 @@ export class AuthService {
     );
   }
 
+  hasRole(role: string | string[]): boolean {
+    const userRole = this.currentUser()?.role;
+    if (!userRole) return false;
+
+    return Array.isArray(role) ? role.includes(userRole) : userRole === role;
+  }
+
+  isAdmin(): boolean {
+    return this.hasRole('ROLE_ADMIN');
+  }
+
+  isSupport(): boolean {
+    return this.hasRole('ROLE_SUPPORT');
+  }
+
 }

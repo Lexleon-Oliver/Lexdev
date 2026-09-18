@@ -11,10 +11,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -120,30 +118,56 @@ class SupplierServiceTest {
     @Test
     @DisplayName("Deve criar fornecedor com CPF/CNPJ sanitizado")
     void deveCriarFornecedorComCpfCnpjSanitizado() {
+
         SupplierRequestDto dto = buildSupplierRequestDto("12.345.678/0001-95");
+
         Person person = buildPerson(10L, "12345678000195");
+
         Supplier supplierSalvo = buildSupplier(1L, person);
 
-        when(supplierRepository.existsByPersonCpfCnpj("12345678000195")).thenReturn(false);
-        when(personService.getOrCreateForRegistration("12345678000195")).thenReturn(person);
-        doCallRealMethod().when(personService).copyDtoToPerson(any(), any());
-        when(supplierRepository.save(any(Supplier.class))).thenReturn(supplierSalvo);
+        when(supplierRepository.existsByPersonCpfCnpj("12345678000195"))
+                .thenReturn(false);
+
+        when(personService.getOrCreateForRegistration("12345678000195"))
+                .thenReturn(person);
+
+        doNothing()
+                .when(personService)
+                .updateFromDto(person, dto.person());
+
+        when(supplierRepository.save(any(Supplier.class)))
+                .thenReturn(supplierSalvo);
 
         SupplierResponseDto result = service.create(dto);
 
-        ArgumentCaptor<Supplier> supplierCaptor = ArgumentCaptor.forClass(Supplier.class);
+        ArgumentCaptor<Supplier> supplierCaptor =
+                ArgumentCaptor.forClass(Supplier.class);
+
         verify(supplierRepository).save(supplierCaptor.capture());
 
-        Supplier supplierEnviadoParaRepository = supplierCaptor.getValue();
-        assertThat(supplierEnviadoParaRepository.getPerson().getCpfCnpj()).isEqualTo("12345678000195");
+        Supplier supplierEnviadoParaRepository =
+                supplierCaptor.getValue();
+
+        assertThat(supplierEnviadoParaRepository.getPerson())
+                .isEqualTo(person);
+
+        assertThat(supplierEnviadoParaRepository.getPerson().getCpfCnpj())
+                .isEqualTo("12345678000195");
 
         assertThat(result.id()).isEqualTo(1L);
         assertThat(result.name()).isEqualTo("Fornecedor Tech Ltda");
 
-        verify(supplierRepository).existsByPersonCpfCnpj("12345678000195");
-        verify(personService).getOrCreateForRegistration("12345678000195");
-        verify(personService).copyDtoToPerson(any(), eq(person));
+        verify(supplierRepository)
+                .existsByPersonCpfCnpj("12345678000195");
+
+        verify(personService)
+                .getOrCreateForRegistration("12345678000195");
+
+        verify(personService)
+                .updateFromDto(person, dto.person());
     }
+
+
 
     @Test
     @DisplayName("Não deve criar fornecedor quando CPF/CNPJ já estiver cadastrado")
@@ -214,10 +238,13 @@ class SupplierServiceTest {
         verify(supplierRepository).findByIdWithPerson(999L);
     }
 
+
     @Test
     @DisplayName("Deve atualizar fornecedor quando os dados forem válidos")
     void deveAtualizarFornecedorQuandoDadosForemValidos() {
+
         Person person = buildPerson(10L, "12345678000195");
+
         Supplier supplier = buildSupplier(1L, person);
 
         PersonRequestDto personDto = new PersonRequestDto(
@@ -250,68 +277,107 @@ class SupplierServiceTest {
                 true
         );
 
-        when(supplierRepository.findByIdWithPerson(1L)).thenReturn(Optional.of(supplier));
-        doNothing().when(personService).ensureCpfCnpjAvailable("98765432000110", 10L);
-        doCallRealMethod().when(personService).copyDtoToPerson(any(), any());
-        when(supplierRepository.save(any(Supplier.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(supplierRepository.findByIdWithPerson(1L))
+                .thenReturn(Optional.of(supplier));
+
+        doNothing()
+                .when(personService)
+                .updateFromDto(person, personDto);
+
+        when(supplierRepository.save(any(Supplier.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         SupplierResponseDto result = service.update(1L, dto);
 
         assertThat(result).isNotNull();
         assertThat(result.id()).isEqualTo(1L);
-        assertThat(result.name()).isEqualTo("Fornecedor Tech Ltda Atualizado");
-        assertThat(result.nomeFantasia()).isEqualTo("Tech Fornecimentos ME");
-        assertThat(result.cpfCnpj()).isEqualTo("98765432000110");
-        assertThat(result.email()).isEqualTo("novo@techfornecimentos.com");
 
-        verify(supplierRepository).findByIdWithPerson(1L);
-        verify(personService).ensureCpfCnpjAvailable("98765432000110", 10L);
-        verify(personService).copyDtoToPerson(any(), eq(person));
-        verify(supplierRepository).save(supplier);
+        verify(supplierRepository)
+                .findByIdWithPerson(1L);
+
+        verify(personService)
+                .updateFromDto(person, personDto);
+
+        verify(supplierRepository)
+                .save(supplier);
     }
 
     @Test
     @DisplayName("Não deve atualizar quando CPF/CNPJ pertencer a outra pessoa")
     void naoDeveAtualizarQuandoCpfCnpjPertencerAOutraPessoa() {
-        Person personCurrent = buildPerson(10L, "12345678000195");
-        Supplier supplier = buildSupplier(1L, personCurrent);
 
-        SupplierRequestDto dto = buildSupplierRequestDto("98.765.432/0001-10");
+        Person personCurrent =
+                buildPerson(10L, "12345678000195");
 
-        when(supplierRepository.findByIdWithPerson(1L)).thenReturn(Optional.of(supplier));
-        doThrow(new BusinessException("CPF/CNPJ já cadastrado para outra pessoa no sistema."))
-                .when(personService).ensureCpfCnpjAvailable("98765432000110", 10L);
+        Supplier supplier =
+                buildSupplier(1L, personCurrent);
+
+        SupplierRequestDto dto =
+                buildSupplierRequestDto("98.765.432/0001-10");
+
+        when(supplierRepository.findByIdWithPerson(1L))
+                .thenReturn(Optional.of(supplier));
+
+        doThrow(new BusinessException(
+                "CPF/CNPJ já cadastrado para outra pessoa no sistema."
+        ))
+                .when(personService)
+                .updateFromDto(personCurrent, dto.person());
 
         assertThatThrownBy(() -> service.update(1L, dto))
                 .isInstanceOf(BusinessException.class)
-                .hasMessage("CPF/CNPJ já cadastrado para outra pessoa no sistema.");
+                .hasMessage(
+                        "CPF/CNPJ já cadastrado para outra pessoa no sistema."
+                );
 
-        verify(supplierRepository).findByIdWithPerson(1L);
-        verify(personService).ensureCpfCnpjAvailable("98765432000110", 10L);
-        verify(supplierRepository, never()).save(any(Supplier.class));
+        verify(supplierRepository)
+                .findByIdWithPerson(1L);
+
+        verify(personService)
+                .updateFromDto(personCurrent, dto.person());
+
+        verify(supplierRepository, never())
+                .save(any(Supplier.class));
     }
+
 
     @Test
     @DisplayName("Deve permitir atualizar o fornecedor mantendo seu próprio CPF/CNPJ")
     void devePermitirAtualizarMantendoProprioCpfCnpj() {
-        Person person = buildPerson(10L, "12345678000195");
-        Supplier supplier = buildSupplier(1L, person);
-        SupplierRequestDto dto = buildSupplierRequestDto("12.345.678/0001-95");
 
-        when(supplierRepository.findByIdWithPerson(1L)).thenReturn(Optional.of(supplier));
-        doNothing().when(personService).ensureCpfCnpjAvailable("12345678000195", 10L);
-        doCallRealMethod().when(personService).copyDtoToPerson(any(), any());
-        when(supplierRepository.save(any(Supplier.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        Person person =
+                buildPerson(10L, "12345678000195");
 
-        SupplierResponseDto result = service.update(1L, dto);
+        Supplier supplier =
+                buildSupplier(1L, person);
+
+        SupplierRequestDto dto =
+                buildSupplierRequestDto("12.345.678/0001-95");
+
+        when(supplierRepository.findByIdWithPerson(1L))
+                .thenReturn(Optional.of(supplier));
+
+        doNothing()
+                .when(personService)
+                .updateFromDto(person, dto.person());
+
+        when(supplierRepository.save(any(Supplier.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        SupplierResponseDto result =
+                service.update(1L, dto);
 
         assertThat(result).isNotNull();
         assertThat(result.id()).isEqualTo(1L);
-        assertThat(result.cpfCnpj()).isEqualTo("12345678000195");
 
-        verify(supplierRepository).findByIdWithPerson(1L);
-        verify(personService).ensureCpfCnpjAvailable("12345678000195", 10L);
-        verify(supplierRepository).save(supplier);
+        verify(supplierRepository)
+                .findByIdWithPerson(1L);
+
+        verify(personService)
+                .updateFromDto(person, dto.person());
+
+        verify(supplierRepository)
+                .save(supplier);
     }
 
     @Test

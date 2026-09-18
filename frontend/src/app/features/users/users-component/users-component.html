@@ -59,8 +59,15 @@
                 <td data-label="Usuário">{{ user.username }}</td>
                 <td data-label="Email">{{ user.email }}</td>
                 <td data-label="Perfil">
-                  <span class="role-badge" [class.role-admin]="user.role === 'ROLE_ADMIN'">
-                    {{ user.role === 'ROLE_ADMIN' ? 'Administrador' : 'Usuário' }}
+                  <span class="role-badge"
+                        [class.role-admin]="user.role === 'ROLE_ADMIN'"
+                        [class.role-support]="user.role === 'ROLE_SUPPORT'"
+                        [class.role-user]="user.role === 'ROLE_USER'">
+                    @switch (user.role) {
+                      @case ('ROLE_ADMIN') { Administrador }
+                      @case ('ROLE_SUPPORT') { <i class="fas fa-crown"></i> Suporte }
+                      @default { Usuário }
+                    }
                   </span>
                 </td>
                 <td data-label="Ações">
@@ -133,8 +140,9 @@
           }
 
           <label for="role">Perfil</label>
-          <select id="role" formControlName="role">
+          <select formControlName="role" class="form-control">
             <option value="ROLE_USER">Usuário</option>
+            <option value="ROLE_SUPPORT">Suporte</option>
             <option value="ROLE_ADMIN">Administrador</option>
           </select>
 
