@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -114,5 +115,20 @@ public class GlobalExceptionHandler {
                 fieldErrors
         );
         return ResponseEntity.status(status).body(body);
+    }
+
+    // JSON malformado ou corpo da requisição ilegível (400)
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponseDto> handleHttpMessageNotReadable(
+            HttpMessageNotReadableException ex,
+            HttpServletRequest request) {
+
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "Requisição Inválida",
+                "O corpo da requisição está ausente ou possui um formato inválido",
+                request.getRequestURI(),
+                null
+        );
     }
 }
