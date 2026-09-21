@@ -50,10 +50,10 @@
           <tbody>
             @for (client of filteredClients(); track client.id) {
               <tr>
-                <td data-label="Nome/Razão">{{ client.name }}</td>
-                <td data-label="CPF/CNPJ">{{ client.cpfCnpj }}</td>
-                <td data-label="E-mail">{{ client.email }}</td>
-                <td data-label="Telefone">{{ client.phone }}</td>
+                <td data-label="Nome/Razão">{{ client.person.name }}</td>
+                <td data-label="CPF/CNPJ">{{ client.person.cpfCnpj }}</td>
+                <td data-label="E-mail">{{ getEmail(client) }}</td>
+                <td data-label="Telefone">{{ getPhone(client) }}</td>
                 <td data-label="Ações">
                   <div class="action-buttons">
                     <button class="btn-edit" (click)="openEditModal(client)" title="Editar">
@@ -89,10 +89,10 @@
             Identificação
           </button>
           <button class="tab-btn" [class.active]="activeTab() === 'contact'" (click)="activeTab.set('contact')">
-            Contato
+            Contatos
           </button>
           <button class="tab-btn" [class.active]="activeTab() === 'address'" (click)="activeTab.set('address')">
-            Endereço
+            Endereços
           </button>
         </div>
 
@@ -102,7 +102,6 @@
           <div class="tab-panel" [hidden]="activeTab() !== 'identification'">
             <p class="form-section-title">Dados Principais</p>
 
-            <!-- Tipo de Pessoa -->
             <div class="form-row full-width">
               <label>Tipo de Pessoa</label>
               <div class="radio-group">
@@ -117,7 +116,6 @@
               </div>
             </div>
 
-            <!-- Nome / Razão Social -->
             <div class="form-row full-width">
               <label for="name">
                 {{ form.get('tipoPessoa')?.value === 'PJ' ? 'Razão Social' : 'Nome Completo' }}
@@ -128,7 +126,6 @@
               }
             </div>
 
-            <!-- Nome Fantasia (só PJ) -->
             @if (form.get('tipoPessoa')?.value === 'PJ') {
               <div class="form-row full-width">
                 <label for="nomeFantasia">Nome Fantasia</label>
@@ -136,7 +133,6 @@
               </div>
             }
 
-            <!-- CPF / CNPJ -->
             <div class="form-row full-width">
               <label for="cpfCnpj">
                 {{ form.get('tipoPessoa')?.value === 'PJ' ? 'CNPJ' : 'CPF' }}
@@ -160,107 +156,186 @@
               }
             </div>
 
-            <!-- RG / Inscrição Estadual -->
-            <div class="form-row full-width">
-              <label for="rgIe">
-                {{ form.get('tipoPessoa')?.value === 'PJ' ? 'Inscrição Estadual' : 'RG' }}
-              </label>
-              <input id="rgIe" type="text" formControlName="rgIe" placeholder="Opcional" />
-            </div>
+            @if (form.get('tipoPessoa')?.value === 'PJ') {
+              <div class="form-row full-width">
+                <label for="inscricaoEstadual">Inscrição Estadual</label>
+                <input id="inscricaoEstadual" type="text" formControlName="inscricaoEstadual" placeholder="Opcional" />
+              </div>
+            } @else {
+              <div class="form-row full-width">
+                <label for="rg">RG</label>
+                <input id="rg" type="text" formControlName="rg" placeholder="Opcional" />
+              </div>
+            }
           </div>
 
-          <!-- ==================== Aba Contato ==================== -->
+          <!-- ==================== Aba Contatos ==================== -->
           <div class="tab-panel" [hidden]="activeTab() !== 'contact'">
-            <p class="form-section-title">Dados de Contato</p>
-
-            <div class="form-row full-width">
-              <label for="email">E-mail</label>
-              <input id="email" type="email" formControlName="email" placeholder="exemplo@dominio.com" />
-              @if (form.get('email')?.invalid && form.get('email')?.touched) {
-                <small class="field-error">E-mail inválido.</small>
-              }
+            <div class="section-header">
+              <p class="form-section-title">Contatos</p>
+              <button type="button" class="btn-add" (click)="addContact()">
+                <i class="fas fa-plus"></i> Adicionar
+              </button>
             </div>
 
-            <div class="form-row full-width">
-              <label for="phone">Telefone / Celular</label>
-              <input
-                id="phone"
-                type="text"
-                formControlName="phone"
-                placeholder="(00) 00000-0000"
-                maxlength="15"
-                (input)="formatPhone($event)"
-              />
-              @if (form.get('phone')?.invalid && form.get('phone')?.touched) {
-                <small class="field-error">Campo obrigatório.</small>
+            <div formArrayName="contacts" class="items-list">
+              @for (contact of contacts.controls; track $index; let i = $index) {
+                <div [formGroupName]="i" class="item-card">
+                  <div class="item-card-header">
+                    <span class="item-number">#{{ i + 1 }}</span>
+                    <button type="button" class="btn-remove-item" (click)="removeContact(i)" title="Remover contato">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </div>
+
+                  <div class="form-row">
+                    <div>
+                      <label>Tipo</label>
+                      <select formControlName="type" (change)="onContactTypeChange(i)">
+                        <option value="EMAIL">E-mail</option>
+                        <option value="TELEFONE">Telefone</option>
+                        <option value="CELULAR">Celular</option>
+                        <option value="WHATSAPP">WhatsApp</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label>Valor</label>
+                      <input
+                        type="text"
+                        formControlName="value"
+                        [placeholder]="contact.get('type')?.value === 'EMAIL' ? 'exemplo@dominio.com' : '(00) 00000-0000'"
+                        (input)="onContactValueInput($event, i)"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <div>
+                      <label>Descrição</label>
+                      <input type="text" formControlName="description" placeholder="Ex.: Comercial, Pessoal..." />
+                    </div>
+                    <div class="checkbox-cell">
+                      <label class="checkbox-label">
+                        <input type="checkbox" formControlName="principal" />
+                        Contato principal
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              @if (contacts.length === 0) {
+                <div class="empty-items">
+                  <i class="fas fa-address-book"></i>
+                  <p>Nenhum contato cadastrado.</p>
+                </div>
               }
             </div>
           </div>
 
-          <!-- ==================== Aba Endereço ==================== -->
+          <!-- ==================== Aba Endereços ==================== -->
           <div class="tab-panel" [hidden]="activeTab() !== 'address'">
-            <p class="form-section-title">Endereço</p>
-
-            <!-- CEP com botão de busca -->
-            <div class="form-row full-width">
-              <label for="cep">CEP</label>
-              <div class="cep-group">
-                <input
-                  id="cep"
-                  type="text"
-                  formControlName="cep"
-                  placeholder="00000-000"
-                  maxlength="9"
-                  (input)="formatCep($event)"
-                  (blur)="buscarCep()"
-                />
-                <button type="button" class="btn-cep" (click)="buscarCep()" title="Buscar CEP">
-                  @if (isSearchingCep()) {
-                    <i class="fas fa-spinner fa-spin"></i>
-                  } @else {
-                    <i class="fas fa-search"></i>
-                  }
-                </button>
-              </div>
+            <div class="section-header">
+              <p class="form-section-title">Endereços</p>
+              <button type="button" class="btn-add" (click)="addAddress()">
+                <i class="fas fa-plus"></i> Adicionar
+              </button>
             </div>
 
-            <div class="form-row full-width">
-              <label for="logradouro">Logradouro</label>
-              <input id="logradouro" type="text" formControlName="logradouro" />
-            </div>
+            <div formArrayName="addresses" class="items-list">
+              @for (address of addresses.controls; track $index; let i = $index) {
+                <div [formGroupName]="i" class="item-card">
+                  <div class="item-card-header">
+                    <span class="item-number">#{{ i + 1 }}</span>
+                    <button type="button" class="btn-remove-item" (click)="removeAddress(i)" title="Remover endereço">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </div>
 
-            <div class="form-row">
-              <div>
-                <label for="numero">Número</label>
-                <input id="numero" type="text" formControlName="numero" />
-                @if (form.get('numero')?.invalid && form.get('numero')?.touched) {
-                  <small class="field-error">Obrigatório.</small>
-                }
-              </div>
-              <div>
-                <label for="complemento">Complemento</label>
-                <input id="complemento" type="text" formControlName="complemento" placeholder="Opcional" />
-              </div>
-            </div>
+                  <div class="form-row full-width">
+                    <div>
+                      <label>Tipo de Endereço</label>
+                      <select formControlName="type">
+                        <option value="RESIDENCIAL">Residencial</option>
+                        <option value="COMERCIAL">Comercial</option>
+                        <option value="COBRANCA">Cobrança</option>
+                        <option value="ENTREGA">Entrega</option>
+                        <option value="OUTRO">Outro</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label>CEP</label>
+                      <div class="cep-group">
+                        <input
+                          type="text"
+                          formControlName="cep"
+                          placeholder="00000-000"
+                          maxlength="9"
+                          (input)="formatCep($event, i)"
+                          (blur)="buscarCep(i)"
+                        />
+                        <button type="button" class="btn-cep" (click)="buscarCep(i)" title="Buscar CEP">
+                          @if (searchingCepIndex() === i) {
+                            <i class="fas fa-spinner fa-spin"></i>
+                          } @else {
+                            <i class="fas fa-search"></i>
+                          }
+                        </button>
+                      </div>
+                    </div>
+                  </div>
 
-            <div class="form-row three">
-              <div>
-                <label for="bairro">Bairro</label>
-                <input id="bairro" type="text" formControlName="bairro" />
-              </div>
-              <div>
-                <label for="cidade">Cidade</label>
-                <input id="cidade" type="text" formControlName="cidade" />
-              </div>
-              <div>
-                <label for="uf">UF</label>
-                <select id="uf" formControlName="uf">
-                  <option value="">Selecione</option>
-                  @for (sigla of ufList; track sigla) {
-                    <option [value]="sigla">{{ sigla }}</option>
-                  }
-                </select>
-              </div>
+                  <div class="form-row full-width">
+                    <label>Logradouro</label>
+                    <input type="text" formControlName="logradouro" />
+                  </div>
+
+                  <div class="form-row">
+                    <div>
+                      <label>Número</label>
+                      <input type="text" formControlName="numero" />
+                    </div>
+                    <div>
+                      <label>Complemento</label>
+                      <input type="text" formControlName="complemento" placeholder="Opcional" />
+                    </div>
+                  </div>
+
+                  <div class="form-row three">
+                    <div>
+                      <label>Bairro</label>
+                      <input type="text" formControlName="bairro" />
+                    </div>
+                    <div>
+                      <label>Cidade</label>
+                      <input type="text" formControlName="cidade" />
+                    </div>
+                    <div>
+                      <label>UF</label>
+                      <select formControlName="uf">
+                        <option value="">Selecione</option>
+                        @for (sigla of ufList; track sigla) {
+                          <option [value]="sigla">{{ sigla }}</option>
+                        }
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="form-row full-width">
+                    <label class="checkbox-label">
+                      <input type="checkbox" formControlName="principal" />
+                      Endereço principal
+                    </label>
+                  </div>
+                </div>
+              }
+
+              @if (addresses.length === 0) {
+                <div class="empty-items">
+                  <i class="fas fa-map-marker-alt"></i>
+                  <p>Nenhum endereço cadastrado.</p>
+                </div>
+              }
             </div>
           </div>
 
@@ -273,6 +348,33 @@
             }
           </button>
         </form>
+      </div>
+    </div>
+  }
+
+  <!-- Modal de exclusão -->
+  @if (showDeleteModal()) {
+    <div class="modal-overlay" (click)="closeDeleteModal()">
+      <div class="modal-content delete-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Confirmar Exclusão</h3>
+          <button class="close-btn" (click)="closeDeleteModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <div class="delete-message">
+          <p>
+            Deseja realmente excluir o cliente
+            <strong>{{ deletingClient()?.person?.name }}</strong>?
+          </p>
+          <p class="warning-text">Esta ação não poderá ser desfeita.</p>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-cancel" (click)="closeDeleteModal()">Cancelar</button>
+          <button class="btn-confirm-delete" (click)="deleteClient()">Excluir</button>
+        </div>
       </div>
     </div>
   }

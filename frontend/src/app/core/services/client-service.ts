@@ -2,8 +2,8 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable, Service } from '@angular/core';
 import { Observable } from 'rxjs';
 import { Client } from '../../features/models/client';
-import { ViaCepResponse } from '../../features/models/via-cep';
 import { SpringPage } from '../../features/models/spring-page';
+
 
 @Injectable({ providedIn: 'root' })
 export class ClientService {
@@ -11,7 +11,10 @@ export class ClientService {
   private readonly apiUrl = '/api/clients';
 
   findAll(page = 0, size = 10): Observable<SpringPage<Client>> {
-    const params = new HttpParams().set('page', page).set('size', size);
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
+
     return this.http.get<SpringPage<Client>>(this.apiUrl, { params });
   }
 

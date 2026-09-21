@@ -7,6 +7,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,7 +15,6 @@ import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -58,8 +58,22 @@ class SupplierServiceTest {
     @Mock
     private PersonService personService;
 
-    @InjectMocks
+    private PersonContactService personContactService;
+    private PersonAddressService personAddressService;
+
     private SupplierService service;
+    @BeforeEach
+    void setUp() {
+        personContactService = new PersonContactService();
+        personAddressService = new PersonAddressService();
+
+        service = new SupplierService(
+            supplierRepository,
+            personService,
+            personContactService,
+            personAddressService
+        );
+    }
 
     private SupplierRequestDto buildSupplierRequestDto(String cpfCnpj) {
 
