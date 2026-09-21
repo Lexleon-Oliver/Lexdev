@@ -1704,7 +1704,7 @@ class ClientServiceTest {
                 BusinessException.class
             )
             .hasMessage(
-                "Tipo de endereço inválido: INVALiDO"
+                "Tipo de endereço inválido: INVALIDO"
             );
 
         verify(
