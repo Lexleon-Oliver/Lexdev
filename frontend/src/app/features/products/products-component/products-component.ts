@@ -160,7 +160,6 @@ export class ProductsComponent implements OnInit {
         this.isLoading.set(false);
       },
       error: () => {
-        this.errorMessage.set('Erro ao carregar produtos.');
         this.isLoading.set(false);
       },
     });
@@ -309,7 +308,6 @@ export class ProductsComponent implements OnInit {
           this.closeFormModal();
         },
         error: () => {
-          this.notification.error('Erro ao criar produto.');
           this.isSaving.set(false);
         },
       });

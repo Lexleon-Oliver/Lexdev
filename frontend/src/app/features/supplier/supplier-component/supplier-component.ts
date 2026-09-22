@@ -156,7 +156,6 @@ export class SupplierComponent implements OnInit {
         this.isLoading.set(false);
       },
       error: () => {
-        this.errorMessage.set('Erro ao carregar fornecedores.');
         this.isLoading.set(false);
       }
     });
@@ -261,7 +260,6 @@ export class SupplierComponent implements OnInit {
           this.closeFormModal();
         },
         error: () => {
-          this.notification.error('Erro ao criar fornecedor.');
           this.isSaving.set(false);
         }
       });

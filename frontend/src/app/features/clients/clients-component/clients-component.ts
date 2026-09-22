@@ -116,7 +116,6 @@ export class ClientsComponent implements OnInit {
         this.isLoading.set(false);
       },
       error: () => {
-        this.errorMessage.set('Erro ao carregar clientes.');
         this.isLoading.set(false);
       },
     });

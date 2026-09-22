@@ -72,7 +72,6 @@ export class UsersComponent implements OnInit {
         this.isLoading.set(false);
       },
       error: () => {
-        this.errorMessage.set('Erro ao carregar usuários.');
         this.isLoading.set(false);
       }
     });
@@ -157,7 +156,6 @@ export class UsersComponent implements OnInit {
           this.closeFormModal();
         },
         error: () => {
-          this.notification.error('Erro ao criar usuário.');
           this.isSaving.set(false);
         }
       });
