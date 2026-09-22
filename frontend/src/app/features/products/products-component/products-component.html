@@ -1,0 +1,594 @@
+<!-- ============================================================
+     produtos-page.component.html
+     ============================================================ -->
+<div class="products-page">
+  <!-- Cabeçalho -->
+  <div class="page-header">
+    <h2>Produtos</h2>
+    <div class="header-actions">
+      <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input
+          type="text"
+          placeholder="Buscar produtos..."
+          [value]="searchTerm()"
+          (input)="searchTerm.set($any($event.target).value)"
+        />
+      </div>
+      <button class="btn-primary" (click)="openCreateModal()">
+        <i class="fas fa-plus"></i> Novo Produto
+      </button>
+    </div>
+  </div>
+
+  <!-- Erro -->
+  @if (errorMessage()) {
+    <div class="alert-error">
+      <i class="fas fa-exclamation-circle"></i>
+      {{ errorMessage() }}
+    </div>
+  }
+
+  <!-- Loading / Tabela -->
+  @if (isLoading()) {
+    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>
+  } @else {
+    @if (filteredProdutos().length === 0) {
+      <div class="empty-state">
+        <i class="fas fa-box-open"></i>
+        <p>Nenhum produto encontrado.</p>
+      </div>
+    } @else {
+      <div class="table-wrapper">
+        <table class="products-table">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Nome</th>
+              <th>Modelo</th>
+              <th>Unidade</th>
+              <th>Preço de Venda</th>
+              <th>Estoque Mín.</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (produto of filteredProdutos(); track produto.id) {
+              <tr>
+                <td data-label="Código">{{ produto.code || '—' }}</td>
+                <td data-label="Nome">{{ produto.name }}</td>
+                <td data-label="Modelo">{{ produto.model || '—' }}</td>
+                <td data-label="Unidade">{{ produto.unitOfMeasure || '—' }}</td>
+                <td data-label="Preço de Venda">{{ formatMoney(produto.salePrice) }}</td>
+                <td data-label="Estoque Mín.">
+                  {{ produto.minimumStock ?? '—' }}
+                  @if (produto.unitOfMeasure) {
+                    <span class="unit-tag">{{ produto.unitOfMeasure }}</span>
+                  }
+                </td>
+                <td data-label="Status">
+                  <span
+                    class="status-badge"
+                    [class.active]="produto.status === 'ATIVO'"
+                    [class.inactive]="produto.status === 'INATIVO'"
+                    [class.discontinued]="produto.status === 'DESCONTINUADO'"
+                  >
+                    {{ statusLabel(produto.status) }}
+                  </span>
+                </td>
+                <td data-label="Ações">
+                  <div class="action-buttons">
+                    <button class="btn-edit" (click)="openEditModal(produto)" title="Editar">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-delete" (click)="confirmDelete(produto)" title="Excluir">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+
+  <!-- ===================== Modal de formulário ===================== -->
+  @if (showFormModal()) {
+    <div class="modal-overlay" (click)="closeFormModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>{{ editingProduto() ? 'Editar Produto' : 'Novo Produto' }}</h3>
+          <button class="close-btn" (click)="closeFormModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <!-- Abas -->
+        <div class="tabs">
+          <button class="tab-btn" [class.active]="activeTab() === 'geral'" (click)="activeTab.set('geral')">
+            <i class="fas fa-info-circle"></i> Geral
+          </button>
+          <button class="tab-btn" [class.active]="activeTab() === 'comercial'" (click)="activeTab.set('comercial')">
+            <i class="fas fa-tag"></i> Comercial
+          </button>
+          <button class="tab-btn" [class.active]="activeTab() === 'estoque'" (click)="activeTab.set('estoque')">
+            <i class="fas fa-warehouse"></i> Estoque
+          </button>
+          <button class="tab-btn" [class.active]="activeTab() === 'fiscal'" (click)="activeTab.set('fiscal')">
+            <i class="fas fa-file-invoice"></i> Fiscal
+          </button>
+          <button class="tab-btn" [class.active]="activeTab() === 'dimensoes'" (click)="activeTab.set('dimensoes')">
+            <i class="fas fa-ruler-combined"></i> Dimensões
+          </button>
+          <button class="tab-btn" [class.active]="activeTab() === 'fornecedores'" (click)="activeTab.set('fornecedores')">
+            <i class="fas fa-truck"></i> Fornecedores
+            @if (suppliers.length > 0) {
+              <span class="tab-badge">{{ suppliers.length }}</span>
+            }
+          </button>
+          <button class="tab-btn" [class.active]="activeTab() === 'imagens'" (click)="activeTab.set('imagens')">
+            <i class="fas fa-image"></i> Imagens
+            @if (images().length > 0) {
+              <span class="tab-badge">{{ images().length }}</span>
+            }
+          </button>
+        </div>
+
+        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="product-form">
+
+          <!-- ==================== Aba Geral ==================== -->
+          <div class="tab-panel" [hidden]="activeTab() !== 'geral'">
+            <p class="form-section-title">Informações Gerais</p>
+
+            <div class="form-row">
+              <div>
+                <label for="code">Código</label>
+                <input id="code" type="text" formControlName="code" placeholder="Ex.: PRD-0001" />
+                @if (form.get('code')?.invalid && form.get('code')?.touched) {
+                  <small class="field-error">Campo obrigatório.</small>
+                }
+              </div>
+              <div>
+                <label for="status">Status</label>
+                <select id="status" formControlName="status">
+                  @for (st of statusList; track st.value) {
+                    <option [value]="st.value">{{ st.label }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row full-width">
+              <label for="name">Nome</label>
+              <input id="name" type="text" formControlName="name" placeholder="Nome do produto" />
+              @if (form.get('name')?.invalid && form.get('name')?.touched) {
+                <small class="field-error">Campo obrigatório.</small>
+              }
+            </div>
+
+            <div class="form-row full-width">
+              <label for="description">Descrição</label>
+              <textarea
+                id="description"
+                formControlName="description"
+                rows="3"
+                placeholder="Descrição detalhada do produto..."
+              ></textarea>
+            </div>
+
+            <div class="form-row">
+              <div>
+                <label for="model">Modelo</label>
+                <input id="model" type="text" formControlName="model" placeholder="Ex.: XZ-200" />
+              </div>
+              <div>
+                <label for="manufacturerCode">Código do Fabricante</label>
+                <input
+                  id="manufacturerCode"
+                  type="text"
+                  formControlName="manufacturerCode"
+                  placeholder="Part number"
+                />
+              </div>
+            </div>
+
+            <div class="form-row full-width">
+              <label for="gtin">GTIN (EAN / ISBN)</label>
+              <input
+                id="gtin"
+                type="text"
+                formControlName="gtin"
+                placeholder="0000000000000"
+                maxlength="14"
+                inputmode="numeric"
+                (input)="formatGtin($event)"
+              />
+            </div>
+          </div>
+
+          <!-- ==================== Aba Comercial ==================== -->
+          <div class="tab-panel" [hidden]="activeTab() !== 'comercial'">
+            <p class="form-section-title">Precificação</p>
+
+            <div class="form-row">
+              <div>
+                <label for="salePrice">Preço de Venda</label>
+                <input
+                  id="salePrice"
+                  type="text"
+                  inputmode="numeric"
+                  formControlName="salePrice"
+                  placeholder="R$ 0,00"
+                  (input)="formatCurrency($event, 'salePrice')"
+                />
+              </div>
+              <div>
+                <label for="minimumSalePrice">Preço Mínimo de Venda</label>
+                <input
+                  id="minimumSalePrice"
+                  type="text"
+                  inputmode="numeric"
+                  formControlName="minimumSalePrice"
+                  placeholder="R$ 0,00"
+                  (input)="formatCurrency($event, 'minimumSalePrice')"
+                />
+              </div>
+            </div>
+
+            <div class="info-box">
+              <i class="fas fa-circle-info"></i>
+              <span>
+                O <strong>fornecedor principal</strong> e a <strong>quantidade mínima de compra</strong>
+                são definidos por fornecedor na aba <strong>Fornecedores</strong>.
+              </span>
+            </div>
+          </div>
+
+          <!-- ==================== Aba Estoque ==================== -->
+          <div class="tab-panel" [hidden]="activeTab() !== 'estoque'">
+            <p class="form-section-title">Controle de Estoque</p>
+
+            <div class="form-row">
+              <div>
+                <label for="unitOfMeasure">Unidade de Medida</label>
+                <select id="unitOfMeasure" formControlName="unitOfMeasure">
+                  @for (un of unitOfMeasureList; track un) {
+                    <option [value]="un">{{ un }}</option>
+                  }
+                </select>
+              </div>
+              <div>
+                <label>Controla Estoque</label>
+                <div class="toggle-wrapper">
+                  <button
+                    type="button"
+                    class="toggle"
+                    [class.active]="form.get('controlsStock')?.value"
+                    (click)="toggleControlsStock()"
+                    [attr.aria-pressed]="form.get('controlsStock')?.value"
+                  >
+                    <span class="toggle-slider"></span>
+                  </button>
+                  <span class="toggle-label">
+                    {{ form.get('controlsStock')?.value ? 'Sim' : 'Não' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row three">
+              <div>
+                <label for="minimumStock">Estoque Mínimo</label>
+                <input
+                  id="minimumStock"
+                  type="number"
+                  min="0"
+                  step="1"
+                  formControlName="minimumStock"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label for="maximumStock">Estoque Máximo</label>
+                <input
+                  id="maximumStock"
+                  type="number"
+                  min="0"
+                  step="1"
+                  formControlName="maximumStock"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label for="reorderPoint">Ponto de Reposição</label>
+                <input
+                  id="reorderPoint"
+                  type="number"
+                  min="0"
+                  step="1"
+                  formControlName="reorderPoint"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- ==================== Aba Fiscal ==================== -->
+          <div class="tab-panel" [hidden]="activeTab() !== 'fiscal'">
+            <p class="form-section-title">Tributação</p>
+
+            <div class="form-row">
+              <div>
+                <label for="ncm">NCM</label>
+                <input
+                  id="ncm"
+                  type="text"
+                  formControlName="ncm"
+                  placeholder="0000.00.00"
+                  maxlength="10"
+                  inputmode="numeric"
+                  (input)="formatNcm($event)"
+                />
+              </div>
+              <div>
+                <label for="cest">CEST</label>
+                <input
+                  id="cest"
+                  type="text"
+                  formControlName="cest"
+                  placeholder="00.000.00"
+                  maxlength="9"
+                  inputmode="numeric"
+                  (input)="formatCest($event)"
+                />
+              </div>
+            </div>
+
+            <div class="form-row full-width">
+              <label for="origin">Origem</label>
+              <select id="origin" formControlName="origin">
+                <option value="">Selecione</option>
+                @for (o of originList; track o.value) {
+                  <option [value]="o.value">{{ o.label }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <!-- ==================== Aba Dimensões ==================== -->
+          <div class="tab-panel" [hidden]="activeTab() !== 'dimensoes'">
+            <p class="form-section-title">Peso</p>
+
+            <div class="form-row">
+              <div>
+                <label for="grossWeight">Peso Bruto (kg)</label>
+                <input
+                  id="grossWeight"
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  formControlName="grossWeight"
+                  placeholder="0,000"
+                />
+              </div>
+              <div>
+                <label for="netWeight">Peso Líquido (kg)</label>
+                <input
+                  id="netWeight"
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  formControlName="netWeight"
+                  placeholder="0,000"
+                />
+              </div>
+            </div>
+
+            <p class="form-section-title" style="margin-top: 1.5rem">Medidas (cm)</p>
+
+            <div class="form-row three">
+              <div>
+                <label for="height">Altura</label>
+                <input id="height" type="number" min="0" step="0.01" formControlName="height" placeholder="0,00" />
+              </div>
+              <div>
+                <label for="width">Largura</label>
+                <input id="width" type="number" min="0" step="0.01" formControlName="width" placeholder="0,00" />
+              </div>
+              <div>
+                <label for="length">Comprimento</label>
+                <input id="length" type="number" min="0" step="0.01" formControlName="length" placeholder="0,00" />
+              </div>
+            </div>
+
+            <div class="info-box">
+              <i class="fas fa-cube"></i>
+              <span>Volume aproximado: <strong>{{ volumeCalculado() }}</strong></span>
+            </div>
+          </div>
+
+          <!-- ==================== Aba Fornecedores ==================== -->
+          <div class="tab-panel" [hidden]="activeTab() !== 'fornecedores'">
+            <div class="contacts-toolbar">
+              <span class="hint">
+                Fornecedores vinculados a este produto. Marque apenas um como principal.
+              </span>
+              <button type="button" class="btn-add-contact" (click)="addSupplier()">
+                <i class="fas fa-plus"></i> Adicionar Fornecedor
+              </button>
+            </div>
+
+            <div formArrayName="suppliers">
+              @if (suppliers.length === 0) {
+                <div class="contacts-empty">
+                  <i class="fas fa-truck"></i>
+                  <p>Nenhum fornecedor vinculado.</p>
+                </div>
+              }
+
+              @for (item of suppliers.controls; track item; let i = $index) {
+                <div class="contact-card" [formGroupName]="i">
+                  <div class="contact-card-header">
+                    <span><i class="fas fa-truck"></i> Fornecedor {{ i + 1 }}</span>
+                    <button
+                      type="button"
+                      class="btn-remove-contact"
+                      (click)="removeSupplier(i)"
+                      title="Remover fornecedor"
+                    >
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </div>
+
+                  <div class="form-row">
+                    <div>
+                      <label>Fornecedor</label>
+                      <select formControlName="supplierId">
+                        <option [ngValue]="null">Selecione</option>
+                        @for (f of supplierOptions(); track f.id) {
+                          <option [ngValue]="f.id">{{ f.name }}</option>
+                        }
+                      </select>
+                      @if (item.get('supplierId')?.invalid && item.get('supplierId')?.touched) {
+                        <small class="field-error">Campo obrigatório.</small>
+                      }
+                    </div>
+                    <div>
+                      <label>Código no Fornecedor</label>
+                      <input type="text" formControlName="supplierCode" placeholder="Ex.: REF-8891" />
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <div>
+                      <label>Preço de Compra</label>
+                      <input
+                        type="text"
+                        inputmode="numeric"
+                        formControlName="purchasePrice"
+                        placeholder="R$ 0,00"
+                        (input)="formatCurrencyControl(item.get('purchasePrice'), $event)"
+                      />
+                    </div>
+                    <div>
+                      <label>Prazo de Entrega (dias)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        formControlName="leadTimeDays"
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <div>
+                      <label>Quantidade Mínima de Compra</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        formControlName="minimumOrderQuantity"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div class="checkbox-cell">
+                      <label class="checkbox-inline">
+                        <input
+                          type="radio"
+                          name="preferredSupplierRadio"
+                          [checked]="item.get('preferred')?.value"
+                          (change)="setPreferredSupplier(i)"
+                        />
+                        Fornecedor Principal
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- ==================== Aba Imagens ==================== -->
+          <div class="tab-panel" [hidden]="activeTab() !== 'imagens'">
+            <div class="contacts-toolbar">
+              <span class="hint">
+                A imagem marcada com <i class="fas fa-star" style="color:#23a2f6"></i> é a principal.
+              </span>
+            </div>
+
+            <div class="gallery-grid">
+              @for (img of images(); track $index) {
+                <div class="image-preview" [class.is-main]="img.mainImage">
+                  <img [src]="img.storagePath" [alt]="img.fileName" />
+                  <button
+                    type="button"
+                    class="btn-main-image"
+                    [class.active]="img.mainImage"
+                    (click)="setMainImage($index)"
+                    title="Definir como principal"
+                  >
+                    <i class="fas fa-star"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-remove-image"
+                    (click)="removeImage($index)"
+                    title="Remover"
+                  >
+                    <i class="fas fa-times"></i>
+                  </button>
+                  <span class="image-name" [title]="img.fileName">{{ img.fileName }}</span>
+                </div>
+              }
+
+              <label class="image-dropzone">
+                <i class="fas fa-plus"></i>
+                <span>Adicionar Imagem</span>
+                <input type="file" accept="image/*" multiple hidden (change)="onImagesSelected($event)" />
+              </label>
+            </div>
+          </div>
+
+          <!-- Botão salvar -->
+          <button type="submit" class="btn-submit" [disabled]="form.invalid || isSaving()">
+            @if (isSaving()) {
+              <i class="fas fa-spinner fa-spin"></i> Salvando...
+            } @else {
+              Salvar
+            }
+          </button>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- ===================== Modal de exclusão ===================== -->
+  @if (showDeleteModal()) {
+    <div class="modal-overlay" (click)="closeDeleteModal()">
+      <div class="modal-content delete-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Confirmar Exclusão</h3>
+          <button class="close-btn" (click)="closeDeleteModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="delete-message">
+          <p>
+            Tem certeza que deseja excluir o produto
+            <strong>{{ deletingProduto()?.name }}</strong>?
+          </p>
+          <p class="warning-text">Esta ação não pode ser desfeita.</p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-cancel" (click)="closeDeleteModal()">Cancelar</button>
+          <button class="btn-confirm-delete" (click)="deleteProduto()">Excluir</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

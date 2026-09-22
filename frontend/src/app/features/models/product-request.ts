@@ -1,10 +1,8 @@
-import { ProductImage } from "./product-image";
+import { ProductImageRequest } from "./product-image-request";
 import { ProductStatus } from "./product-status";
-import { ProductSupplier } from "./product-supplier";
+import { ProductSupplierRequest } from "./product-supplier-request";
 
-
-export interface Product {
-  id?: number;
+export interface ProductRequest {
   code: string;
   name: string;
   description?: string | null;
@@ -27,7 +25,6 @@ export interface Product {
   height?: number | null;
   width?: number | null;
   length?: number | null;
-  suppliers: ProductSupplier[];
-  images: ProductImage[];
-  active: boolean;
+  suppliers: ProductSupplierRequest[];
+  images: ProductImageRequest[];
 }

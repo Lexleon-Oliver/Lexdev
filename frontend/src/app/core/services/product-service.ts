@@ -3,6 +3,7 @@ import { Product } from '../../features/models/product';
 import { Observable } from 'rxjs';
 import { SpringPage } from '../../features/models/spring-page';
 import { HttpClient, HttpParams } from '@angular/common/http';
+import { ProductRequest } from '../../features/models/product-request';
 
 @Service()
 export class ProductService {
@@ -18,11 +19,11 @@ export class ProductService {
     return this.http.get<Product>(`${this.apiUrl}/${id}`);
   }
 
-  create(product: Partial<Product>): Observable<Product> {
+  create(product: Partial<ProductRequest>): Observable<Product> {
     return this.http.post<Product>(this.apiUrl, product);
   }
 
-  update(id: number, product: Partial<Product>): Observable<Product> {
+  update(id: number, product: Partial<ProductRequest>): Observable<Product> {
     return this.http.put<Product>(`${this.apiUrl}/${id}`, product);
   }
 

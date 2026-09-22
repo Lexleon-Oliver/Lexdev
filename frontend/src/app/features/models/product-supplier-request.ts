@@ -1,6 +1,5 @@
-export interface ProductSupplier {
-  id?: number;
-  supplierId: number | null;
+export interface ProductSupplierRequest {
+  supplierId: number;
   supplierCode?: string | null;
   purchasePrice?: number | null;
   leadTimeDays?: number | null;
