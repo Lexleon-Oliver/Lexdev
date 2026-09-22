@@ -63,10 +63,22 @@ public class SupplierService {
             dto.person().cpfCnpj()
         );
 
+
         if (supplierRepository.existsByPersonCpfCnpj(cpfCnpj)) {
+
             throw new BusinessException(
                 "Esta pessoa/empresa já está cadastrada como fornecedor ativo."
             );
+
+        }
+
+        if (supplierRepository.findAnyByPersonCpfCnpj(cpfCnpj).isPresent()) {
+
+            throw new BusinessException(
+                "Já existe um cadastro inativado para este CPF/CNPJ. " +
+                "Solicite a reativação ao Suporte."
+            );
+
         }
 
         Person person = personService.getOrCreateForRegistration(
