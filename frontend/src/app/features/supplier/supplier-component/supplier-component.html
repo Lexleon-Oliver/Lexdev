@@ -54,10 +54,10 @@
           <tbody>
             @for (supplier of filteredSuppliers(); track supplier.id) {
               <tr>
-                <td data-label="Nome/Razão">{{ supplier.name }}</td>
-                <td data-label="CPF/CNPJ">{{ supplier.cpfCnpj }}</td>
-                <td data-label="E-mail">{{ supplier.email }}</td>
-                <td data-label="Telefone">{{ supplier.phone }}</td>
+                <td data-label="Nome/Razão">{{ supplier.person?.name }}</td>
+                <td data-label="CPF/CNPJ">{{ supplier.person?.cpfCnpj }}</td>
+                <td data-label="E-mail">{{ getPrimaryContactValue(supplier, 'EMAIL') }}</td>
+                <td data-label="Telefone">{{ getPrimaryContactValue(supplier, 'TELEFONE') }}</td>
                 <td data-label="Categoria">{{ supplier.categoria || '—' }}</td>
                 <td data-label="Ações">
                   <div class="action-buttons">
@@ -440,7 +440,7 @@
                   <div class="form-row full-width">
                     <div>
                       <label>Departamento</label>
-                      <input type="text" formControlName="departamento" placeholder="Ex.: Comercial, Financeiro" />
+                      <input type="text" formControlName="setor" placeholder="Ex.: Comercial, Financeiro" />
                     </div>
                   </div>
                 </div>
@@ -474,7 +474,7 @@
         <div class="delete-message">
           <p>
             Tem certeza que deseja excluir o fornecedor
-            <strong>{{ deletingSupplier()?.name }}</strong>?
+            <strong>{{ deletingSupplier()?.person?.name }}</strong>?
           </p>
           <p class="warning-text">Esta ação não pode ser desfeita.</p>
         </div>

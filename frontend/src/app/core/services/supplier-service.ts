@@ -1,34 +1,45 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { inject, Injectable, Service } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { SpringPage } from '../../features/models/spring-page';
-import { Supplier } from '../../features/models/supplier';
+import { SupplierResponseDto } from '../../features/models/supplier-response-dto';
+import { SupplierRequestDto } from '../../features/models/supplier-request-dto';
+import { ViaCepResponse } from '../../features/models/via-cep';
 
-@Injectable({
-  providedIn: 'root'
-})
+
+@Injectable({ providedIn: 'root' })
 export class SupplierService {
-  private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/suppliers';
+  private readonly viaCepUrl = 'https://viacep.com.br/ws';
 
-  findAll(page = 0, size = 10): Observable<SpringPage<Supplier>> {
-    const params = new HttpParams().set('page', page).set('size', size);
-    return this.http.get<SpringPage<Supplier>>(this.apiUrl, { params });
+  constructor(private http: HttpClient) {}
+
+  findAll(page = 0, size = 10, sort?: string): Observable<SpringPage<SupplierResponseDto>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
+    if (sort) params = params.set('sort', sort);
+    return this.http.get<SpringPage<SupplierResponseDto>>(this.apiUrl, { params });
   }
 
-  findById(id: number): Observable<Supplier> {
-    return this.http.get<Supplier>(`${this.apiUrl}/${id}`);
+  findById(id: number): Observable<SupplierResponseDto> {
+    return this.http.get<SupplierResponseDto>(`${this.apiUrl}/${id}`);
   }
 
-  create(supplier: Partial<Supplier>): Observable<Supplier> {
-    return this.http.post<Supplier>(this.apiUrl, supplier);
+  create(dto: SupplierRequestDto): Observable<SupplierResponseDto> {
+    return this.http.post<SupplierResponseDto>(this.apiUrl, dto);
   }
 
-  update(id: number, supplier: Partial<Supplier>): Observable<Supplier> {
-    return this.http.put<Supplier>(`${this.apiUrl}/${id}`, supplier);
+  update(id: number, dto: SupplierRequestDto): Observable<SupplierResponseDto> {
+    return this.http.put<SupplierResponseDto>(`${this.apiUrl}/${id}`, dto);
   }
 
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  }
+
+  getAddressByCep(cep: string): Observable<ViaCepResponse> {
+    const clean = cep.replace(/\D/g, '');
+    return this.http.get<ViaCepResponse>(`${this.viaCepUrl}/${clean}/json`);
   }
 }

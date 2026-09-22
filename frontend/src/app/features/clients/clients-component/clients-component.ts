@@ -1,5 +1,4 @@
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NotificationService } from '../../../core/services/notification-service';
@@ -7,9 +6,10 @@ import { cpfCnpjValidator } from '../../../core/validators/cpf-cnpj.validator';
 import { Client } from '../../models/client';
 import { ClientService } from '../../../core/services/client-service';
 import { CepService } from '../../../core/services/cep-service';
-import { PersonContact } from '../../models/person-contact';
-import { PersonAddress } from '../../models/person-address';
-import { ContactType } from '../../models/contact-type';
+import { PersonContactResponseDto } from '../../models/person-contact-response-dto';
+import { PersonAddressResponseDto } from '../../models/person-address-response-dto';
+import { TipoContato } from '../../models/tipo-contato';
+
 
 @Component({
   imports: [CommonModule, ReactiveFormsModule],
@@ -140,7 +140,7 @@ export class ClientsComponent implements OnInit {
 
   /* ==================== FormArray factories ==================== */
 
-  private createContactGroup(contact?: PersonContact): FormGroup {
+  private createContactGroup(contact?: PersonContactResponseDto): FormGroup {
     return this.fb.group({
       id: [contact?.id ?? null],
       type: [contact?.type ?? 'EMAIL', Validators.required],
@@ -150,7 +150,7 @@ export class ClientsComponent implements OnInit {
     });
   }
 
-  private createAddressGroup(address?: PersonAddress): FormGroup {
+  private createAddressGroup(address?: PersonAddressResponseDto): FormGroup {
     return this.fb.group({
       id: [address?.id ?? null],
        type: [address?.type ?? 'RESIDENCIAL', Validators.required],
@@ -165,7 +165,7 @@ export class ClientsComponent implements OnInit {
     });
   }
 
-  addContact(contact?: PersonContact): void {
+  addContact(contact?: PersonContactResponseDto): void {
     this.contacts.push(this.createContactGroup(contact));
   }
 
@@ -173,7 +173,7 @@ export class ClientsComponent implements OnInit {
     this.contacts.removeAt(index);
   }
 
-  addAddress(address?: PersonAddress): void {
+  addAddress(address?: PersonAddressResponseDto): void {
     this.addresses.push(this.createAddressGroup(address));
   }
 
@@ -251,14 +251,14 @@ export class ClientsComponent implements OnInit {
             inscricaoEstadual: v.inscricaoEstadual,
           }
         : null,
-      contacts: (v.contacts as PersonContact[]).map((c) => ({
+      contacts: (v.contacts as PersonContactResponseDto[]).map((c) => ({
         id: c.id ?? undefined,
         type: c.type,
         value: c.value,
         description: c.description,
         principal: c.principal,
       })),
-      addresses: (v.addresses as PersonAddress[]).map((a) => ({
+      addresses: (v.addresses as PersonAddressResponseDto[]).map((a) => ({
         id: a.id ?? undefined,
         type: a.type,
         cep: a.cep,
@@ -353,7 +353,7 @@ export class ClientsComponent implements OnInit {
 
   onContactValueInput(event: Event, index: number): void {
     const group = this.contacts.at(index);
-    const type = group.get('type')?.value as ContactType;
+    const type = group.get('type')?.value as TipoContato;
     const input = event.target as HTMLInputElement;
     let value = input.value;
 

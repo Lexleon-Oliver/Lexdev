@@ -1,5 +1,6 @@
-import { PersonAddress } from "./person-address";
-import { PersonContact } from "./person-contact";
+import { PersonAddressResponseDto } from "./person-address-response-dto";
+import { PersonContactResponseDto } from "./person-contact-response-dto";
+
 
 // Interface do cliente (pode ser movida para um arquivo models/client.model.ts)
 export interface Client {
@@ -20,6 +21,6 @@ export interface Client {
     nomeFantasia?: string;
     inscricaoEstadual?: string;
   } | null;
-  contacts: PersonContact[];
-  addresses: PersonAddress[];
+  contacts: PersonContactResponseDto[];
+  addresses: PersonAddressResponseDto[];
 }

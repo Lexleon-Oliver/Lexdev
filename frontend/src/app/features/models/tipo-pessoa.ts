@@ -1,1 +1,1 @@
-export type TipoPessoa = 'FISICA' | 'JURIDICA';
+export type TipoPessoa = 'PF' | 'PJ' | string;

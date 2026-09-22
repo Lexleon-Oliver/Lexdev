@@ -19,7 +19,6 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         notificationService.error('Sessão expirada ou não autorizada. Faça login novamente.');
         router.navigate(['/login']);
       } else if (error.status === 403) {
-        notificationService.error('Acesso negado: Você não possui permissão.');
         router.navigate(['/403']);
       } else {
         // Exibe a mensagem exata retornada pela ApiErrorResponse

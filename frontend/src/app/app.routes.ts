@@ -53,12 +53,12 @@ export const routes: Routes = [
           import('./features/supplier/supplier-component/supplier-component')
             .then(m => m.SupplierComponent)
       },
-      {
-        path: 'produtos',
-        loadComponent: () =>
-          import('./features/products/product-page/product-page')
-            .then(m => m.ProductPage)
-      }
+      // {
+      //   path: 'produtos',
+      //   loadComponent: () =>
+      //     import('./features/products/product-page/product-page')
+      //       .then(m => m.ProductPage)
+      // }
     ]
   },
 
