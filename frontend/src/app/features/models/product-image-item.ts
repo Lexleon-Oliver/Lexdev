@@ -1,4 +1,6 @@
-export interface ProductImage {
+export interface ProductImageItem {
+
+  key: string;
 
   id?: number;
 
@@ -12,5 +14,9 @@ export interface ProductImage {
 
   sortOrder: number;
 
-  url: string;
+  url?: string;
+
+  previewUrl: string;
+
+  pendingFile?: File;
 }

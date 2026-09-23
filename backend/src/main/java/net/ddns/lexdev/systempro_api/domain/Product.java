@@ -13,6 +13,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import net.ddns.lexdev.systempro_api.enums.ProductStatus;
 
@@ -105,6 +106,7 @@ public class Product extends AuditableEntity {
         cascade = CascadeType.ALL,
         orphanRemoval = true
     )
+    @OrderBy("sortOrder ASC, id ASC")
     private List<ProductImage> images = new ArrayList<>();
 
     @Column(name = "active", nullable = false)

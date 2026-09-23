@@ -12,6 +12,9 @@ import { ProductImageRequest } from '../../models/product-image-request';
 import { ProductSupplier } from '../../models/product-supplier';
 import { CommonModule } from '@angular/common';
 import { SupplierOption } from '../../models/supplier-option';
+import { ProductImageService } from '../../../core/services/product-image-service';
+import { ProductImageItem } from '../../models/product-image-item';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   imports: [CommonModule, ReactiveFormsModule],
@@ -20,10 +23,20 @@ import { SupplierOption } from '../../models/supplier-option';
   templateUrl: './products-component.html',
 })
 export class ProductsComponent implements OnInit {
-  private readonly produtoService = inject(ProductService);
-  private readonly fornecedorService = inject(SupplierService);
-  private readonly fb = inject(FormBuilder);
-  private readonly notification = inject(NotificationService);
+  private readonly produtoService =
+  inject(ProductService);
+
+private readonly produtoImageService =
+  inject(ProductImageService);
+
+private readonly fornecedorService =
+  inject(SupplierService);
+
+private readonly fb =
+  inject(FormBuilder);
+
+private readonly notification =
+  inject(NotificationService);
 
   /* ---------- Estado ---------- */
   produtos = signal<Product[]>([]);
@@ -103,7 +116,19 @@ export class ProductsComponent implements OnInit {
   >('geral');
 
   /* ---------- Imagens (signal, não FormArray — envio de arquivos) ---------- */
-  images = signal<ProductImage[]>([]);
+  images = signal<ProductImageItem[]>([]);
+
+  private readonly maxImageSize =
+    5 * 1024 * 1024;
+
+  private readonly allowedImageTypes =
+    new Set([
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+    ]);
+
+  private removedImageIds = new Set<number>();
 
   /* ---------- Fornecedores (opções para selects) ---------- */
   supplierOptions = signal<SupplierOption[]>([]);
@@ -237,7 +262,7 @@ export class ProductsComponent implements OnInit {
   openCreateModal(): void {
     this.editingProduto.set(null);
     this.suppliers.clear();
-    this.images.set([]);
+    this.clearImageState();
 
     this.form.reset({
       code: '',
@@ -271,7 +296,7 @@ export class ProductsComponent implements OnInit {
   openEditModal(produto: Product): void {
     this.editingProduto.set(produto);
     this.suppliers.clear();
-    this.images.set([]);
+    this.clearImageState();
 
     // Fornecedores
     (produto.suppliers || []).forEach((s) => {
@@ -279,13 +304,43 @@ export class ProductsComponent implements OnInit {
     });
 
     // Imagens
-    this.images.set(
-      (produto.images || []).map((img, idx) => ({
-        ...img,
-        sortOrder: img.sortOrder ?? idx,
-        mainImage: !!img.mainImage,
-      })),
+    const serverImages =
+    (produto.images || []).map(
+      (img, index): ProductImageItem => ({
+        key: `server-${img.id}`,
+
+        id: img.id,
+
+        fileName: img.fileName,
+
+        contentType:
+          img.contentType ?? null,
+
+        fileSize:
+          img.fileSize ?? undefined,
+
+        mainImage:
+          !!img.mainImage,
+
+        sortOrder:
+          img.sortOrder ?? index,
+
+        url:
+          img.url,
+
+        previewUrl: '',
+      })
     );
+    this.images.set(serverImages);
+
+    if (produto.id) {
+      serverImages.forEach((image) => {
+        this.loadImagePreview(
+          produto.id!,
+          image
+        );
+      });
+    }
 
     this.form.patchValue({
       code:
@@ -347,48 +402,141 @@ export class ProductsComponent implements OnInit {
   }
 
   closeFormModal(): void {
+
+    this.clearImageState();
+
     this.showFormModal.set(false);
   }
 
   /* ==================== Submissão ==================== */
-  onSubmit(): void {
+  async onSubmit(): Promise<void> {
+
     if (this.form.invalid) {
+
       this.form.markAllAsTouched();
-      this.notification.show('Preencha todos os campos obrigatórios.', 'warning');
+
+      this.notification.show(
+        'Preencha todos os campos obrigatórios.',
+        'warning'
+      );
+
       return;
     }
 
     this.isSaving.set(true);
-    const payload = this.buildRequest();
 
-    const editing = this.editingProduto();
+    const payload =
+      this.buildRequest();
+
+    const editing =
+      this.editingProduto();
+
     if (editing?.id) {
-      this.produtoService.update(editing.id, payload).subscribe({
-        next: (updated) => {
-          this.produtos.update((list) =>
-            list.map((p) => (p.id === editing.id ? updated : p)),
-          );
-          this.notification.success('Produto atualizado com sucesso!');
-          this.isSaving.set(false);
-          this.closeFormModal();
-        },
-        error: () => {
-          this.notification.error('Erro ao atualizar produto.');
-          this.isSaving.set(false);
-        },
-      });
+
+      this.produtoService
+        .update(
+          editing.id,
+          payload
+        )
+        .subscribe({
+
+          next: async (updated) => {
+
+            try {
+
+              await this.syncImages(
+                editing.id!
+              );
+
+              this.notification.success(
+                'Produto atualizado com sucesso!'
+              );
+
+              this.loadProdutos();
+
+              this.closeFormModal();
+
+            } catch (error) {
+
+              console.error(
+                'Erro ao sincronizar imagens:',
+                error
+              );
+
+              this.notification.error(
+                'Produto atualizado, mas houve erro ao processar as imagens.'
+              );
+
+            } finally {
+
+              this.isSaving.set(false);
+            }
+          },
+
+          error: () => {
+
+            this.notification.error(
+              'Erro ao atualizar produto.'
+            );
+
+            this.isSaving.set(false);
+          },
+        });
+
     } else {
-      this.produtoService.create(payload).subscribe({
-        next: (created) => {
-          this.produtos.update((list) => [created, ...list]);
-          this.notification.success('Produto criado com sucesso!');
-          this.isSaving.set(false);
-          this.closeFormModal();
-        },
-        error: () => {
-          this.isSaving.set(false);
-        },
-      });
+
+      this.produtoService
+        .create(payload)
+        .subscribe({
+
+          next: async (created) => {
+
+            try {
+
+              if (!created.id) {
+                throw new Error(
+                  'O produto foi criado sem retornar o ID.'
+                );
+              }
+
+              await this.syncImages(
+                created.id
+              );
+
+              this.notification.success(
+                'Produto criado com sucesso!'
+              );
+
+              this.loadProdutos();
+
+              this.closeFormModal();
+
+            } catch (error) {
+
+              console.error(
+                'Erro ao sincronizar imagens:',
+                error
+              );
+
+              this.notification.error(
+                'Produto criado, mas houve erro ao processar as imagens.'
+              );
+
+            } finally {
+
+              this.isSaving.set(false);
+            }
+          },
+
+          error: () => {
+
+            this.notification.error(
+              'Erro ao criar produto.'
+            );
+
+            this.isSaving.set(false);
+          },
+        });
     }
   }
 
@@ -404,17 +552,6 @@ export class ProductsComponent implements OnInit {
         leadTimeDays: this.toNumberOrNull(s.leadTimeDays),
         minimumOrderQuantity: this.toNumberOrNull(s.minimumOrderQuantity),
         preferred: !!s.preferred,
-      }));
-
-    const imagesRequest: ProductImageRequest[] = this.images()
-      .slice()
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((img, idx) => ({
-        fileName: img.fileName,
-        storagePath: img.storagePath,
-        contentType: img.contentType ?? null,
-        mainImage: !!img.mainImage,
-        sortOrder: idx,
       }));
 
     return {
@@ -445,7 +582,6 @@ export class ProductsComponent implements OnInit {
       length: this.toNumberOrNull(v.length),
 
       suppliers: suppliersRequest,
-      images: imagesRequest,
     };
   }
 
@@ -533,48 +669,145 @@ export class ProductsComponent implements OnInit {
 
   /* ==================== Imagens ==================== */
   onImagesSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const files = input.files;
-    if (!files || files.length === 0) return;
 
-    const current = this.images();
-    const isFirstEver = current.length === 0;
+    const input =
+      event.target as HTMLInputElement;
 
-    Array.from(files).forEach((file, i) => {
-      this.readFileAsDataUrl(file).then((dataUrl) => {
-        const next: ProductImage = {
-          fileName: file.name,
-          storagePath: dataUrl,
-          contentType: file.type || null,
-          mainImage: isFirstEver && i === 0,
-          sortOrder: this.images().length,
-        };
-        this.images.update((prev) => [...prev, next]);
+    const files =
+      input.files;
+
+    if (!files || files.length === 0) {
+      return;
+    }
+
+    const current =
+      this.images();
+
+    const hasMainImage =
+      current.some(
+        (image) => image.mainImage
+      );
+
+    const validImages:
+      ProductImageItem[] = [];
+
+    Array.from(files).forEach((file) => {
+
+      if (!this.allowedImageTypes.has(file.type)) {
+
+        this.notification.show(
+          `O arquivo "${file.name}" não é suportado.`
+        );
+
+        return;
+      }
+
+      if (file.size > this.maxImageSize) {
+
+        this.notification.show(
+          `A imagem "${file.name}" excede o limite de 5 MB.`
+        );
+
+        return;
+      }
+
+      const previewUrl =
+        URL.createObjectURL(file);
+
+      validImages.push({
+
+        key:
+          crypto.randomUUID(),
+
+        fileName:
+          file.name,
+
+        contentType:
+          file.type || null,
+
+        fileSize:
+          file.size,
+
+        mainImage:
+          !hasMainImage &&
+          validImages.length === 0,
+
+        sortOrder:
+          current.length +
+          validImages.length,
+
+        previewUrl,
+
+        pendingFile:
+          file,
       });
     });
+
+    if (validImages.length > 0) {
+
+      this.images.update((prev) => [
+        ...prev,
+        ...validImages,
+      ]);
+    }
 
     input.value = '';
   }
 
   removeImage(index: number): void {
-    this.images.update((prev) => {
-      const removed = prev[index];
-      const filtered = prev.filter((_, i) => i !== index);
 
-      // Reordena
-      const reordered = filtered.map((img, i) => ({ ...img, sortOrder: i }));
+    const current =
+      this.images();
 
-      // Se removeu a principal, promove a primeira
-      if (removed?.mainImage && reordered.length > 0) {
-        reordered[0].mainImage = true;
-      }
-      return reordered;
-    });
+    const removed =
+      current[index];
+
+    if (!removed) {
+      return;
+    }
+
+    if (removed.id) {
+      this.removedImageIds.add(
+        removed.id
+      );
+    }
+
+    this.revokePreview(
+      removed.previewUrl
+    );
+
+    const remaining =
+      current.filter(
+        (_, i) => i !== index
+      );
+
+    if (
+      removed.mainImage &&
+      remaining.length > 0
+    ) {
+
+      remaining[0] = {
+        ...remaining[0],
+        mainImage: true,
+      };
+    }
+
+    this.images.set(
+      remaining.map((image, i) => ({
+        ...image,
+        sortOrder: i,
+      }))
+    );
   }
 
   setMainImage(index: number): void {
-    this.images.update((prev) =>
-      prev.map((img, i) => ({ ...img, mainImage: i === index })),
+
+    this.images.update((images) =>
+      images.map((image, i) => ({
+        ...image,
+        mainImage:
+          i === index,
+      }))
     );
   }
 
@@ -831,6 +1064,203 @@ export class ProductsComponent implements OnInit {
         /[^a-z0-9]/g,
         ''
       );
+  }
+
+  private loadImagePreview(
+    productId: number,
+    image: ProductImageItem
+  ): void {
+
+    if (!image.id) {
+      return;
+    }
+
+    this.produtoImageService
+      .getContent(
+        productId,
+        image.id
+      )
+      .subscribe({
+        next: (blob) => {
+
+          const previewUrl =
+            URL.createObjectURL(blob);
+
+          this.images.update((items) =>
+            items.map((item) =>
+              item.key === image.key
+                ? {
+                    ...item,
+                    previewUrl,
+                  }
+                : item
+            )
+          );
+        },
+
+        error: () => {
+          this.notification.error(
+            `Não foi possível carregar a imagem "${image.fileName}".`
+          );
+        },
+      });
+  }
+
+  private revokePreview(
+    previewUrl: string | undefined
+  ): void {
+
+    if (
+      previewUrl &&
+      previewUrl.startsWith('blob:')
+    ) {
+      URL.revokeObjectURL(
+        previewUrl
+      );
+    }
+  }
+
+  private clearImageState(): void {
+
+    this.images()
+      .forEach((image) =>
+        this.revokePreview(
+          image.previewUrl
+        )
+      );
+
+    this.images.set([]);
+
+    this.removedImageIds.clear();
+  }
+
+  private async syncImages(
+    productId: number
+  ): Promise<void> {
+
+    // ==========================================================
+    // 1. Excluir imagens removidas pelo usuário
+    // ==========================================================
+
+    const removedIds =
+      Array.from(
+        this.removedImageIds
+      );
+
+    for (const imageId of removedIds) {
+
+      await firstValueFrom(
+        this.produtoImageService.delete(
+          productId,
+          imageId
+        )
+      );
+
+      this.removedImageIds.delete(
+        imageId
+      );
+    }
+
+    // ==========================================================
+    // 2. Captura qual imagem o usuário escolheu como principal
+    // ==========================================================
+
+    const desiredMain =
+      this.images().find(
+        (image) => image.mainImage
+      );
+
+    const desiredMainKey =
+      desiredMain?.key;
+
+    // ==========================================================
+    // 3. Enviar arquivos ainda pendentes
+    // ==========================================================
+
+    const pendingImages =
+      this.images()
+        .filter(
+          (image) => !!image.pendingFile
+        )
+        .sort(
+          (a, b) =>
+            a.sortOrder -
+            b.sortOrder
+        );
+
+    for (const image of pendingImages) {
+
+      if (!image.pendingFile) {
+        continue;
+      }
+
+      const saved =
+        await firstValueFrom(
+          this.produtoImageService.upload(
+            productId,
+            image.pendingFile
+          )
+        );
+
+      this.images.update((items) =>
+        items.map((item) =>
+          item.key === image.key
+            ? {
+                ...item,
+
+                id:
+                  saved.id,
+
+                fileName:
+                  saved.fileName,
+
+                contentType:
+                  saved.contentType,
+
+                fileSize:
+                  saved.fileSize,
+
+                mainImage:
+                  saved.mainImage,
+
+                sortOrder:
+                  saved.sortOrder,
+
+                url:
+                  saved.url,
+
+                pendingFile:
+                  undefined,
+              }
+            : item
+        )
+      );
+    }
+
+    // ==========================================================
+    // 4. Define definitivamente a imagem principal
+    // ==========================================================
+
+    if (desiredMainKey) {
+
+      const finalMain =
+        this.images().find(
+          (image) =>
+            image.key ===
+            desiredMainKey
+        );
+
+      if (finalMain?.id) {
+
+        await firstValueFrom(
+          this.produtoImageService
+            .setMainImage(
+              productId,
+              finalMain.id
+            )
+        );
+      }
+    }
   }
 
 

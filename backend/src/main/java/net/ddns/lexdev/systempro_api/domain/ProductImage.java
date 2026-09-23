@@ -28,8 +28,11 @@ public class ProductImage {
     @Column(name = "storage_path", nullable = false, length = 500)
     private String storagePath;
 
-    @Column(name = "content_type", length = 100)
+    @Column(name = "content_type", nullable = false, length = 100)
     private String contentType;
+
+    @Column(name = "file_size", nullable = false)
+    private Long fileSize;
 
     @Column(name = "main_image", nullable = false)
     private boolean mainImage = false;
@@ -74,6 +77,14 @@ public class ProductImage {
 
     public void setContentType(String contentType) {
         this.contentType = contentType;
+    }
+
+    public Long getFileSize() {
+        return fileSize;
+    }
+
+    public void setFileSize(Long fileSize) {
+        this.fileSize = fileSize;
     }
 
     public boolean isMainImage() {

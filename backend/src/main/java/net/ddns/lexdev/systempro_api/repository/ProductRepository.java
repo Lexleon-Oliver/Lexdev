@@ -36,13 +36,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Page<Product> findAllProducts(Pageable pageable);
 
     @Query("""
-        SELECT p
+        SELECT DISTINCT p
         FROM Product p
-        LEFT JOIN FETCH p.suppliers
-        LEFT JOIN FETCH p.images
+        LEFT JOIN FETCH p.suppliers ps
+        LEFT JOIN FETCH ps.supplier
         WHERE p.id = :id
         """)
-    Optional<Product> findByIdWithDetails(
+    Optional<Product> findByIdWithSuppliers(
         @Param("id") Long id
     );
 }

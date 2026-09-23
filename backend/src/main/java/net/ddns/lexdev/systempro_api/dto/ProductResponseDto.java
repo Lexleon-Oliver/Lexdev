@@ -84,13 +84,17 @@ public record ProductResponseDto(
                 .map(image -> new ProductImageResponseDto(
                     image.getId(),
                     image.getFileName(),
-                    image.getStoragePath(),
                     image.getContentType(),
+                    image.getFileSize(),
                     image.isMainImage(),
-                    image.getSortOrder()
+                    image.getSortOrder(),
+                    "/api/products/"
+                        + product.getId()
+                        + "/images/"
+                        + image.getId()
+                        + "/content"
                 ))
                 .toList();
-
         return new ProductResponseDto(
             product.getId(),
             product.getCode(),
@@ -118,7 +122,6 @@ public record ProductResponseDto(
             suppliers,
             images,
             product.isActive()
-
         );
     }
 }

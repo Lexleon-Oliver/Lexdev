@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 import net.ddns.lexdev.systempro_api.dto.ProductRequestDto;
 import net.ddns.lexdev.systempro_api.dto.ProductResponseDto;
+import net.ddns.lexdev.systempro_api.service.ProductImageService;
 import net.ddns.lexdev.systempro_api.service.ProductService;
 
 @RestController
@@ -25,9 +26,11 @@ import net.ddns.lexdev.systempro_api.service.ProductService;
 public class ProductController {
 
     private final ProductService productService;
+    private final ProductImageService productImageService;
 
-    public ProductController(ProductService productService) {
+    public ProductController(ProductService productService, ProductImageService productImageService) {
         this.productService = productService;
+        this.productImageService = productImageService;
     }
 
     // ============================================================
@@ -121,4 +124,6 @@ public class ProductController {
 
         return ResponseEntity.noContent().build();
     }
+
+   
 }

@@ -9,10 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityNotFoundException;
 import net.ddns.lexdev.systempro_api.domain.Product;
-import net.ddns.lexdev.systempro_api.domain.ProductImage;
 import net.ddns.lexdev.systempro_api.domain.ProductSupplier;
 import net.ddns.lexdev.systempro_api.domain.Supplier;
-import net.ddns.lexdev.systempro_api.dto.ProductImageRequestDto;
 import net.ddns.lexdev.systempro_api.dto.ProductRequestDto;
 import net.ddns.lexdev.systempro_api.dto.ProductResponseDto;
 import net.ddns.lexdev.systempro_api.dto.ProductSupplierRequestDto;
@@ -47,7 +45,6 @@ public class ProductService {
 
         applyBasicData(product, dto);
         updateSuppliers(product, dto.suppliers());
-        updateImages(product, dto.images());
 
         Product saved = productRepository.save(product);
 
@@ -71,7 +68,6 @@ public class ProductService {
 
         applyBasicData(product, dto);
         updateSuppliers(product, dto.suppliers());
-        updateImages(product, dto.images());
 
         return ProductResponseDto.fromEntity(product);
     }
@@ -84,7 +80,7 @@ public class ProductService {
     public ProductResponseDto findById(Long id) {
 
         Product product = productRepository
-            .findByIdWithDetails(id)
+            .findByIdWithSuppliers(id)
             .orElseThrow(() ->
                 new EntityNotFoundException(
                     "Produto não encontrado: " + id
@@ -233,59 +229,6 @@ public class ProductService {
         if (preferredCount > 1) {
             throw new IllegalArgumentException(
                 "O produto pode possuir apenas um fornecedor principal."
-            );
-        }
-    }
-
-    // ============================================================
-    // IMAGES
-    // ============================================================
-
-    private void updateImages(
-        Product product,
-        List<ProductImageRequestDto> imageDtos
-    ) {
-
-        product.getImages().clear();
-
-        if (imageDtos == null || imageDtos.isEmpty()) {
-            return;
-        }
-
-        validateMainImage(imageDtos);
-
-        for (ProductImageRequestDto dto : imageDtos) {
-
-            ProductImage image = new ProductImage();
-
-            image.setFileName(dto.fileName());
-            image.setStoragePath(dto.storagePath());
-            image.setContentType(dto.contentType());
-            image.setMainImage(
-                Boolean.TRUE.equals(dto.mainImage())
-            );
-            image.setSortOrder(
-                dto.sortOrder() == null
-                    ? 0
-                    : dto.sortOrder()
-            );
-
-            product.addImage(image);
-        }
-    }
-
-    private void validateMainImage(
-        List<ProductImageRequestDto> images
-    ) {
-
-        long mainImages = images
-            .stream()
-            .filter(dto -> Boolean.TRUE.equals(dto.mainImage()))
-            .count();
-
-        if (mainImages > 1) {
-            throw new IllegalArgumentException(
-                "O produto pode possuir apenas uma imagem principal."
             );
         }
     }

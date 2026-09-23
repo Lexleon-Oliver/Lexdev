@@ -30,6 +30,8 @@ services:
       - db
     deploy:
       replicas: 1
+    volumes:
+      - systempro_product_images:/data/product-images
     restart: unless-stopped
 
   frontend:
@@ -43,12 +45,14 @@ services:
     container_name: systempro_proxy
     ports:
       - "80:80"
+      - "443:443"
     volumes:
-      - ./proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./proxy/nginx.conf:/etc/nginx/nginx.conf
     depends_on:
       - backend
       - frontend
     restart: unless-stopped
 
 volumes:
+  systempro_product_images:
   pgdata:

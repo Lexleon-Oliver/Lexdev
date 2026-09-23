@@ -81,9 +81,6 @@ public record ProductRequestDto(
     BigDecimal length,
 
     @Valid
-    List<ProductSupplierRequestDto> suppliers,
-
-    @Valid
-    List<ProductImageRequestDto> images
+    List<ProductSupplierRequestDto> suppliers
 
 ) {}
