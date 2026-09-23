@@ -55,9 +55,29 @@
             @for (supplier of filteredSuppliers(); track supplier.id) {
               <tr>
                 <td data-label="Nome/Razão">{{ supplier.person?.name }}</td>
-                <td data-label="CPF/CNPJ">{{ supplier.person?.cpfCnpj }}</td>
-                <td data-label="E-mail">{{ getPrimaryContactValue(supplier, 'EMAIL') }}</td>
-                <td data-label="Telefone">{{ getPrimaryContactValue(supplier, 'TELEFONE') }}</td>
+                <td data-label="CPF/CNPJ">
+                  {{
+                    applyCpfCnpjMask(
+                      supplier.person?.cpfCnpj,
+                      supplier.person?.tipoPessoa
+                    )
+                  }}
+                </td>
+
+                <td data-label="E-mail">
+                  {{ getPrimaryContactValue(supplier, 'EMAIL') }}
+                </td>
+
+                <td data-label="Telefone">
+                  {{
+                    applyPhoneMask(
+                      getPrimaryContactValue(
+                        supplier,
+                        'TELEFONE'
+                      )
+                    )
+                  }}
+                </td>
                 <td data-label="Categoria">{{ supplier.categoria || '—' }}</td>
                 <td data-label="Ações">
                   <div class="action-buttons">

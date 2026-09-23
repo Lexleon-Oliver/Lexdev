@@ -2,7 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { tap } from 'rxjs/operators';
-import { Observable } from 'rxjs';
+import { Observable, throwError } from 'rxjs';
 import { User } from '../../features/models/user';
 import { LoginCredentials } from '../../features/models/login-credentials';
 import { AuthResponse } from '../../features/models/auth-response';
@@ -58,7 +58,14 @@ export class AuthService {
   refreshToken(): Observable<AuthResponse> {
     const refreshToken = localStorage.getItem(this.refreshTokenKey);
 
-    return this.http.post<AuthResponse>('/api/auth/refresh', { refreshToken }).pipe(
+    if (!refreshToken) {
+      return throwError(() => new Error('Refresh token não encontrado.'));
+    }
+
+    return this.http.post<AuthResponse>(
+      '/api/auth/refresh',
+      { refreshToken }
+    ).pipe(
       tap((res) => {
         localStorage.setItem(this.tokenKey, res.accessToken);
         localStorage.setItem(this.refreshTokenKey, res.refreshToken);

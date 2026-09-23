@@ -36,19 +36,59 @@ export class ProductsComponent implements OnInit {
   totalElements = signal(0);
 
   filteredProdutos = computed(() => {
-    const term = this.searchTerm().toLowerCase().trim();
-    const list = this.produtos();
-    if (!Array.isArray(list)) return [];
-    if (!term) return list;
 
-    return list.filter(
-      (p) =>
-        p.name?.toLowerCase().includes(term) ||
-        p.code?.toLowerCase().includes(term) ||
-        p.model?.toLowerCase().includes(term) ||
-        p.manufacturerCode?.toLowerCase().includes(term) ||
-        p.gtin?.includes(term),
-    );
+    const term =
+      this.searchTerm().trim();
+
+    const normalizedTerm =
+      this.normalizeSearchValue(term);
+
+    const list =
+      this.produtos();
+
+    if (!Array.isArray(list)) {
+      return [];
+    }
+
+    if (!term) {
+      return list;
+    }
+
+    return list.filter((produto) => {
+
+      const name =
+        this.normalizeSearchValue(
+          produto.name ?? ''
+        );
+
+      const code =
+        this.normalizeSearchValue(
+          produto.code ?? ''
+        );
+
+      const model =
+        this.normalizeSearchValue(
+          produto.model ?? ''
+        );
+
+      const manufacturerCode =
+        this.normalizeSearchValue(
+          produto.manufacturerCode ?? ''
+        );
+
+      const gtin =
+        this.normalizeSearchValue(
+          produto.gtin ?? ''
+        );
+
+      return (
+        name.includes(normalizedTerm) ||
+        code.includes(normalizedTerm) ||
+        model.includes(normalizedTerm) ||
+        manufacturerCode.includes(normalizedTerm) ||
+        gtin.includes(normalizedTerm)
+      );
+    });
   });
 
   /* ---------- Modais / UI ---------- */
@@ -248,32 +288,58 @@ export class ProductsComponent implements OnInit {
     );
 
     this.form.patchValue({
-      code: produto.code ?? '',
-      name: produto.name ?? '',
-      description: produto.description ?? '',
-      model: produto.model ?? '',
-      manufacturerCode: produto.manufacturerCode ?? '',
-      gtin: produto.gtin ?? '',
-      status: produto.status ?? 'ATIVO',
-
-      salePrice: produto.salePrice ?? null,
-      minimumSalePrice: produto.minimumSalePrice ?? null,
-
-      unitOfMeasure: produto.unitOfMeasure ?? 'UN',
-      controlsStock: produto.controlsStock ?? true,
-      minimumStock: produto.minimumStock ?? null,
-      maximumStock: produto.maximumStock ?? null,
-      reorderPoint: produto.reorderPoint ?? null,
-
-      ncm: produto.ncm ?? '',
-      cest: produto.cest ?? '',
-      origin: produto.origin ?? '',
-
-      grossWeight: produto.grossWeight ?? null,
-      netWeight: produto.netWeight ?? null,
-      height: produto.height ?? null,
-      width: produto.width ?? null,
-      length: produto.length ?? null,
+      code:
+        produto.code ?? '',
+      name:
+        produto.name ?? '',
+      description:
+        produto.description ?? '',
+      model:
+        produto.model ?? '',
+      manufacturerCode:
+        produto.manufacturerCode ?? '',
+      gtin:
+        produto.gtin ?? '',
+      status:
+        produto.status ?? 'ATIVO',
+      salePrice:
+        this.formatCurrencyValue(
+          produto.salePrice
+        ),
+      minimumSalePrice:
+        this.formatCurrencyValue(
+          produto.minimumSalePrice
+        ),
+      unitOfMeasure:
+        produto.unitOfMeasure ?? 'UN',
+      controlsStock:
+        produto.controlsStock ?? true,
+      minimumStock:
+        produto.minimumStock ?? null,
+      maximumStock:
+        produto.maximumStock ?? null,
+      reorderPoint:
+        produto.reorderPoint ?? null,
+      ncm:
+        this.applyNcmMask(
+          produto.ncm
+        ),
+      cest:
+        this.applyCestMask(
+          produto.cest
+        ),
+      origin:
+        produto.origin ?? '',
+      grossWeight:
+        produto.grossWeight ?? null,
+      netWeight:
+        produto.netWeight ?? null,
+      height:
+        produto.height ?? null,
+      width:
+        produto.width ?? null,
+      length:
+        produto.length ?? null,
     });
 
     this.activeTab.set('geral');
@@ -409,14 +475,39 @@ export class ProductsComponent implements OnInit {
   }
 
   /* ==================== FormArray — Fornecedores ==================== */
-  private buildSupplierGroup(s: Partial<ProductSupplier> = {}): FormGroup {
+  private buildSupplierGroup(
+    s: Partial<ProductSupplier> = {}
+  ): FormGroup {
+
     return this.fb.group({
-      supplierId: [s.supplierId ?? null, Validators.required],
-      supplierCode: [s.supplierCode ?? ''],
-      purchasePrice: [s.purchasePrice ?? null],
-      leadTimeDays: [s.leadTimeDays ?? null],
-      minimumOrderQuantity: [s.minimumOrderQuantity ?? null],
-      preferred: [!!s.preferred],
+
+      supplierId: [
+        s.supplierId ?? null,
+        Validators.required
+      ],
+
+      supplierCode: [
+        s.supplierCode ?? ''
+      ],
+
+      purchasePrice: [
+        this.formatCurrencyValue(
+          s.purchasePrice
+        )
+      ],
+
+      leadTimeDays: [
+        s.leadTimeDays ?? null
+      ],
+
+      minimumOrderQuantity: [
+        s.minimumOrderQuantity ?? null
+      ],
+
+      preferred: [
+        !!s.preferred
+      ],
+
     });
   }
 
@@ -536,28 +627,168 @@ export class ProductsComponent implements OnInit {
   }
 
   formatNcm(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    let value = input.value.replace(/\D/g, '').substring(0, 8);
-    value = value.replace(/^(\d{4})(\d)/, '$1.$2');
-    value = value.replace(/^(\d{4})\.(\d{2})(\d)/, '$1.$2.$3');
-    this.form.get('ncm')?.setValue(value, { emitEvent: false });
+
+    const input =
+      event.target as HTMLInputElement;
+
+    const value =
+      this.applyNcmMask(
+        input.value
+      );
+
+    this.form
+      .get('ncm')
+      ?.setValue(
+        value,
+        {
+          emitEvent: false
+        }
+      );
+
     input.value = value;
+  }
+
+  private applyNcmMask(
+    value: string | null | undefined
+  ): string {
+
+    if (!value) {
+      return '';
+    }
+
+    let str =
+      value.replace(/\D/g, '');
+
+    if (str.length > 8) {
+      str = str.substring(0, 8);
+    }
+
+    return str
+      .replace(
+        /^(\d{4})(\d)/,
+        '$1.$2'
+      )
+      .replace(
+        /^(\d{4})\.(\d{2})(\d)/,
+        '$1.$2.$3'
+      );
   }
 
   formatCest(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    let value = input.value.replace(/\D/g, '').substring(0, 7);
-    value = value.replace(/^(\d{2})(\d)/, '$1.$2');
-    value = value.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
-    this.form.get('cest')?.setValue(value, { emitEvent: false });
+
+    const input =
+      event.target as HTMLInputElement;
+
+    const value =
+      this.applyCestMask(
+        input.value
+      );
+
+    this.form
+      .get('cest')
+      ?.setValue(
+        value,
+        {
+          emitEvent: false
+        }
+      );
+
     input.value = value;
   }
 
+  private applyCestMask(
+    value: string | null | undefined
+  ): string {
+
+    if (!value) {
+      return '';
+    }
+
+    let str =
+      value.replace(/\D/g, '');
+
+    if (str.length > 7) {
+      str = str.substring(0, 7);
+    }
+
+    return str
+      .replace(
+        /^(\d{2})(\d)/,
+        '$1.$2'
+      )
+      .replace(
+        /^(\d{2})\.(\d{3})(\d)/,
+        '$1.$2.$3'
+      );
+  }
+
+  private formatCurrencyValue(
+    value: number | null | undefined
+  ): string {
+
+    if (value == null) {
+      return '';
+    }
+
+    return value.toLocaleString(
+      'pt-BR',
+      {
+        style: 'currency',
+        currency: 'BRL'
+      }
+    );
+  }
+
   /* ==================== Helpers ==================== */
-  private toNumberOrNull(v: any): number | null {
-    if (v === null || v === undefined || v === '') return null;
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
+  private toNumberOrNull(
+    value: unknown
+  ): number | null {
+
+    if (
+      value === null ||
+      value === undefined ||
+      value === ''
+    ) {
+      return null;
+    }
+
+    if (typeof value === 'number') {
+      return Number.isFinite(value)
+        ? value
+        : null;
+    }
+
+    let str =
+      String(value).trim();
+
+    if (!str) {
+      return null;
+    }
+
+    // Formato brasileiro:
+    // R$ 1.234,56
+    if (str.includes(',')) {
+
+      str = str
+        .replace(/[^\d,-]/g, '')
+        .replace(/\./g, '')
+        .replace(',', '.');
+
+    } else {
+
+      // Número sem separador decimal brasileiro
+      str = str.replace(
+        /[^0-9.-]/g,
+        ''
+      );
+    }
+
+    const number =
+      Number(str);
+
+    return Number.isFinite(number)
+      ? number
+      : null;
   }
 
   statusLabel(status: ProductStatus | string | null | undefined): string {
@@ -583,6 +814,23 @@ export class ProductsComponent implements OnInit {
     const digits = String(value).replace(/\D/g, '');
 
     return digits || null;
+  }
+
+  private normalizeSearchValue(
+    value: string
+  ): string {
+
+    return value
+      .normalize('NFD')
+      .replace(
+        /[\u0300-\u036f]/g,
+        ''
+      )
+      .toLowerCase()
+      .replace(
+        /[^a-z0-9]/g,
+        ''
+      );
   }
 
 

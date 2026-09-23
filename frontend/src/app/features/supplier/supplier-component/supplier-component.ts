@@ -33,20 +33,63 @@ export class SupplierComponent implements OnInit {
 
   /* ===================== Filtro ===================== */
   filteredSuppliers = computed(() => {
-    const term = this.searchTerm().toLowerCase().trim();
-    const list = this.suppliers();
-    if (!Array.isArray(list)) return [];
-    if (!term) return list;
 
-    return list.filter(s => {
-      const email = this.getPrimaryContactValue(s, 'EMAIL');
-      const phone = this.getPrimaryContactValue(s, 'TELEFONE');
+    const term =
+      this.searchTerm().trim();
+
+    const normalizedTerm =
+      this.normalizeSearchValue(term);
+
+    const list =
+      this.suppliers();
+
+    if (!Array.isArray(list)) {
+      return [];
+    }
+
+    if (!term) {
+      return list;
+    }
+
+    return list.filter((supplier) => {
+
+      const name =
+        this.normalizeSearchValue(
+          supplier.person?.name ?? ''
+        );
+
+      const doc =
+        this.normalizeSearchValue(
+          supplier.person?.cpfCnpj ?? ''
+        );
+
+      const email =
+        this.normalizeSearchValue(
+          this.getPrimaryContactValue(
+            supplier,
+            'EMAIL'
+          )
+        );
+
+      const phone =
+        this.normalizeSearchValue(
+          this.getPrimaryContactValue(
+            supplier,
+            'TELEFONE'
+          )
+        );
+
+      const categoria =
+        this.normalizeSearchValue(
+          supplier.categoria ?? ''
+        );
+
       return (
-        s.person?.name?.toLowerCase().includes(term) ||
-        s.person?.cpfCnpj?.includes(term) ||
-        email.toLowerCase().includes(term) ||
-        phone.includes(term) ||
-        s.categoria?.toLowerCase().includes(term)
+        name.includes(normalizedTerm) ||
+        doc.includes(normalizedTerm) ||
+        email.includes(normalizedTerm) ||
+        phone.includes(normalizedTerm) ||
+        categoria.includes(normalizedTerm)
       );
     });
   });
@@ -188,15 +231,25 @@ export class SupplierComponent implements OnInit {
       tipoPessoa: supplier.person?.tipoPessoa ?? 'PF',
       name: supplier.person?.name ?? '',
       nomeFantasia: supplier.legalEntity?.nomeFantasia ?? '',
-      cpfCnpj: supplier.person?.cpfCnpj ?? '',
+      cpfCnpj: this.applyCpfCnpjMask(
+        supplier.person?.cpfCnpj,
+        supplier.person?.tipoPessoa
+      ),
       rgIe: isPJ
         ? (supplier.legalEntity?.inscricaoEstadual ?? '')
         : (supplier.individual?.rg ?? ''),
       email: this.getPrimaryContactValue(supplier, 'EMAIL'),
-      phone: this.getPrimaryContactValue(supplier, 'TELEFONE'),
+      phone: this.applyPhoneMask(
+        this.getPrimaryContactValue(
+          supplier,
+          'TELEFONE'
+        )
+      ),
       ativo: supplier.active ?? true,
 
-      cep: addr?.cep ?? '',
+      cep: this.applyCepMask(
+        addr?.cep
+      ),
       logradouro: addr?.logradouro ?? '',
       numero: addr?.numero ?? '',
       complemento: addr?.complemento ?? '',
@@ -207,7 +260,10 @@ export class SupplierComponent implements OnInit {
       categoria: supplier.categoria ?? '',
       condicaoPagamento: supplier.condicaoPagamentoPadrao ?? '',
       prazoEntrega: supplier.prazoEntregaDias ?? null,
-      valorMinimoPedido: supplier.valorMinimoPedido ?? null,
+      valorMinimoPedido:
+        this.formatCurrencyValue(
+          supplier.valorMinimoPedido
+        ),
       observacoesComerciais: supplier.observacoesComerciais ?? '',
 
       banco: supplier.bankDetails?.banco ?? '',
@@ -303,7 +359,9 @@ export class SupplierComponent implements OnInit {
       } as any,
       {
         type: 'TELEFONE',
-        value: raw.phone,
+        value: raw.phone
+          ? raw.phone.replace(/\D/g, '')
+          : '',
         principal: true,
         description: undefined
       } as any
@@ -312,7 +370,9 @@ export class SupplierComponent implements OnInit {
     const addresses: Omit<PersonAddressResponseDto, 'id'>[] = [
       {
         type: 'COMERCIAL',
-        cep: raw.cep,
+        cep: raw.cep
+          ? raw.cep.replace(/\D/g, '')
+          : '',
         logradouro: raw.logradouro,
         numero: raw.numero,
         complemento: raw.complemento,
@@ -327,7 +387,9 @@ export class SupplierComponent implements OnInit {
       person: {
         tipoPessoa: raw.tipoPessoa,
         name: raw.name,
-        cpfCnpj: raw.cpfCnpj,
+        cpfCnpj: raw.cpfCnpj
+          ? raw.cpfCnpj.replace(/\D/g, '')
+          : '',
         individualPerson: !isPJ ? { rg: raw.rgIe } : undefined,
         legalEntity: isPJ
           ? {
@@ -354,9 +416,19 @@ export class SupplierComponent implements OnInit {
         tipoConta: raw.tipoConta,
         chavePix: raw.chavePix
       },
-      contatos: (raw.contatos || []).filter(
-        (c: SupplierContactDto) => c.nome?.trim().length > 0
-      ),
+      contatos: (raw.contatos || [])
+        .filter(
+          (c: SupplierContactDto) =>
+            c.nome?.trim().length > 0
+        )
+        .map(
+          (c: SupplierContactDto) => ({
+            ...c,
+            telefone: c.telefone
+              ? c.telefone.replace(/\D/g, '')
+              : c.telefone
+          })
+        ),
       documentos: [],
       active: !!raw.ativo
     };
@@ -370,13 +442,36 @@ export class SupplierComponent implements OnInit {
   }
 
   /* ===================== Contatos (FormArray) ===================== */
-  private buildContatoGroup(c: Partial<SupplierContactDto> = {}): FormGroup {
+  private buildContatoGroup(
+    c: Partial<SupplierContactDto> = {}
+  ): FormGroup {
+
     return this.fb.group({
-      nome: [c.nome ?? '', Validators.required],
-      cargo: [c.cargo ?? ''],
-      email: [c.email ?? '', Validators.email],
-      telefone: [c.telefone ?? ''],
-      setor: [c.setor ?? '']
+
+      nome: [
+        c.nome ?? '',
+        Validators.required
+      ],
+
+      cargo: [
+        c.cargo ?? ''
+      ],
+
+      email: [
+        c.email ?? '',
+        Validators.email
+      ],
+
+      telefone: [
+        this.applyPhoneMask(
+          c.telefone
+        )
+      ],
+
+      setor: [
+        c.setor ?? ''
+      ]
+
     });
   }
 
@@ -396,53 +491,100 @@ export class SupplierComponent implements OnInit {
 
   /* ===================== Máscaras ===================== */
   formatCpfCnpj(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    let value = input.value.replace(/\D/g, '');
-    if (value.length > 14) value = value.substring(0, 14);
 
-    if (value.length <= 11) {
-      value = value
-        .replace(/(\d{3})(\d)/, '$1.$2')
-        .replace(/(\d{3})(\d)/, '$1.$2')
-        .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-    } else {
-      value = value
-        .replace(/^(\d{2})(\d)/, '$1.$2')
-        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
-        .replace(/\.(\d{3})(\d)/, '.$1/$2')
-        .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
-    }
-    this.form.get('cpfCnpj')?.setValue(value, { emitEvent: false });
+    const input =
+      event.target as HTMLInputElement;
+
+    const tipoPessoa =
+      this.form.get('tipoPessoa')?.value;
+
+    const maskedValue =
+      this.applyCpfCnpjMask(
+        input.value,
+        tipoPessoa
+      );
+
+    this.form
+      .get('cpfCnpj')
+      ?.setValue(
+        maskedValue,
+        {
+          emitEvent: false
+        }
+      );
   }
 
   formatPhone(event: Event): void {
-    this.formatPhoneControl(this.form.get('phone'), event);
+    this.formatPhoneControl(
+      this.form.get('phone'),
+      event
+    );
   }
 
-  formatPhoneControl(ctrl: AbstractControl | null, event: Event): void {
-    if (!ctrl) return;
-    const input = event.target as HTMLInputElement;
-    let value = input.value.replace(/\D/g, '');
-    if (value.length > 11) value = value.substring(0, 11);
+  formatPhoneControl(
+    ctrl: AbstractControl | null,
+    event: Event
+  ): void {
 
-    if (value.length <= 10) {
-      value = value
-        .replace(/^(\d{2})(\d)/, '($1) $2')
-        .replace(/(\d{4})(\d)/, '$1-$2');
-    } else {
-      value = value
-        .replace(/^(\d{2})(\d)/, '($1) $2')
-        .replace(/(\d{5})(\d)/, '$1-$2');
+    if (!ctrl) {
+      return;
     }
-    ctrl.setValue(value, { emitEvent: false });
+
+    const input =
+      event.target as HTMLInputElement;
+
+    const maskedValue =
+      this.applyPhoneMask(
+        input.value
+      );
+
+    ctrl.setValue(
+      maskedValue,
+      {
+        emitEvent: false
+      }
+    );
   }
 
   formatCep(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    let value = input.value.replace(/\D/g, '');
-    if (value.length > 8) value = value.substring(0, 8);
-    value = value.replace(/^(\d{5})(\d)/, '$1-$2');
-    this.form.get('cep')?.setValue(value, { emitEvent: false });
+
+    const input =
+      event.target as HTMLInputElement;
+
+    const maskedValue =
+      this.applyCepMask(
+        input.value
+      );
+
+    this.form
+      .get('cep')
+      ?.setValue(
+        maskedValue,
+        {
+          emitEvent: false
+        }
+      );
+  }
+
+  private applyCepMask(
+    value: string | undefined | null
+  ): string {
+
+    if (!value) {
+      return '';
+    }
+
+    let str =
+      value.replace(/\D/g, '');
+
+    if (str.length > 8) {
+      str = str.substring(0, 8);
+    }
+
+    return str.replace(
+      /^(\d{5})(\d)/,
+      '$1-$2'
+    );
   }
 
   formatCurrency(event: Event): void {
@@ -459,6 +601,124 @@ export class SupplierComponent implements OnInit {
       currency: 'BRL'
     });
     this.form.get('valorMinimoPedido')?.setValue(formatted, { emitEvent: false });
+  }
+
+  private formatCurrencyValue(
+    value: number | null | undefined
+  ): string {
+
+    if (value == null) {
+      return '';
+    }
+
+    return value.toLocaleString(
+      'pt-BR',
+      {
+        style: 'currency',
+        currency: 'BRL'
+      }
+    );
+  }
+
+  applyCpfCnpjMask(
+    value: string | undefined | null,
+    tipoPessoa?: 'PF' | 'PJ' | string
+  ): string {
+
+    if (!value) {
+      return '';
+    }
+
+    let str = value.replace(/\D/g, '');
+
+    const isPJ =
+      tipoPessoa === 'PJ'
+        ? true
+        : tipoPessoa === 'PF'
+          ? false
+          : str.length > 11;
+
+    if (isPJ) {
+
+      if (str.length > 14) {
+        str = str.substring(0, 14);
+      }
+
+      return str
+        .replace(
+          /^(\d{2})(\d)/,
+          '$1.$2'
+        )
+        .replace(
+          /^(\d{2})\.(\d{3})(\d)/,
+          '$1.$2.$3'
+        )
+        .replace(
+          /\.(\d{3})(\d)/,
+          '.$1/$2'
+        )
+        .replace(
+          /(\d{4})(\d{1,2})$/,
+          '$1-$2'
+        );
+    }
+
+    if (str.length > 11) {
+      str = str.substring(0, 11);
+    }
+
+    return str
+      .replace(
+        /(\d{3})(\d)/,
+        '$1.$2'
+      )
+      .replace(
+        /(\d{3})(\d)/,
+        '$1.$2'
+      )
+      .replace(
+        /(\d{3})(\d{1,2})$/,
+        '$1-$2'
+      );
+  }
+
+  applyPhoneMask(
+    value: string | undefined | null
+  ): string {
+
+    if (!value) {
+      return '';
+    }
+
+    let str = value.replace(/\D/g, '');
+
+    if (str.length > 11) {
+      str = str.substring(0, 11);
+    }
+
+    // Telefone fixo
+    if (str.length <= 10) {
+      return str
+        .replace(
+          /^(\d{2})(\d)/,
+          '($1) $2'
+        )
+        .replace(
+          /(\d{4})(\d)/,
+          '$1-$2'
+        );
+    }
+
+    // Celular
+    return str
+      .replace(
+        /^(\d{2})(\d)/,
+        '($1) $2'
+      )
+      .replace(
+        /(\d{5})(\d)/,
+        '$1-$2'
+      );
   }
 
   /* ===================== ViaCEP ===================== */
@@ -486,5 +746,16 @@ export class SupplierComponent implements OnInit {
         this.notification.error('Erro ao buscar CEP.');
       }
     });
+  }
+
+  private normalizeSearchValue(
+    value: string
+  ): string {
+
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
   }
 }

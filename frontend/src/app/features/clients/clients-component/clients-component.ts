@@ -36,29 +36,48 @@ export class ClientsComponent implements OnInit {
   totalElements = signal(0);
 
   filteredClients = computed(() => {
-    const term = this.searchTerm().toLowerCase().trim();
+    const term = this.searchTerm().trim();
+    const normalizedTerm = this.normalizeSearchValue(term);
+
     const list = this.clients();
 
-    if (!Array.isArray(list)) return [];
-    if (!term) return list;
+    if (!Array.isArray(list)) {
+      return [];
+    }
+
+    if (!term) {
+      return list;
+    }
 
     return list.filter((client) => {
-      const name = client.person?.name?.toLowerCase() ?? '';
-      const doc = client.person?.cpfCnpj?.toLowerCase() ?? '';
+
+      const name = this.normalizeSearchValue(
+        client.person?.name ?? ''
+      );
+
+      const doc = this.normalizeSearchValue(
+        client.person?.cpfCnpj ?? ''
+      );
+
       const emails = (client.contacts ?? [])
         .filter((c) => c.type === 'EMAIL')
-        .map((c) => c.value.toLowerCase())
+        .map((c) =>
+          this.normalizeSearchValue(c.value ?? '')
+        )
         .join(' ');
+
       const phones = (client.contacts ?? [])
         .filter((c) => c.type !== 'EMAIL')
-        .map((c) => c.value)
+        .map((c) =>
+          this.normalizeSearchValue(c.value ?? '')
+        )
         .join(' ');
 
       return (
-        name.includes(term) ||
-        doc.includes(term) ||
-        emails.includes(term) ||
-        phones.includes(term)
+        name.includes(normalizedTerm) ||
+        doc.includes(normalizedTerm) ||
+        emails.includes(normalizedTerm) ||
+        phones.includes(normalizedTerm)
       );
     });
   });
@@ -134,26 +153,39 @@ export class ClientsComponent implements OnInit {
       c.find((x) => x.type === 'CELULAR') ??
       c.find((x) => x.type === 'WHATSAPP') ??
       c.find((x) => x.type === 'TELEFONE');
-    return preferred?.value ?? '—';
+
+    if (!preferred?.value) return '—';
+
+    // Reutiliza o applyPhoneMask que já existe no seu componente
+    return this.applyPhoneMask(preferred.value);
   }
 
   /* ==================== FormArray factories ==================== */
 
   private createContactGroup(contact?: PersonContactResponseDto): FormGroup {
+    // Se existir contato e não for e-mail, aplica a máscara no valor
+    let maskedValue = contact?.value ?? '';
+    if (contact && contact.type !== 'EMAIL') {
+      maskedValue = this.applyPhoneMask(maskedValue);
+    }
+
     return this.fb.group({
       id: [contact?.id ?? null],
       type: [contact?.type ?? 'EMAIL', Validators.required],
-      value: [contact?.value ?? '', Validators.required],
+      value: [maskedValue, Validators.required],
       description: [contact?.description ?? ''],
       principal: [contact?.principal ?? false],
     });
   }
 
   private createAddressGroup(address?: PersonAddressResponseDto): FormGroup {
+    // Aplica a máscara no CEP
+    const maskedCep = this.applyCepMask(address?.cep);
+
     return this.fb.group({
       id: [address?.id ?? null],
-       type: [address?.type ?? 'RESIDENCIAL', Validators.required],
-      cep: [address?.cep ?? ''],
+      type: [address?.type ?? 'RESIDENCIAL', Validators.required],
+      cep: [maskedCep],
       logradouro: [address?.logradouro ?? ''],
       numero: [address?.numero ?? '', Validators.required],
       complemento: [address?.complemento ?? ''],
@@ -199,7 +231,10 @@ export class ClientsComponent implements OnInit {
     this.form.patchValue({
       tipoPessoa: client.person.tipoPessoa,
       name: client.person.name,
-      cpfCnpj: client.person.cpfCnpj,
+      cpfCnpj: this.applyCpfCnpjMask(
+        client.person.cpfCnpj,
+        client.person.tipoPessoa
+      ),
       rg: client.individual?.rg ?? '',
       nomeFantasia: client.legalEntity?.nomeFantasia ?? '',
       inscricaoEstadual: client.legalEntity?.inscricaoEstadual ?? '',
@@ -238,11 +273,16 @@ export class ClientsComponent implements OnInit {
         id: editing?.person?.id,
         tipoPessoa: v.tipoPessoa,
         name: v.name,
-        cpfCnpj: v.cpfCnpj,
+        // Remove pontuações do CPF/CNPJ antes de enviar
+        cpfCnpj: v.cpfCnpj ? v.cpfCnpj.replace(/\D/g, '') : '',
       },
       individual: isPF
-        ? { id: editing?.individual?.id, rg: v.rg }
-        : null,
+      ? {
+          id: editing?.individual?.id,
+          // Remove espaços, pontos e hífens, mantendo letras e números em maiúsculo
+          rg: v.rg ? v.rg.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() : '',
+        }
+      : null,
       legalEntity: !isPF
         ? {
             id: editing?.legalEntity?.id,
@@ -253,14 +293,16 @@ export class ClientsComponent implements OnInit {
       contacts: (v.contacts as PersonContactResponseDto[]).map((c) => ({
         id: c.id ?? undefined,
         type: c.type,
-        value: c.value,
+        // Se NÃO for e-mail, remove parênteses, traços e espaços do telefone/celular
+        value: c.type !== 'EMAIL' && c.value ? c.value.replace(/\D/g, '') : c.value,
         description: c.description,
         principal: c.principal,
       })),
       addresses: (v.addresses as PersonAddressResponseDto[]).map((a) => ({
         id: a.id ?? undefined,
         type: a.type,
-        cep: a.cep,
+        // Remove hífen do CEP
+        cep: a.cep ? a.cep.replace(/\D/g, '') : '',
         logradouro: a.logradouro,
         numero: a.numero,
         complemento: a.complemento,
@@ -328,60 +370,55 @@ export class ClientsComponent implements OnInit {
 
   formatCpfCnpj(event: Event): void {
     const input = event.target as HTMLInputElement;
-    let value = input.value.replace(/\D/g, '');
-    if (value.length > 14) value = value.substring(0, 14);
+    const tipoPessoa =
+      this.form.get('tipoPessoa')?.value;
 
-    if (value.length <= 11) {
-      value = value
-        .replace(/(\d{3})(\d)/, '$1.$2')
-        .replace(/(\d{3})(\d)/, '$1.$2')
-        .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-    } else {
-      value = value
-        .replace(/^(\d{2})(\d)/, '$1.$2')
-        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
-        .replace(/\.(\d{3})(\d)/, '.$1/$2')
-        .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
-    }
-    this.form.get('cpfCnpj')?.setValue(value, { emitEvent: false });
-  }
-
-  onContactTypeChange(index: number): void {
-    this.contacts.at(index).get('value')?.setValue('');
+    const maskedValue =
+      this.applyCpfCnpjMask(
+        input.value,
+        tipoPessoa
+      );
+    this.form.get('cpfCnpj')?.setValue(maskedValue, { emitEvent: false });
   }
 
   onContactValueInput(event: Event, index: number): void {
     const group = this.contacts.at(index);
-    const type = group.get('type')?.value as TipoContato;
+    const type = group.get('type')?.value;
     const input = event.target as HTMLInputElement;
-    let value = input.value;
 
     if (type === 'EMAIL') {
-      group.get('value')?.setValue(value, { emitEvent: false });
+      group.get('value')?.setValue(input.value, { emitEvent: false });
       return;
     }
 
-    value = value.replace(/\D/g, '');
-    if (value.length > 11) value = value.substring(0, 11);
+    const maskedValue = this.applyPhoneMask(input.value);
+    group.get('value')?.setValue(maskedValue, { emitEvent: false });
+  }
 
-    if (value.length <= 10) {
-      value = value
-        .replace(/^(\d{2})(\d)/, '($1) $2')
-        .replace(/(\d{4})(\d)/, '$1-$2');
-    } else {
-      value = value
-        .replace(/^(\d{2})(\d)/, '($1) $2')
-        .replace(/(\d{5})(\d)/, '$1-$2');
-    }
-    group.get('value')?.setValue(value, { emitEvent: false });
+  onContactTypeChange(
+    index: number
+  ): void {
+
+    // Ao trocar o tipo, limpa o valor
+    // para impedir que um e-mail vire telefone
+    // ou que um telefone seja tratado como e-mail.
+    this.contacts
+      .at(index)
+      .get('value')
+      ?.setValue('');
   }
 
   formatCep(event: Event, index: number): void {
     const input = event.target as HTMLInputElement;
-    let value = input.value.replace(/\D/g, '');
-    if (value.length > 8) value = value.substring(0, 8);
-    value = value.replace(/^(\d{5})(\d)/, '$1-$2');
-    this.addresses.at(index).get('cep')?.setValue(value, { emitEvent: false });
+    const maskedValue = this.applyCepMask(input.value);
+    this.addresses.at(index).get('cep')?.setValue(maskedValue, { emitEvent: false });
+  }
+
+  formatRg(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    // Mantém apenas letras e números, convertendo para maiúsculo
+    const value = input.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    this.form.get('rg')?.setValue(value, { emitEvent: false });
   }
 
   buscarCep(index: number): void {
@@ -409,5 +446,115 @@ export class ClientsComponent implements OnInit {
         this.notification.error('Erro ao buscar CEP.');
       },
     });
+  }
+
+  /* ==================== Utilitários de Máscara ==================== */
+
+  applyCpfCnpjMask(
+    value: string | undefined | null,
+    tipoPessoa?: 'PF' | 'PJ' | string
+  ): string {
+
+    if (!value) {
+      return '';
+    }
+
+    let str =
+      value.replace(/\D/g, '');
+
+    const isPJ =
+      tipoPessoa === 'PJ'
+        ? true
+        : tipoPessoa === 'PF'
+          ? false
+          : str.length > 11;
+
+    if (isPJ) {
+
+      // CNPJ possui no máximo 14 dígitos
+      if (str.length > 14) {
+        str = str.substring(0, 14);
+      }
+
+      return str
+
+        // 12
+        // 12.3
+        .replace(
+          /^(\d{2})(\d)/,
+          '$1.$2'
+        )
+
+        // 12.345.6
+        .replace(
+          /^(\d{2})\.(\d{3})(\d)/,
+          '$1.$2.$3'
+        )
+
+        // 12.345.678/...
+        .replace(
+          /\.(\d{3})(\d)/,
+          '.$1/$2'
+        )
+
+        // 12.345.678/0001-...
+        .replace(
+          /(\d{4})(\d{1,2})$/,
+          '$1-$2'
+        );
+    }
+    // CPF possui no máximo 11 dígitos
+    if (str.length > 11) {
+      str = str.substring(0, 11);
+    }
+    return str
+      // 123
+      // 123.4
+      .replace(
+        /(\d{3})(\d)/,
+        '$1.$2'
+      )
+      // 123.456.7
+      .replace(
+        /(\d{3})(\d)/,
+        '$1.$2'
+      )
+      // 123.456.789-...
+      .replace(
+        /(\d{3})(\d{1,2})$/,
+        '$1-$2'
+      );
+  }
+
+
+  private applyPhoneMask(value: string | undefined | null): string {
+    if (!value) return '';
+    let str = value.replace(/\D/g, '');
+    if (str.length > 11) str = str.substring(0, 11);
+
+    if (str.length <= 10) {
+      return str
+        .replace(/^(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{4})(\d)/, '$1-$2');
+    } else {
+      return str
+        .replace(/^(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{5})(\d)/, '$1-$2');
+    }
+  }
+
+  private applyCepMask(value: string | undefined | null): string {
+    if (!value) return '';
+    let str = value.replace(/\D/g, '');
+    if (str.length > 8) str = str.substring(0, 8);
+    return str.replace(/^(\d{5})(\d)/, '$1-$2');
+  }
+
+  private normalizeSearchValue(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
   }
 }

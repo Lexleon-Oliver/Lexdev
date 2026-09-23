@@ -51,7 +51,7 @@
             @for (client of filteredClients(); track client.id) {
               <tr>
                 <td data-label="Nome/Razão">{{ client.person.name }}</td>
-                <td data-label="CPF/CNPJ">{{ client.person.cpfCnpj }}</td>
+                <td data-label="CPF/CNPJ">{{ applyCpfCnpjMask(client.person.cpfCnpj, client.person.tipoPessoa) }}</td>
                 <td data-label="E-mail">{{ getEmail(client) }}</td>
                 <td data-label="Telefone">{{ getPhone(client) }}</td>
                 <td data-label="Ações">
@@ -182,7 +182,13 @@
             } @else {
               <div class="form-row full-width">
                 <label for="rg">RG</label>
-                <input id="rg" type="text" formControlName="rg" placeholder="Opcional" />
+                <input
+                  id="rg"
+                  type="text"
+                  formControlName="rg"
+                  (input)="formatRg($event)"
+                  placeholder="Ex: 12345678X"
+                />
               </div>
             }
           </div>
