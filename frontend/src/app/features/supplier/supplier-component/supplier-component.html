@@ -90,24 +90,56 @@
 
         <!-- Abas -->
         <div class="tabs">
-          <button class="tab-btn" [class.active]="activeTab() === 'identification'" (click)="activeTab.set('identification')">
+
+          <button
+            class="tab-btn"
+            [class.active]="activeTab() === 'identification'"
+            (click)="activeTab.set('identification')"
+          >
+            <i class="fas fa-id-card"></i>
             Identificação
           </button>
-          <button class="tab-btn" [class.active]="activeTab() === 'address'" (click)="activeTab.set('address')">
+
+          <button
+            class="tab-btn"
+            [class.active]="activeTab() === 'address'"
+            (click)="activeTab.set('address')"
+          >
+            <i class="fas fa-map-marker-alt"></i>
             Endereço
           </button>
-          <button class="tab-btn" [class.active]="activeTab() === 'commercial'" (click)="activeTab.set('commercial')">
+
+          <button
+            class="tab-btn"
+            [class.active]="activeTab() === 'commercial'"
+            (click)="activeTab.set('commercial')"
+          >
+            <i class="fas fa-briefcase"></i>
             Comercial
           </button>
-          <button class="tab-btn" [class.active]="activeTab() === 'bank'" (click)="activeTab.set('bank')">
+
+          <button
+            class="tab-btn"
+            [class.active]="activeTab() === 'bank'"
+            (click)="activeTab.set('bank')"
+          >
+            <i class="fas fa-university"></i>
             Bancário
           </button>
-          <button class="tab-btn" [class.active]="activeTab() === 'contacts'" (click)="activeTab.set('contacts')">
+
+          <button
+            class="tab-btn"
+            [class.active]="activeTab() === 'contacts'"
+            (click)="activeTab.set('contacts')"
+          >
+            <i class="fas fa-address-book"></i>
             Contatos
+
             @if (contatos.length > 0) {
               <span class="tab-badge">{{ contatos.length }}</span>
             }
           </button>
+
         </div>
 
         <form [formGroup]="form" (ngSubmit)="onSubmit()" class="supplier-form">

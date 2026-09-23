@@ -85,15 +85,33 @@
 
         <!-- Abas -->
         <div class="tabs">
-          <button class="tab-btn" [class.active]="activeTab() === 'identification'" (click)="activeTab.set('identification')">
+          <button
+            class="tab-btn"
+            [class.active]="activeTab() === 'identification'"
+            (click)="activeTab.set('identification')"
+          >
+            <i class="fas fa-id-card"></i>
             Identificação
           </button>
-          <button class="tab-btn" [class.active]="activeTab() === 'contact'" (click)="activeTab.set('contact')">
+
+          <button
+            class="tab-btn"
+            [class.active]="activeTab() === 'contact'"
+            (click)="activeTab.set('contact')"
+          >
+            <i class="fas fa-address-book"></i>
             Contatos
           </button>
-          <button class="tab-btn" [class.active]="activeTab() === 'address'" (click)="activeTab.set('address')">
+
+          <button
+            class="tab-btn"
+            [class.active]="activeTab() === 'address'"
+            (click)="activeTab.set('address')"
+          >
+            <i class="fas fa-map-marker-alt"></i>
             Endereços
           </button>
+
         </div>
 
         <form [formGroup]="form" (ngSubmit)="onSubmit()" class="client-form">

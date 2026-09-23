@@ -169,14 +169,26 @@ export class ProductsComponent implements OnInit {
   this.fornecedorService.findAll(0, 1000).subscribe({
     next: (page) => {
       const content = page.content ?? [];
+
       const options: SupplierOption[] = content
-        .filter((s: any) => s.id != null)
-        .map((s: any) => ({ id: s.id, name: s.name }));
+        .filter((s) => s.id != null)
+        .map((s) => ({
+          id: s.id,
+          name:
+            s.person?.tipoPessoa === 'PJ'
+              ? s.legalEntity?.nomeFantasia?.trim() ||
+                s.person?.name?.trim() ||
+                `Fornecedor #${s.id}`
+              : s.person?.name?.trim() ||
+                `Fornecedor #${s.id}`,
+        }));
 
       this.supplierOptions.set(options);
     },
-    error: () => {
-      /* silencioso */
+
+    error: (error) => {
+      console.error('Erro ao carregar fornecedores:', error);
+      this.supplierOptions.set([]);
     },
   });
 }
@@ -354,14 +366,18 @@ export class ProductsComponent implements OnInit {
       minimumStock: this.toNumberOrNull(v.minimumStock),
       maximumStock: this.toNumberOrNull(v.maximumStock),
       reorderPoint: this.toNumberOrNull(v.reorderPoint),
-      ncm: v.ncm || null,
-      cest: v.cest || null,
+
+      // Envia somente os dígitos
+      ncm: this.onlyDigits(v.ncm),
+      cest: this.onlyDigits(v.cest),
+
       origin: v.origin || null,
       grossWeight: this.toNumberOrNull(v.grossWeight),
       netWeight: this.toNumberOrNull(v.netWeight),
       height: this.toNumberOrNull(v.height),
       width: this.toNumberOrNull(v.width),
       length: this.toNumberOrNull(v.length),
+
       suppliers: suppliersRequest,
       images: imagesRequest,
     };
@@ -557,6 +573,16 @@ export class ProductsComponent implements OnInit {
   supplierName(id: number | null | undefined): string {
     if (id == null) return '—';
     return this.supplierOptions().find((s) => s.id === id)?.name ?? `#${id}`;
+  }
+
+  private onlyDigits(value: unknown): string | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+
+    const digits = String(value).replace(/\D/g, '');
+
+    return digits || null;
   }
 
 
