@@ -502,7 +502,7 @@
             </div>
           </div>
 
-          <!-- ==================== Aba Imagens ==================== -->
+<!-- ==================== Aba Imagens ==================== -->
           <div class="tab-panel" [hidden]="activeTab() !== 'imagens'">
             <div class="contacts-toolbar">
               <span class="hint">
@@ -511,110 +511,16 @@
             </div>
 
             <div class="gallery-grid">
-              @for (img of images(); track $index) {
+              @for (img of images(); track img.key) {
                 <div class="image-preview" [class.is-main]="img.mainImage">
-                  <!-- ==================== Aba Imagens ==================== -->
-                  <div
-                    class="tab-panel"
-                    [hidden]="activeTab() !== 'imagens'"
-                  >
-
-                    <div class="contacts-toolbar">
-
-                      <span class="hint">
-
-                        A imagem marcada com
-                        <i
-                          class="fas fa-star"
-                          style="color:#23a2f6"
-                        ></i>
-                        é a principal.
-
-                      </span>
-
+                  @if (img.previewUrl) {
+                    <img [src]="img.previewUrl" [alt]="img.fileName" />
+                  } @else {
+                    <div class="image-loading">
+                      <i class="fas fa-spinner fa-spin"></i>
                     </div>
+                  }
 
-                    <div class="gallery-grid">
-
-                      @for (
-                        img of images();
-                        track img.key
-                      ) {
-
-                        <div
-                          class="image-preview"
-                          [class.is-main]="img.mainImage"
-                        >
-
-                          @if (img.previewUrl) {
-
-                            <img
-                              [src]="img.previewUrl"
-                              [alt]="img.fileName"
-                            />
-
-                          } @else {
-
-                            <div class="image-loading">
-
-                              <i class="fas fa-spinner fa-spin"></i>
-
-                            </div>
-
-                          }
-
-                          <button
-                            type="button"
-                            class="btn-main-image"
-                            [class.active]="img.mainImage"
-                            (click)="setMainImage($index)"
-                            title="Definir como principal"
-                          >
-
-                            <i class="fas fa-star"></i>
-
-                          </button>
-
-                          <button
-                            type="button"
-                            class="btn-remove-image"
-                            (click)="removeImage($index)"
-                            title="Remover"
-                          >
-
-                            <i class="fas fa-times"></i>
-
-                          </button>
-
-                          <span
-                            class="image-name"
-                            [title]="img.fileName"
-                          >
-                            {{ img.fileName }}
-                          </span>
-
-                        </div>
-                      }
-
-                      <label class="image-dropzone">
-
-                        <i class="fas fa-plus"></i>
-
-                        <span>Adicionar Imagem</span>
-
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          multiple
-                          hidden
-                          (change)="onImagesSelected($event)"
-                        />
-
-                      </label>
-
-                    </div>
-
-                  </div>
                   <button
                     type="button"
                     class="btn-main-image"
@@ -624,6 +530,7 @@
                   >
                     <i class="fas fa-star"></i>
                   </button>
+
                   <button
                     type="button"
                     class="btn-remove-image"
@@ -632,14 +539,23 @@
                   >
                     <i class="fas fa-times"></i>
                   </button>
-                  <span class="image-name" [title]="img.fileName">{{ img.fileName }}</span>
+
+                  <span class="image-name" [title]="img.fileName">
+                    {{ img.fileName }}
+                  </span>
                 </div>
               }
 
               <label class="image-dropzone">
                 <i class="fas fa-plus"></i>
                 <span>Adicionar Imagem</span>
-                <input type="file" accept="image/*" multiple hidden (change)="onImagesSelected($event)" />
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  hidden
+                  (change)="onImagesSelected($event)"
+                />
               </label>
             </div>
           </div>

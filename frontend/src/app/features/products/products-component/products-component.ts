@@ -117,6 +117,7 @@ private readonly notification =
 
   /* ---------- Imagens (signal, não FormArray — envio de arquivos) ---------- */
   images = signal<ProductImageItem[]>([]);
+  private imageKeyCounter = 0;
 
   private readonly maxImageSize =
     5 * 1024 * 1024;
@@ -716,8 +717,7 @@ private readonly notification =
 
       validImages.push({
 
-        key:
-          crypto.randomUUID(),
+        key: this.generateImageKey(),
 
         fileName:
           file.name,
@@ -1261,6 +1261,12 @@ private readonly notification =
         );
       }
     }
+  }
+
+  private generateImageKey(): string {
+    this.imageKeyCounter++;
+
+    return `image-${Date.now()}-${this.imageKeyCounter}`;
   }
 
 

@@ -182,11 +182,21 @@ public class ProductService {
 
         product.getSuppliers().clear();
 
+        /*
+        * Garante que os ProductSupplier removidos por
+        * orphanRemoval sejam excluídos antes de inserir
+        * novamente os mesmos vínculos.
+        */
+        if (product.getId() != null) {
+            productRepository.flush();
+        }
+
         if (supplierDtos == null || supplierDtos.isEmpty()) {
             return;
         }
 
         validatePreferredSupplier(supplierDtos);
+        validateDuplicateSuppliers(supplierDtos);
 
         for (ProductSupplierRequestDto dto : supplierDtos) {
 
@@ -203,9 +213,15 @@ public class ProductService {
                 new ProductSupplier();
 
             productSupplier.setSupplier(supplier);
-            productSupplier.setSupplierCode(dto.supplierCode());
-            productSupplier.setPurchasePrice(dto.purchasePrice());
-            productSupplier.setLeadTimeDays(dto.leadTimeDays());
+            productSupplier.setSupplierCode(
+                dto.supplierCode()
+            );
+            productSupplier.setPurchasePrice(
+                dto.purchasePrice()
+            );
+            productSupplier.setLeadTimeDays(
+                dto.leadTimeDays()
+            );
             productSupplier.setMinimumOrderQuantity(
                 dto.minimumOrderQuantity()
             );
@@ -288,6 +304,24 @@ public class ProductService {
                     );
                 }
             });
+    }
+
+    private void validateDuplicateSuppliers(
+        List<ProductSupplierRequestDto> suppliers
+    ) {
+
+        long distinctCount = suppliers
+            .stream()
+            .map(ProductSupplierRequestDto::supplierId)
+            .distinct()
+            .count();
+
+        if (distinctCount != suppliers.size()) {
+            throw new IllegalArgumentException(
+                "O mesmo fornecedor não pode ser vinculado " +
+                "mais de uma vez ao mesmo produto."
+            );
+        }
     }
 
     // ============================================================
