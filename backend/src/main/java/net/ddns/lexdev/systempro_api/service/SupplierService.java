@@ -110,10 +110,6 @@ public class SupplierService {
             supplier
         );
 
-        if (dto.active() != null) {
-            supplier.setActive(dto.active());
-        }
-
         return SupplierResponseDto.fromEntity(
             supplierRepository.save(supplier)
         );
@@ -154,10 +150,6 @@ public class SupplierService {
             supplier
         );
 
-        if (dto.active() != null) {
-            supplier.setActive(dto.active());
-        }
-
         return SupplierResponseDto.fromEntity(
             supplierRepository.save(supplier)
         );
@@ -166,14 +158,15 @@ public class SupplierService {
     @Transactional
     public void delete(Long id) {
 
-        Supplier supplier = supplierRepository.findByIdWithPerson(id)
-            .orElseThrow(() -> new EntityNotFoundException(
-                "Fornecedor não encontrado com o ID: " + id
-            ));
+        Supplier supplier =
+            supplierRepository.findByIdWithPerson(id)
+                .orElseThrow(() ->
+                    new EntityNotFoundException(
+                        "Fornecedor não encontrado com o ID: " + id
+                    )
+                );
 
-        supplier.setActive(false);
-
-        supplierRepository.save(supplier);
+        supplierRepository.delete(supplier);
     }
 
     private void copyDtoToSupplier(
@@ -202,22 +195,18 @@ public class SupplierService {
         );
 
         if (dto.bankDetails() != null) {
-
-            BankDetails bank = new BankDetails(
-                dto.bankDetails().banco(),
-                dto.bankDetails().agencia(),
-                dto.bankDetails().conta(),
-                parseTipoConta(
-                    dto.bankDetails().tipoConta()
-                ),
-                dto.bankDetails().chavePix()
+            supplier.setBankDetails(
+                new BankDetails(
+                    dto.bankDetails().banco(),
+                    dto.bankDetails().agencia(),
+                    dto.bankDetails().conta(),
+                    parseTipoConta(dto.bankDetails().tipoConta()),
+                    dto.bankDetails().chavePix()
+                )
             );
-
-            supplier.setBankDetails(bank);
         }
 
         if (dto.contatos() != null) {
-
             supplier.getContatos().clear();
 
             dto.contatos().forEach(c ->
@@ -234,14 +223,13 @@ public class SupplierService {
         }
 
         if (dto.documentos() != null) {
-
             supplier.getDocumentos().clear();
 
             dto.documentos().forEach(d ->
                 supplier.getDocumentos().add(
                     new SupplierDocument(
                         d.tipoDocumento(),
-                        d.numeroOuUrl(),
+                        d.numeroDocumento(),
                         d.dataValidade()
                     )
                 )

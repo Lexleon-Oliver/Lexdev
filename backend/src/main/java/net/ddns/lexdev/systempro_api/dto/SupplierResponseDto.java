@@ -21,7 +21,7 @@ public record SupplierResponseDto(
     String observacoesComerciais,
     BankDetailsDto bankDetails,
     List<SupplierContactDto> contatos,
-    List<SupplierDocumentDto> documentos,
+    List<SupplierDocumentResponseDto> documentos,
     Boolean active
 ) {
 
@@ -57,12 +57,12 @@ public record SupplierResponseDto(
                 ))
                 .toList();
 
-        List<SupplierDocumentDto> documents =
+        List<SupplierDocumentResponseDto> documents =
             supplier.getDocumentos()
                 .stream()
-                .map(d -> new SupplierDocumentDto(
+                .map(d -> new SupplierDocumentResponseDto(
                     d.getTipoDocumento(),
-                    d.getNumeroOuUrl(),
+                    d.getNumeroDocumento(),
                     d.getDataValidade()
                 ))
                 .toList();

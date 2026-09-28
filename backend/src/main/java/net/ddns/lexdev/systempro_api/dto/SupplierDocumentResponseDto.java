@@ -2,8 +2,12 @@ package net.ddns.lexdev.systempro_api.dto;
 
 import java.time.LocalDate;
 
-public record SupplierDocumentDto(
+public record SupplierDocumentResponseDto(
+
     String tipoDocumento,
-    String numeroOuUrl,
+
+    String numeroDocumento,
+
     LocalDate dataValidade
+
 ) {}

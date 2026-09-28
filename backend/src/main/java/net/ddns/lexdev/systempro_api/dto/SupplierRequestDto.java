@@ -38,8 +38,6 @@ public record SupplierRequestDto(
 
     List<SupplierContactDto> contatos,
 
-    List<SupplierDocumentDto> documentos,
-
-    Boolean active
+    List<SupplierDocumentRequestDto> documentos
 
 ) {}
