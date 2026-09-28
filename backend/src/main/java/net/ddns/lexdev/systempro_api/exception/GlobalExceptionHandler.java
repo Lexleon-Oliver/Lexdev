@@ -81,26 +81,28 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiErrorResponseDto> handleDataIntegrityViolation(
-            DataIntegrityViolationException ex, 
+            DataIntegrityViolationException ex,
             HttpServletRequest request) {
 
-        String message = "Usuário ou e-mail já cadastrado no sistema.";
-
-        // Identifica se a violação veio do e-mail ou do username
-        String detailMessage = ex.getMostSpecificCause().getMessage();
-        if (detailMessage != null) {
-            if (detailMessage.contains("email")) {
-                message = "O e-mail informado já está em uso.";
-            } else if (detailMessage.contains("username")) {
-                message = "O nome de usuário informado já está em uso.";
-            }
+        String message =
+            "Não foi possível concluir a operação por uma violação de integridade dos dados.";
+        String constraintName = extractConstraintName(ex);
+        if ("ux_product_image_main".equals(constraintName)) {
+            message =
+                "O produto deve possuir apenas uma imagem principal.";
+        } else if ("ux_user_email".equals(constraintName)) {
+            message =
+                "O e-mail informado já está em uso.";
+        } else if ("ux_user_username".equals(constraintName)) {
+            message =
+                "O nome de usuário informado já está em uso.";
         }
 
         return buildResponse(
-            HttpStatus.BAD_REQUEST, // Retorna 400 em vez de 500
-            "Conflito de Dados", 
-            message, 
-            request.getRequestURI(), 
+            HttpStatus.CONFLICT,
+            "Conflito de Dados",
+            message,
+            request.getRequestURI(),
             null
         );
     }
@@ -130,5 +132,16 @@ public class GlobalExceptionHandler {
                 request.getRequestURI(),
                 null
         );
+    }
+
+    private String extractConstraintName(Throwable ex) {
+        Throwable current = ex;
+        while (current != null) {
+            if (current instanceof org.hibernate.exception.ConstraintViolationException cve) {
+                return cve.getConstraintName();
+            }
+            current = current.getCause();
+        }
+        return null;
     }
 }

@@ -201,13 +201,11 @@ public class ProductImageService {
     // ============================================================
     // DELETE
     // ============================================================
-
     @Transactional
     public void delete(
         Long productId,
         Long imageId
     ) {
-
         ProductImage image =
             findImage(productId, imageId);
 
@@ -234,13 +232,23 @@ public class ProductImageService {
                 .orElse(null);
         }
 
-        if (nextMain != null) {
-            nextMain.setMainImage(true);
-        }
-
+        // ========================================================
+        // 1. Exclui primeiro a imagem atual
+        // ========================================================
         productImageRepository.delete(image);
         productImageRepository.flush();
 
+        // ========================================================
+        // 2. Só depois promove a próxima imagem
+        // ========================================================
+        if (nextMain != null) {
+            nextMain.setMainImage(true);
+            productImageRepository.flush();
+        }
+
+        // ========================================================
+        // 3. Remove o arquivo físico
+        // ========================================================
         storageService.delete(storagePath);
     }
 
