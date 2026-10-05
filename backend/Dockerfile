@@ -30,10 +30,12 @@ WORKDIR /app
 RUN addgroup -S -g 101 spring \
     && adduser -S -D -H -u 100 -G spring spring
 
-# Prepara o diretório para armazenamento das imagens
 RUN mkdir -p /data/product-images \
     && chown spring:spring /data/product-images \
-    && chmod 770 /data/product-images
+    && chmod 770 /data/product-images \
+    && mkdir -p /data/supplier-documents \
+    && chown spring:spring /data/supplier-documents \
+    && chmod 770 /data/supplier-documents
 
 # Copia o JAR compilado no estágio build
 COPY --from=build --chown=spring:spring /app/target/*.jar app.jar

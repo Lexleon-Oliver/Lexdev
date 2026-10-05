@@ -1,31 +1,30 @@
 import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { catchError, throwError } from 'rxjs';
 import { inject } from '@angular/core';
-import { Router } from '@angular/router';
 import { ApiErrorResponse } from '../../features/models/api-error';
 import { NotificationService } from '../services/notification-service';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
-  const router = inject(Router);
   const notificationService = inject(NotificationService);
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
-      const apiError = error.error as ApiErrorResponse;
-      const fallbackMessage = 'Ocorreu um erro inesperado no servidor.';
-      const errorMessage = apiError?.message || fallbackMessage;
 
-      if (error.status === 401) {
-        notificationService.error('Sessão expirada ou não autorizada. Faça login novamente.');
-        router.navigate(['/login']);
-      } else if (error.status === 403) {
-        router.navigate(['/403']);
-      } else {
-        // Exibe a mensagem exata retornada pela ApiErrorResponse
+      const apiError = error.error as ApiErrorResponse;
+
+      const fallbackMessage =
+        'Ocorreu um erro inesperado no servidor.';
+
+      const errorMessage =
+        apiError?.message || fallbackMessage;
+
+      // 401 é responsabilidade exclusiva do authInterceptor.
+      // 403 também é tratado pelo authInterceptor.
+      if (error.status !== 401 && error.status !== 403) {
         notificationService.error(errorMessage);
       }
 
-      return throwError(() => apiError || error);
+      return throwError(() => error);
     })
   );
 };

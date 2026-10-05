@@ -1,11 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, Input, OnChanges, OnInit, signal, SimpleChanges } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { SupplierDocumentDetailResponse, SupplierDocumentUploadRequest, SupplierDocumentVersionResponse } from '../../models/supplier-document-dto';
 import { HttpResponse } from '@angular/common/http';
 import { NotificationService } from '../../../core/services/notification-service';
 import { SupplierDocumentService } from '../../../core/services/supplier-document-service';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 @Component({
   standalone: true,
@@ -20,7 +20,7 @@ export class SupplierDocuments implements OnInit {
   private readonly documentService = inject(SupplierDocumentService);
   private readonly notification = inject(NotificationService);
   private readonly fb = inject(FormBuilder);
-  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   supplierId: number | null = null;
 
   readonly documents = signal<SupplierDocumentDetailResponse[]>([]);
@@ -49,15 +49,16 @@ export class SupplierDocuments implements OnInit {
   });
 
   ngOnInit(): void {
-    const idParam = this.route.snapshot.paramMap.get('id');
+    const supplierId = this.extractSupplierIdFromUrl();
 
-    const supplierId = Number(idParam);
-
-    if (!idParam || !Number.isInteger(supplierId) || supplierId <= 0) {
+    if (supplierId == null) {
       this.supplierId = null;
       this.documents.set([]);
 
-      this.notification.error('Fornecedor inválido.');
+      this.notification.error(
+        'Não foi possível identificar o fornecedor.'
+      );
+
       return;
     }
 
@@ -65,6 +66,23 @@ export class SupplierDocuments implements OnInit {
     this.loadDocuments();
   }
 
+  private extractSupplierIdFromUrl(): number | null {
+    const url = this.router.url;
+
+    const match = url.match(
+      /\/fornecedores\/(\d+)\/documentos(?:\/|$)/
+    );
+
+    if (!match?.[1]) {
+      return null;
+    }
+
+    const supplierId = Number(match[1]);
+
+    return Number.isInteger(supplierId) && supplierId > 0
+      ? supplierId
+      : null;
+  }
   loadDocuments(): void {
     if (this.supplierId == null) {
       this.documents.set([]);

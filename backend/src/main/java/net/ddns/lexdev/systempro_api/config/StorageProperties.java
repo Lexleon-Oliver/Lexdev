@@ -4,11 +4,21 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "systempro.storage")
 public record StorageProperties(
+
+    String localStorageLocation,
+
     String endpoint,
+
     String region,
+
     String accessKey,
+
     String secretKey,
+
     String bucket,
+
     boolean pathStyleAccess,
+
     long maxFileSizeBytes
+
 ) {}

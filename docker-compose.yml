@@ -37,6 +37,7 @@ services:
 
     volumes:
       - systempro_product_images:/data/product-images
+      - systempro_supplier_documents:/data/supplier-documents
 
     restart: unless-stopped
   frontend:
@@ -63,4 +64,5 @@ services:
 
 volumes:
   systempro_product_images:
+  systempro_supplier_documents:
   pgdata:

@@ -59,7 +59,9 @@ export class AuthService {
     const refreshToken = localStorage.getItem(this.refreshTokenKey);
 
     if (!refreshToken) {
-      return throwError(() => new Error('Refresh token não encontrado.'));
+      return throwError(
+        () => new Error('Refresh token não encontrado.')
+      );
     }
 
     return this.http.post<AuthResponse>(
@@ -67,8 +69,17 @@ export class AuthService {
       { refreshToken }
     ).pipe(
       tap((res) => {
-        localStorage.setItem(this.tokenKey, res.accessToken);
-        localStorage.setItem(this.refreshTokenKey, res.refreshToken);
+        localStorage.setItem(
+          this.tokenKey,
+          res.accessToken
+        );
+
+        localStorage.setItem(
+          this.refreshTokenKey,
+          res.refreshToken
+        );
+
+        this._isAuthenticated.set(true);
       })
     );
   }
