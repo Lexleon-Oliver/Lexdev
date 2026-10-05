@@ -11,7 +11,6 @@ import net.ddns.lexdev.systempro_api.domain.BankDetails;
 import net.ddns.lexdev.systempro_api.domain.Person;
 import net.ddns.lexdev.systempro_api.domain.Supplier;
 import net.ddns.lexdev.systempro_api.domain.SupplierContact;
-import net.ddns.lexdev.systempro_api.domain.SupplierDocument;
 import net.ddns.lexdev.systempro_api.dto.SupplierRequestDto;
 import net.ddns.lexdev.systempro_api.dto.SupplierResponseDto;
 import net.ddns.lexdev.systempro_api.enums.TipoContaBancaria;
@@ -217,20 +216,6 @@ public class SupplierService {
                         c.email(),
                         c.telefone(),
                         c.setor()
-                    )
-                )
-            );
-        }
-
-        if (dto.documentos() != null) {
-            supplier.getDocumentos().clear();
-
-            dto.documentos().forEach(d ->
-                supplier.getDocumentos().add(
-                    new SupplierDocument(
-                        d.tipoDocumento(),
-                        d.numeroDocumento(),
-                        d.dataValidade()
                     )
                 )
             );

@@ -85,17 +85,6 @@ public class Supplier extends AuditableEntity {
     )
     private List<SupplierContact> contatos = new ArrayList<>();
 
-    // =========================
-    // DOCUMENTOS
-    // =========================
-
-    @ElementCollection(fetch = FetchType.LAZY)
-    @CollectionTable(
-        name = "tb_supplier_documents",
-        joinColumns = @JoinColumn(name = "supplier_id")
-    )
-    private List<SupplierDocument> documentos = new ArrayList<>();
-
     @Column(nullable = false)
     private boolean active = true;
 

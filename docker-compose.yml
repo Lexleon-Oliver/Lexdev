@@ -57,6 +57,9 @@ services:
       - backend
       - frontend
     restart: unless-stopped
+  clamav:
+    image: clamav/clamav:stable
+    restart: unless-stopped
 
 volumes:
   systempro_product_images:

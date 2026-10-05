@@ -4,6 +4,7 @@ import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -18,9 +19,34 @@ public interface RefreshTokenRepository
         select r
         from RefreshToken r
         where r.jti = :jti
-    """)
+        """)
     Optional<RefreshToken> findByJtiForUpdate(
             @Param("jti") String jti
+    );
+
+    @Modifying(
+            flushAutomatically = true,
+            clearAutomatically = true
+    )
+    @Query(value = """
+        WITH expired_tokens AS (
+            SELECT id
+            FROM public.tb_refresh_tokens
+            WHERE expiry_date <
+                  CURRENT_TIMESTAMP
+                  - CAST(:gracePeriodSeconds AS double precision)
+                    * INTERVAL '1 second'
+            ORDER BY expiry_date ASC, id ASC
+            LIMIT :batchSize
+            FOR UPDATE SKIP LOCKED
+        )
+        DELETE FROM public.tb_refresh_tokens r
+        USING expired_tokens e
+        WHERE r.id = e.id
+        """, nativeQuery = true)
+    int deleteExpiredBatch(
+            @Param("gracePeriodSeconds") long gracePeriodSeconds,
+            @Param("batchSize") int batchSize
     );
 
     void deleteByUsername(String username);

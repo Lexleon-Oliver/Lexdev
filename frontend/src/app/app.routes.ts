@@ -54,6 +54,12 @@ export const routes: Routes = [
             .then(m => m.SupplierComponent)
       },
       {
+        path: 'fornecedores/:fornecedorId/documentos',
+        loadComponent: () =>
+          import('./features/supplier/supplier-documents/supplier-documents')
+            .then(m => m.SupplierDocuments)
+      },
+      {
         path: 'produtos',
         loadComponent: () =>
           import('./features/products/products-component/products-component')

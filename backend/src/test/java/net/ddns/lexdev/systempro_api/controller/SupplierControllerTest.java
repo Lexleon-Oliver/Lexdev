@@ -136,7 +136,6 @@ class SupplierControllerTest {
                     "Comercial"
                 )
             ),
-            List.of(),
             true
         );
     }

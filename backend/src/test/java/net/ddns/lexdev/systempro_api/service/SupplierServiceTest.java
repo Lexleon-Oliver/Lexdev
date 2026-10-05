@@ -140,9 +140,7 @@ class SupplierServiceTest {
                     "31977777777",
                     "Comercial"
                 )
-            ),
-            List.of(),
-            true
+            )
         );
     }
 
@@ -530,9 +528,7 @@ class SupplierServiceTest {
                 "Tecnologia e Serviços",
                 "Parceria Estratégica",
                 null,
-                List.of(),
-                List.of(),
-                true
+                List.of()
             );
 
         when(supplierRepository.findByIdWithPerson(1L))

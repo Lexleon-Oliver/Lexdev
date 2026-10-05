@@ -36,8 +36,6 @@ public record SupplierRequestDto(
 
     BankDetailsDto bankDetails,
 
-    List<SupplierContactDto> contatos,
-
-    List<SupplierDocumentRequestDto> documentos
+    List<SupplierContactDto> contatos
 
 ) {}

@@ -5,7 +5,6 @@ import { PersonAddressResponseDto } from "./person-address-response-dto";
 import { PersonContactResponseDto } from "./person-contact-response-dto";
 import { PersonResponseDto } from "./person-response-dto";
 import { SupplierContactDto } from "./supplier-contact-dto";
-import { SupplierDocumentDto } from "./supplier-document-dto";
 
 
 export interface SupplierResponseDto {
@@ -22,6 +21,5 @@ export interface SupplierResponseDto {
   observacoesComerciais: string;
   bankDetails?: BankDetailsDto | null;
   contatos: SupplierContactDto[];
-  documentos: SupplierDocumentDto[];
   active: boolean;
 }

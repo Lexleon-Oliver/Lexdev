@@ -56,6 +56,7 @@ public class JwtTokenProvider {
     // Access Token: apenas 'sub', 'jti' e 'type'
     public TokenHolder generateAccessToken(String username) {
         String jti = UUID.randomUUID().toString();
+
         Instant now = Instant.now();
         Instant expiresAt = now.plusMillis(accessTokenExpiration);
 
@@ -67,14 +68,17 @@ public class JwtTokenProvider {
                 .expiration(Date.from(expiresAt))
                 .signWith(accessKey);
 
-        if (issuer != null && !issuer.isBlank()) builder.issuer(issuer);
+        if (issuer != null && !issuer.isBlank()) {
+            builder.issuer(issuer);
+        }
+
         if (audience != null && !audience.isBlank()) {
             builder.audience()
                     .add(audience)
                     .and();
         }
 
-                return new TokenHolder(
+        return new TokenHolder(
                 builder.compact(),
                 jti,
                 expiresAt
@@ -84,17 +88,22 @@ public class JwtTokenProvider {
     // Refresh Token: apenas 'sub', 'jti' e 'type'
     public TokenHolder generateRefreshToken(String username) {
         String jti = UUID.randomUUID().toString();
+
         Instant now = Instant.now();
         Instant expiresAt = now.plusMillis(refreshTokenExpiration);
+
         JwtBuilder builder = Jwts.builder()
                 .claim("jti", jti)
                 .claim("type", "refresh")
                 .subject(username)
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + refreshTokenExpiration))
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(expiresAt))
                 .signWith(refreshKey);
 
-        if (issuer != null && !issuer.isBlank()) builder.issuer(issuer);
+        if (issuer != null && !issuer.isBlank()) {
+            builder.issuer(issuer);
+        }
+
         if (audience != null && !audience.isBlank()) {
             builder.audience()
                     .add(audience)

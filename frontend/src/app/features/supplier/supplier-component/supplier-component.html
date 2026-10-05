@@ -84,6 +84,13 @@
                     <button class="btn-edit" (click)="openEditModal(supplier)" title="Editar">
                       <i class="fas fa-edit"></i>
                     </button>
+                    <a
+                      class="btn-documents"
+                      [routerLink]="['/fornecedores', supplier.id, 'documentos']"
+                      title="Gerenciar documentos"
+                    >
+                      <i class="fas fa-folder-open"></i>
+                    </a>
                     <button class="btn-delete" (click)="confirmDelete(supplier)" title="Excluir">
                       <i class="fas fa-trash-alt"></i>
                     </button>

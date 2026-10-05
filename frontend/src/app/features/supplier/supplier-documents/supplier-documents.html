@@ -1,0 +1,271 @@
+<div class="supplier-documents">
+  @if (supplierId == null) {
+    <div class="documents-unavailable">
+      <i class="fas fa-info-circle"></i>
+      <div>
+        <strong>Documentos do fornecedor</strong>
+        <p>Salve o fornecedor primeiro para adicionar arquivos e documentos.</p>
+      </div>
+    </div>
+  } @else {
+    <div class="documents-header">
+      <div>
+        <p class="form-section-title">Documentos do fornecedor</p>
+        <span class="hint">
+          Arquivos aceitos: PDF, JPEG e PNG. O servidor valida o conteúdo e o antivírus antes da liberação.
+        </span>
+      </div>
+      @if (replacingDocumentId() !== null) {
+        <button type="button" class="btn-cancel-document" (click)="cancelUpload()">
+          <i class="fas fa-times"></i>
+          Cancelar nova versão
+        </button>
+      }
+    </div>
+
+    <div class="document-upload-card">
+      <div class="document-upload-title">
+        <i class="fas" [class.fa-upload]="replacingDocumentId() === null" [class.fa-code-branch]="replacingDocumentId() !== null"></i>
+        {{ replacingDocumentId() === null ? 'Adicionar documento' : 'Adicionar nova versão' }}
+      </div>
+
+      <div class="document-form-grid">
+        <div>
+          <label for="tipoDocumento">Tipo do Documento</label>
+          <input
+            id="tipoDocumento"
+            type="text"
+            [formControl]="form.controls.tipoDocumento"
+            placeholder="Ex.: Contrato Social"
+            maxlength="100"
+          />
+          @if (form.controls.tipoDocumento.invalid && form.controls.tipoDocumento.touched) {
+            <small class="field-error">Informe o tipo do documento.</small>
+          }
+        </div>
+
+        <div>
+          <label for="numeroDocumento">Número / Identificador</label>
+          <input
+            id="numeroDocumento"
+            type="text"
+            [formControl]="form.controls.numeroDocumento"
+            placeholder="Opcional"
+            maxlength="100"
+          />
+        </div>
+
+        <div>
+          <label for="dataEmissao">Data de Emissão</label>
+          <input
+            id="dataEmissao"
+            type="date"
+            [formControl]="form.controls.dataEmissao"
+          />
+        </div>
+
+        <div>
+          <label for="dataValidade">Data de Validade</label>
+          <input
+            id="dataValidade"
+            type="date"
+            [formControl]="form.controls.dataValidade"
+          />
+        </div>
+
+        <div class="document-file-field full-width">
+          <label for="documentFile">Arquivo</label>
+          <input
+            id="documentFile"
+            type="file"
+            accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png"
+            (change)="onFileSelected($event)"
+          />
+          @if (selectedFile()) {
+            <small class="selected-file">
+              <i class="fas fa-file"></i>
+              {{ selectedFile()?.name }} · {{ formatFileSize(selectedFile()?.size ?? 0) }}
+            </small>
+          } @else {
+            <small class="hint">Selecione um PDF, JPEG ou PNG.</small>
+          }
+          @if (form.controls.file.invalid && form.controls.file.touched) {
+            <small class="field-error">Selecione um arquivo.</small>
+          }
+        </div>
+      </div>
+
+      <div class="document-upload-actions">
+        <button
+          type="button"
+          class="btn-submit-document"
+          [disabled]="isUploading()"
+          (click)="submitUpload()"
+        >
+          @if (isUploading()) {
+            <i class="fas fa-spinner fa-spin"></i>
+            Enviando...
+          } @else {
+            <i class="fas fa-cloud-upload-alt"></i>
+            {{ replacingDocumentId() === null ? 'Enviar documento' : 'Enviar nova versão' }}
+          }
+        </button>
+      </div>
+    </div>
+
+    <div class="documents-list">
+      @if (isLoading()) {
+        <div class="documents-loading">
+          <i class="fas fa-spinner fa-spin"></i>
+          Carregando documentos...
+        </div>
+      } @else if (documents().length === 0) {
+        <div class="documents-empty">
+          <i class="fas fa-folder-open"></i>
+          <p>Nenhum documento cadastrado.</p>
+        </div>
+      } @else {
+        @for (document of documents(); track document.id) {
+          <article class="document-card">
+            <div class="document-card-header">
+              <div>
+                <h4>{{ document.tipoDocumento }}</h4>
+                @if (document.numeroDocumento) {
+                  <span class="document-number">Nº {{ document.numeroDocumento }}</span>
+                }
+              </div>
+
+              <div class="document-actions">
+                <button
+                  type="button"
+                  class="btn-document-secondary"
+                  (click)="beginNewVersion(document)"
+                  [disabled]="isUploading()"
+                  title="Adicionar nova versão"
+                >
+                  <i class="fas fa-code-branch"></i>
+                  Nova versão
+                </button>
+                <button
+                  type="button"
+                  class="btn-document-secondary"
+                  (click)="downloadLatest(document)"
+                  [disabled]="!document.latestVersion || document.latestVersion.scanStatus !== 'CLEAN'"
+                  title="Baixar versão atual"
+                >
+                  <i class="fas fa-download"></i>
+                  Baixar
+                </button>
+                <button
+                  type="button"
+                  class="btn-document-danger"
+                  (click)="askDelete(document)"
+                  title="Excluir documento"
+                >
+                  <i class="fas fa-trash-alt"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="document-meta">
+              <span>
+                <strong>Emissão:</strong>
+                {{ formatDate(document.dataEmissao) }}
+              </span>
+              <span>
+                <strong>Validade:</strong>
+                {{ formatDate(document.dataValidade) }}
+              </span>
+            </div>
+
+            @if (document.latestVersion) {
+              <div class="latest-version">
+                <div class="latest-version-main">
+                  <i class="fas fa-file-alt"></i>
+                  <div>
+                    <strong>{{ document.latestVersion.originalFileName }}</strong>
+                    <span>
+                      Versão {{ document.latestVersion.versionNumber }} ·
+                      {{ formatFileSize(document.latestVersion.fileSize) }} ·
+                      {{ document.latestVersion.contentType }}
+                    </span>
+                  </div>
+                </div>
+                <span
+                  class="scan-status"
+                  [class.clean]="document.latestVersion.scanStatus === 'CLEAN'"
+                  [class.warning]="document.latestVersion.scanStatus === 'PENDING_SCAN'"
+                  [class.danger]="document.latestVersion.scanStatus === 'QUARANTINED'"
+                >
+                  {{ scanStatusLabel(document.latestVersion.scanStatus) }}
+                </span>
+              </div>
+            }
+
+            @if (document.versions.length > 1) {
+              <details class="document-versions">
+                <summary>
+                  Histórico de versões ({{ document.versions.length }})
+                </summary>
+
+                <div class="versions-list">
+                  @for (version of document.versions; track version.id) {
+                    <div class="version-row">
+                      <div>
+                        <strong>v{{ version.versionNumber }}</strong>
+                        <span>{{ version.originalFileName }}</span>
+                      </div>
+                      <div class="version-row-meta">
+                        <span>{{ formatFileSize(version.fileSize) }}</span>
+                        <span>{{ scanStatusLabel(version.scanStatus) }}</span>
+                        <button
+                          type="button"
+                          class="btn-version-download"
+                          (click)="downloadVersion(document, version)"
+                          [disabled]="version.scanStatus !== 'CLEAN'"
+                        >
+                          <i class="fas fa-download"></i>
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </details>
+            }
+          </article>
+        }
+      }
+    </div>
+  }
+</div>
+
+@if (deletingDocument()) {
+  <div class="document-modal-overlay" (click)="cancelDelete()">
+    <div class="document-delete-modal" (click)="$event.stopPropagation()">
+      <div class="document-modal-header">
+        <h3>Excluir documento</h3>
+        <button type="button" class="btn-close-modal" (click)="cancelDelete()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <p>
+        Tem certeza que deseja excluir o documento
+        <strong>{{ deletingDocument()?.tipoDocumento }}</strong>?
+      </p>
+
+      <p class="document-delete-warning">
+        As versões associadas deixarão de ficar disponíveis para consulta pelo sistema.
+      </p>
+
+      <div class="document-modal-actions">
+        <button type="button" class="btn-cancel-document" (click)="cancelDelete()">
+          Cancelar
+        </button>
+        <button type="button" class="btn-document-danger-confirm" (click)="confirmDelete()">
+          Excluir
+        </button>
+      </div>
+    </div>
+  </div>
+}

@@ -8,9 +8,11 @@ import { SupplierService } from '../../../core/services/supplier-service';
 import { PersonAddressResponseDto } from '../../models/person-address-response-dto';
 import { PersonContactResponseDto } from '../../models/person-contact-response-dto';
 import { SupplierRequestDto } from '../../models/supplier-request-dto';
+import { RouterLink } from '@angular/router';
+
 
 @Component({
-  imports: [FormsModule, ReactiveFormsModule],
+  imports: [FormsModule, ReactiveFormsModule, RouterLink],
   selector: 'app-supplier-component',
   styleUrl: './supplier-component.scss',
   templateUrl: './supplier-component.html',
@@ -101,7 +103,9 @@ export class SupplierComponent implements OnInit {
   deletingSupplier = signal<SupplierResponseDto | null>(null);
   isSaving = signal(false);
 
-  activeTab = signal<'identification' | 'address' | 'commercial' | 'bank' | 'contacts'>('identification');
+  activeTab = signal<
+  'identification' | 'address' | 'commercial' | 'bank' | 'contacts'
+>('identification');
 
   /* ===================== Listas auxiliares ===================== */
   readonly ufList = [
@@ -128,7 +132,6 @@ export class SupplierComponent implements OnInit {
     rgIe: [''],
     email: ['', [Validators.required, Validators.email]],
     phone: ['', Validators.required],
-    ativo: [true],
 
     // Endereço
     cep: [''],
@@ -245,7 +248,6 @@ export class SupplierComponent implements OnInit {
           'TELEFONE'
         )
       ),
-      ativo: supplier.active ?? true,
 
       cep: this.applyCepMask(
         addr?.cep
@@ -359,9 +361,7 @@ export class SupplierComponent implements OnInit {
       } as any,
       {
         type: 'TELEFONE',
-        value: raw.phone
-          ? raw.phone.replace(/\D/g, '')
-          : '',
+        value: raw.phone ? raw.phone.replace(/\D/g, '') : '',
         principal: true,
         description: undefined
       } as any
@@ -370,9 +370,7 @@ export class SupplierComponent implements OnInit {
     const addresses: Omit<PersonAddressResponseDto, 'id'>[] = [
       {
         type: 'COMERCIAL',
-        cep: raw.cep
-          ? raw.cep.replace(/\D/g, '')
-          : '',
+        cep: raw.cep ? raw.cep.replace(/\D/g, '') : '',
         logradouro: raw.logradouro,
         numero: raw.numero,
         complemento: raw.complemento,
@@ -387,26 +385,26 @@ export class SupplierComponent implements OnInit {
       person: {
         tipoPessoa: raw.tipoPessoa,
         name: raw.name,
-        cpfCnpj: raw.cpfCnpj
-          ? raw.cpfCnpj.replace(/\D/g, '')
-          : '',
-        individualPerson: !isPJ ? { rg: raw.rgIe } : undefined,
-        legalEntity: isPJ
-          ? {
-              nomeFantasia: raw.nomeFantasia,
-              inscricaoEstadual: raw.rgIe
-            }
-          : undefined,
-        contacts,
-        addresses
+        cpfCnpj: raw.cpfCnpj ? raw.cpfCnpj.replace(/\D/g, '') : ''
       },
+      individual: !isPJ ? { rg: raw.rgIe } : null,
+      legalEntity: isPJ
+        ? {
+            nomeFantasia: raw.nomeFantasia,
+            inscricaoEstadual: raw.rgIe
+          }
+        : null,
+      contacts,
+      addresses,
       condicaoPagamentoPadrao: raw.condicaoPagamento,
-      prazoEntregaDias: raw.prazoEntrega != null && raw.prazoEntrega !== ''
-        ? Number(raw.prazoEntrega)
-        : 0,
-      valorMinimoPedido: raw.valorMinimoPedido != null && raw.valorMinimoPedido !== ''
-        ? this.parseCurrency(raw.valorMinimoPedido)
-        : 0,
+      prazoEntregaDias:
+        raw.prazoEntrega != null && raw.prazoEntrega !== ''
+          ? Number(raw.prazoEntrega)
+          : 0,
+      valorMinimoPedido:
+        raw.valorMinimoPedido != null && raw.valorMinimoPedido !== ''
+          ? this.parseCurrency(raw.valorMinimoPedido)
+          : 0,
       categoria: raw.categoria,
       observacoesComerciais: raw.observacoesComerciais,
       bankDetails: {
@@ -417,22 +415,16 @@ export class SupplierComponent implements OnInit {
         chavePix: raw.chavePix
       },
       contatos: (raw.contatos || [])
-        .filter(
-          (c: SupplierContactDto) =>
-            c.nome?.trim().length > 0
-        )
-        .map(
-          (c: SupplierContactDto) => ({
-            ...c,
-            telefone: c.telefone
-              ? c.telefone.replace(/\D/g, '')
-              : c.telefone
-          })
-        ),
-      documentos: [],
-      active: !!raw.ativo
+        .filter((c: SupplierContactDto) => c.nome?.trim().length > 0)
+        .map((c: SupplierContactDto) => ({
+          ...c,
+          telefone: c.telefone
+            ? c.telefone.replace(/\D/g, '')
+            : c.telefone
+        }))
     };
   }
+
 
   /** Aceita "R$ 1.234,56" ou number e devolve number. */
   private parseCurrency(value: any): number {
@@ -481,12 +473,6 @@ export class SupplierComponent implements OnInit {
 
   removeContato(index: number): void {
     this.contatos.removeAt(index);
-  }
-
-  /* ===================== Helpers ===================== */
-  toggleAtivo(): void {
-    const ctrl = this.form.get('ativo');
-    ctrl?.setValue(!ctrl.value);
   }
 
   /* ===================== Máscaras ===================== */

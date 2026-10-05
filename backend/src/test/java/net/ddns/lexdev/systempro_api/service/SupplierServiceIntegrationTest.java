@@ -1,7 +1,6 @@
 package net.ddns.lexdev.systempro_api.service;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,7 +19,6 @@ import jakarta.transaction.Transactional;
 import net.ddns.lexdev.systempro_api.domain.Person;
 import net.ddns.lexdev.systempro_api.domain.Supplier;
 import net.ddns.lexdev.systempro_api.domain.SupplierContact;
-import net.ddns.lexdev.systempro_api.domain.SupplierDocument;
 import net.ddns.lexdev.systempro_api.dto.BankDetailsDto;
 import net.ddns.lexdev.systempro_api.dto.IndividualPersonRequestDto;
 import net.ddns.lexdev.systempro_api.dto.LegalEntityRequestDto;
@@ -29,7 +27,6 @@ import net.ddns.lexdev.systempro_api.dto.PersonContactRequestDto;
 import net.ddns.lexdev.systempro_api.dto.PersonContactResponseDto;
 import net.ddns.lexdev.systempro_api.dto.PersonRequestDto;
 import net.ddns.lexdev.systempro_api.dto.SupplierContactDto;
-import net.ddns.lexdev.systempro_api.dto.SupplierDocumentDto;
 import net.ddns.lexdev.systempro_api.dto.SupplierRequestDto;
 import net.ddns.lexdev.systempro_api.dto.SupplierResponseDto;
 import net.ddns.lexdev.systempro_api.enums.TipoContaBancaria;
@@ -126,23 +123,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
                     "(32) 99999-2222",
                     "Financeiro"
                 )
-            ),
-
-            // Documentos específicos do fornecedor
-            List.of(
-                new SupplierDocumentDto(
-                    "CONTRATO",
-                    "CONTRATO-2026-001",
-                    LocalDate.of(2027, 9, 21)
-                ),
-                new SupplierDocumentDto(
-                    "CERTIDAO",
-                    "https://fornecedor.com/certidao",
-                    LocalDate.of(2027, 12, 31)
-                )
-            ),
-
-            true
+            )
         );
 
         // ============================================================
@@ -254,19 +235,6 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
                 "Maria Souza"
             );
 
-        // ============================================================
-        // Documentos
-        // ============================================================
-
-        assertThat(supplier.getDocumentos())
-            .hasSize(2);
-
-        assertThat(supplier.getDocumentos())
-            .extracting(SupplierDocument::getTipoDocumento)
-            .containsExactlyInAnyOrder(
-                "CONTRATO",
-                "CERTIDAO"
-            );
     }
 
     @Test
@@ -295,10 +263,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
             "Primeiro cadastro",
 
             null,
-            List.of(),
-            List.of(),
-
-            true
+            List.of()
         );
 
         // Primeiro cadastro
@@ -325,9 +290,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
                     "Outro",
                     "Tentativa duplicada",
                     null,
-                    List.of(),
-                    List.of(),
-                    true
+                    List.of()
                 )
             )
         )
@@ -411,23 +374,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
                     "(32) 99999-2222",
                     "Financeiro"
                 )
-            ),
-
-            // Documentos
-            List.of(
-                new SupplierDocumentDto(
-                    "CONTRATO",
-                    "CONTRATO-ORIGINAL",
-                    LocalDate.of(2027, 9, 21)
-                ),
-                new SupplierDocumentDto(
-                    "CERTIDAO",
-                    "CERTIDAO-ORIGINAL",
-                    LocalDate.of(2027, 12, 31)
-                )
-            ),
-
-            true
+            )
         );
 
         SupplierResponseDto criado =
@@ -502,18 +449,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
                     "(32) 98888-3333",
                     "Compras"
                 )
-            ),
-
-            // Lista de documentos substituída
-            List.of(
-                new SupplierDocumentDto(
-                    "CONTRATO",
-                    "CONTRATO-ATUALIZADO",
-                    LocalDate.of(2028, 9, 21)
-                )
-            ),
-
-            true
+            )
         );
 
         SupplierResponseDto atualizado =
@@ -623,20 +559,6 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
             .extracting(SupplierContact::getEmail)
             .containsExactly("carlos@fornecedor.com");
 
-        // ============================================================
-        // 11. Documentos substituídos
-        // ============================================================
-
-        assertThat(supplier.getDocumentos())
-            .hasSize(1);
-
-        assertThat(supplier.getDocumentos())
-            .extracting(SupplierDocument::getTipoDocumento)
-            .containsExactly("CONTRATO");
-
-        assertThat(supplier.getDocumentos())
-            .extracting(SupplierDocument::getNumeroOuUrl)
-            .containsExactly("CONTRATO-ATUALIZADO");
     }
 
 
@@ -682,17 +604,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
                     "(32) 99999-1111",
                     "Comercial"
                 )
-            ),
-
-            List.of(
-                new SupplierDocumentDto(
-                    "CONTRATO",
-                    "CONTRATO-DELETE-001",
-                    LocalDate.of(2027, 12, 31)
-                )
-            ),
-
-            true
+            )
         );
 
         SupplierResponseDto criado =
@@ -779,11 +691,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
             null,
 
-            List.of(),
-
-            List.of(),
-
-            true
+            List.of()
         );
 
         SupplierResponseDto fornecedorAtivo =
@@ -819,11 +727,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
             null,
 
-            List.of(),
-
-            List.of(),
-
-            true
+            List.of()
         );
 
         SupplierResponseDto fornecedorInativo =
@@ -924,11 +828,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
             null,
 
-            List.of(),
-
-            List.of(),
-
-            true
+            List.of()
         );
 
         SupplierResponseDto criado =
@@ -1000,11 +900,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
             null,
 
-            List.of(),
-
-            List.of(),
-
-            true
+            List.of()
         );
 
         SupplierResponseDto criado =
@@ -1076,11 +972,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
             null,
 
-            List.of(),
-
-            List.of(),
-
-            true
+            List.of()
         );
 
         // ============================================================
@@ -1137,11 +1029,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
                 "teste@pix.com"
             ),
 
-            List.of(),
-
-            List.of(),
-
-            true
+            List.of()
         );
 
         // ============================================================
@@ -1191,11 +1079,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
             null,
 
-            List.of(),
-
-            List.of(),
-
-            true
+            List.of()
         );
 
         // ============================================================
@@ -1233,8 +1117,6 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
         assertThat(supplier.getContatos())
             .isEmpty();
 
-        assertThat(supplier.getDocumentos())
-            .isEmpty();
     }
 
 
@@ -1271,11 +1153,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
             null,
 
-            List.of(),
-
-            List.of(),
-
-            true
+            List.of()
         );
 
         SupplierResponseDto response =
@@ -1293,25 +1171,17 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
         assertThat(supplier.getContatos())
             .isEmpty();
-
-        assertThat(supplier.getDocumentos())
-            .isEmpty();
     }
 
-
     @Test
-    void devePermitirCriarFornecedorInativo() {
-
-        // ============================================================
-        // Cadastro com active = false
-        // ============================================================
+    void deveCriarFornecedorAtivoPorPadrao() {
 
         SupplierRequestDto dto = new SupplierRequestDto(
 
             new PersonRequestDto(
                 "456.113.470-02",
                 "PF",
-                "Fornecedor Criado Inativo"
+                "Fornecedor Criado Ativo"
             ),
 
             new IndividualPersonRequestDto(
@@ -1321,73 +1191,42 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
             null,
 
             List.of(),
-
             List.of(),
 
             "30 DIAS",
             5,
             new BigDecimal("900.00"),
             "Material",
-            "Fornecedor criado como inativo",
+            "Fornecedor criado ativo por padrão",
 
             null,
 
-            List.of(),
-
-            List.of(),
-
-            false
+            List.of()
         );
 
         SupplierResponseDto response =
             supplierService.create(dto);
 
-        assertThat(response).isNotNull();
-        assertThat(response.id()).isNotNull();
+        assertThat(response)
+            .isNotNull();
 
-        Long supplierId = response.id();
+        assertThat(response.id())
+            .isNotNull();
 
-        // ============================================================
-        // Persistência real
-        // ============================================================
+        assertThat(response.active())
+            .isTrue();
 
         entityManager.flush();
         entityManager.clear();
 
-        // ============================================================
-        // Como o Supplier possui @SQLRestriction(active = true),
-        // a consulta normal não deve localizar esse fornecedor.
-        // ============================================================
+        Supplier supplier =
+            supplierRepository
+                .findByIdWithPerson(response.id())
+                .orElseThrow();
 
-        assertThatThrownBy(() ->
-            supplierService.findById(supplierId)
-        )
-            .isInstanceOf(EntityNotFoundException.class)
-            .hasMessage(
-                "Fornecedor não encontrado com o ID: " + supplierId
-            );
-
-        // ============================================================
-        // Confirma diretamente no banco que o registro existe
-        // e está realmente inativo.
-        // ============================================================
-
-        Object[] row = (Object[]) entityManager
-            .createNativeQuery("""
-                SELECT id, active
-                FROM tb_supplier
-                WHERE id = :id
-                """)
-            .setParameter("id", supplierId)
-            .getSingleResult();
-
-        assertThat(((Number) row[0]).longValue())
-            .isEqualTo(supplierId);
-
-        assertThat((Boolean) row[1])
-            .isFalse();
+        assertThat(supplier.isActive())
+            .isTrue();
     }
-
 
     @Test
     void deveLancarExcecaoAoAtualizarFornecedorInexistente() {
@@ -1420,11 +1259,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
             null,
 
-            List.of(),
-
-            List.of(),
-
-            true
+            List.of()
         );
 
         assertThatThrownBy(() ->
@@ -1486,10 +1321,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
                 null,
 
-                List.of(),
-                List.of(),
-
-                true
+                List.of()
             )
         );
 
@@ -1524,10 +1356,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
                 null,
 
-                List.of(),
-                List.of(),
-
-                true
+                List.of()
             )
         );
 
@@ -1563,10 +1392,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
             null,
 
-            List.of(),
-            List.of(),
-
-            true
+            List.of()
         );
 
         // ============================================================
@@ -1638,10 +1464,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
                 null,
 
-                List.of(),
-                List.of(),
-
-                true
+                List.of()
             )
         );
 
@@ -1674,10 +1497,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
             null,
 
-            List.of(),
-            List.of(),
-
-            true
+            List.of()
         );
 
         SupplierResponseDto atualizado =
@@ -1773,17 +1593,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
                     "(32) 99999-1111",
                     "Comercial"
                 )
-            ),
-
-            List.of(
-                new SupplierDocumentDto(
-                    "CONTRATO",
-                    "CONTRATO-PJ-001",
-                    LocalDate.of(2028, 12, 31)
-                )
-            ),
-
-            true
+            )
         );
 
         // ============================================================
@@ -1880,10 +1690,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
             null,
 
-            List.of(),
-            List.of(),
-
-            true
+            List.of()
         );
 
         // ============================================================
@@ -1936,10 +1743,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
             null,
 
-            List.of(),
-            List.of(),
-
-            true
+            List.of()
         );
 
         // ============================================================
@@ -1992,10 +1796,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
             null,
 
-            List.of(),
-            List.of(),
-
-            true
+            List.of()
         );
 
         // ============================================================
@@ -2045,10 +1846,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
                 null,
 
-                List.of(),
-                List.of(),
-
-                true
+                List.of()
             )
         );
 
@@ -2084,10 +1882,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
                 null,
 
-                List.of(),
-                List.of(),
-
-                true
+                List.of()
             )
         );
 
@@ -2182,10 +1977,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
                 null,
 
-                List.of(),
-                List.of(),
-
-                true
+                List.of()
             )
         );
 
@@ -2220,10 +2012,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
                 null,
 
-                List.of(),
-                List.of(),
-
-                true
+                List.of()
             )
         );
 
@@ -2364,12 +2153,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
             null,
 
             // Contatos específicos Supplier
-            List.of(),
-
-            // Documentos
-            List.of(),
-
-            true
+            List.of()
         );
 
         // ============================================================
@@ -2452,10 +2236,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
                 null,
 
-                List.of(),
-                List.of(),
-
-                true
+                List.of()
             )
         );
 
@@ -2500,10 +2281,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
             null,
 
-            List.of(),
-            List.of(),
-
-            true
+            List.of()
         );
 
         // ============================================================
@@ -2574,10 +2352,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
                     "original@pix.com"
                 ),
 
-                List.of(),
-                List.of(),
-
-                true
+                List.of()
             )
         );
 
@@ -2623,10 +2398,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
                     "atualizado@pix.com"
                 ),
 
-                List.of(),
-                List.of(),
-
-                true
+                List.of()
             )
         );
 
@@ -2739,10 +2511,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
                     "original@pix.com"
                 ),
 
-                List.of(),
-                List.of(),
-
-                true
+                List.of()
             )
         );
 
@@ -2782,10 +2551,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
                 null,
 
-                List.of(),
-                List.of(),
-
-                true
+                List.of()
             )
         );
 
@@ -2900,23 +2666,9 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
                         "(32) 99999-2222",
                         "Financeiro"
                     )
-                ),
+                )
 
-                // Documentos
-                List.of(
-                    new SupplierDocumentDto(
-                        "CONTRATO",
-                        "CONTRATO-001",
-                        LocalDate.of(2028, 12, 31)
-                    ),
-                    new SupplierDocumentDto(
-                        "CERTIDAO",
-                        "CERTIDAO-001",
-                        LocalDate.of(2028, 6, 30)
-                    )
-                ),
-
-                true
+                
             )
         );
 
@@ -2957,12 +2709,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
                 null,
 
                 // IMPORTANTE: null
-                null,
-
-                // IMPORTANTE: null
-                null,
-
-                true
+                null
             )
         );
 
@@ -2996,19 +2743,6 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
                 "Maria Original"
             );
 
-        // ============================================================
-        // 6. Documentos devem ter sido mantidos
-        // ============================================================
-
-        assertThat(supplier.getDocumentos())
-            .hasSize(2);
-
-        assertThat(supplier.getDocumentos())
-            .extracting(SupplierDocument::getTipoDocumento)
-            .containsExactlyInAnyOrder(
-                "CONTRATO",
-                "CERTIDAO"
-            );
 
         // ============================================================
         // 7. Os demais dados foram atualizados normalmente
@@ -3087,23 +2821,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
                         "(32) 99999-2222",
                         "Financeiro"
                     )
-                ),
-
-                // Documentos iniciais
-                List.of(
-                    new SupplierDocumentDto(
-                        "CONTRATO",
-                        "CONTRATO-001",
-                        LocalDate.of(2028, 12, 31)
-                    ),
-                    new SupplierDocumentDto(
-                        "CERTIDAO",
-                        "CERTIDAO-001",
-                        LocalDate.of(2028, 6, 30)
-                    )
-                ),
-
-                true
+                )
             )
         );
 
@@ -3144,12 +2862,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
                 null,
 
                 // IMPORTANTE: lista vazia
-                List.of(),
-
-                // IMPORTANTE: lista vazia
-                List.of(),
-
-                true
+                List.of()
             )
         );
 
@@ -3174,13 +2887,6 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
         // ============================================================
 
         assertThat(supplier.getContatos())
-            .isEmpty();
-
-        // ============================================================
-        // 6. Documentos devem ter sido removidos
-        // ============================================================
-
-        assertThat(supplier.getDocumentos())
             .isEmpty();
 
         // ============================================================
@@ -3319,25 +3025,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
                         "(32) 98888-1111",
                         "Comercial"
                     )
-                ),
-
-                // ========================================================
-                // Supplier Documents
-                // ========================================================
-
-                List.of(
-                    new SupplierDocumentDto(
-                        "CONTRATO",
-                        "CONTRATO-001",
-                        LocalDate.of(2028, 12, 31)
-                    )
-                ),
-
-                // ========================================================
-                // Active
-                // ========================================================
-
-                true
+                )
             )
         );
 
@@ -3511,26 +3199,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
         assertThat(contato.setor())
             .isEqualTo("Comercial");
 
-        // ============================================================
-        // 10. Supplier Documents
-        // ============================================================
-
-        assertThat(response.documentos())
-            .hasSize(1);
-
-        SupplierDocumentDto documento =
-            response.documentos().get(0);
-
-        assertThat(documento.tipoDocumento())
-            .isEqualTo("CONTRATO");
-
-        assertThat(documento.numeroOuUrl())
-            .isEqualTo("CONTRATO-001");
-
-        assertThat(documento.dataValidade())
-            .isEqualTo(
-                LocalDate.of(2028, 12, 31)
-            );
+      
     }
 
 
@@ -3602,17 +3271,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
                         "(32) 99999-1111",
                         "Vendas"
                     )
-                ),
-
-                List.of(
-                    new SupplierDocumentDto(
-                        "CONTRATO",
-                        "DOC-FINDBYID-001",
-                        LocalDate.of(2028, 12, 31)
-                    )
-                ),
-
-                true
+                )
             )
         );
 
@@ -3707,16 +3366,6 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
         assertThat(response.contatos().get(0).nome())
             .isEqualTo("Contato FindById");
-
-        // ============================================================
-        // 10. Valida documento
-        // ============================================================
-
-        assertThat(response.documentos())
-            .hasSize(1);
-
-        assertThat(response.documentos().get(0).numeroOuUrl())
-            .isEqualTo("DOC-FINDBYID-001");
 
         // ============================================================
         // 11. Estado ativo

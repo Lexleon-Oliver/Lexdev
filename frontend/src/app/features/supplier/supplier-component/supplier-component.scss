@@ -120,26 +120,41 @@
   backdrop-filter: blur(10px);
   border: 2px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 0 30px rgba(8, 7, 16, 0.4);
-  overflow: hidden;
+  overflow-x: auto;               /* ⬅ era hidden — agora rola se faltar espaço */
+  -webkit-overflow-scrolling: touch;
 }
+
 .suppliers-table {
   width: 100%;
+  min-width: 860px;               /* ⬅ largura mínima confortável p/ 6 colunas */
   border-collapse: collapse;
+  table-layout: fixed;            /* ⬅ respeita larguras definidas abaixo */
 }
+
 .suppliers-table th,
 .suppliers-table td {
   padding: 1rem;
   text-align: left;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  vertical-align: middle;
 }
-.suppliers-table th {
-  background-color: rgba(255, 255, 255, 0.05);
-  font-weight: 500;
-  letter-spacing: 0.5px;
-  font-size: 0.9rem;
+
+/* Texto longo não empurra a tabela */
+.suppliers-table td:not([data-label="Ações"]) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.suppliers-table tbody tr:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+
+/* Coluna de Ações: largura fixa, sem encolher */
+.suppliers-table th:last-child,
+.suppliers-table td[data-label="Ações"] {
+  width: 140px;                   /* ⬅ reserva espaço para os 3 botões */
+  min-width: 140px;
+  max-width: 140px;
+  overflow: visible;
+  white-space: nowrap;
+  text-overflow: clip;
 }
 
 /* Badges de status */
@@ -160,9 +175,14 @@
 /* Ações */
 .action-buttons {
   display: flex;
+  flex-wrap: nowrap;              /* ⬅ nunca quebra linha */
   gap: 0.5rem;
+  justify-content: flex-end;      /* ⬅ alinha à direita dentro da coluna fixa */
+  width: 100%;
 }
+
 .btn-edit,
+.btn-documents,
 .btn-delete {
   background: none;
   border: none;
@@ -172,15 +192,27 @@
   padding: 0.4rem;
   border-radius: 4px;
   transition: all 0.2s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;                 /* ⬅ nunca encolhe */
 }
+
 .btn-edit:hover {
   background: rgba(35, 162, 246, 0.2);
   color: #23a2f6;
 }
+
+.btn-documents:hover {
+  background: rgba(129, 199, 132, 0.2);
+  color: #81c784;
+}
+
 .btn-delete:hover {
   background: rgba(255, 67, 54, 0.2);
   color: #ff4336;
-}
+
 
 /* ===== Modais ===== */
 .modal-overlay {
@@ -697,7 +729,7 @@
     min-width: 0;
   }
 
-  /* ==================== AÇÕES ==================== */
+    /* ==================== AÇÕES ==================== */
 
   .suppliers-table td[data-label="Ações"] {
     grid-template-columns: 1fr;
@@ -711,17 +743,25 @@
 
   .action-buttons {
     display: flex;
-    gap: 0.75rem;
+    gap: 0.5rem;
     width: 100%;
-    justify-content: flex-end;
+    justify-content: stretch;   /* ⬅ botões dividem o espaço por igual */
+    flex-wrap: nowrap;           /* ⬅ uma linha só, sem quebra */
   }
 
   .btn-edit,
+  .btn-documents,
   .btn-delete {
-    padding: 0.6rem 0.9rem;
+    flex: 1 1 0;                 /* ⬅ cada botão ocupa 1/3 da largura */
+    min-width: 0;                /* ⬅ permite encolher abaixo do conteúdo */
+    padding: 0.6rem 0;
     font-size: 1rem;
     background-color: rgba(255, 255, 255, 0.08);
     border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
   }
 
   /* ==================== FORMULÁRIO ==================== */
@@ -766,4 +806,5 @@
   .clients-table {
     min-width: 720px;                       /* evita colunas espremidas */
   }
+}
 }
