@@ -1,1 +1,482 @@
-:host{display:block;min-height:100%;color:#fff;font-family:'Poppins',sans-serif}.fiscal-page{max-width:1250px;margin:0 auto;padding:1.5rem}.page-header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1.2rem}.eyebrow{font-size:.72rem;text-transform:uppercase;letter-spacing:.14em;opacity:.5}h1{margin:.15rem 0 .25rem;font-size:1.9rem}.page-header p{margin:0;color:rgba(255,255,255,.54)}.layout{display:grid;grid-template-columns:300px 1fr;gap:1rem}.panel{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;backdrop-filter:blur(14px);overflow:hidden}.panel-title{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.1rem;border-bottom:1px solid rgba(255,255,255,.08)}.panel-title h2{font-size:1rem;margin:0}.panel-title span{font-size:.74rem;color:rgba(255,255,255,.45)}.establishments{align-self:start}.establishment{width:100%;padding:.85rem 1rem;border:0;border-bottom:1px solid rgba(255,255,255,.06);background:transparent;color:#fff;text-align:left;cursor:pointer}.establishment:hover,.establishment.active{background:rgba(35,162,246,.1)}.establishment strong,.establishment small,.establishment span{display:block}.establishment small{margin-top:.2rem;color:rgba(255,255,255,.45)}.establishment span{margin-top:.4rem;font-size:.7rem;color:#7bcaff}.empty{padding:1.3rem;text-align:center;color:rgba(255,255,255,.45)}form{padding:1rem 1.1rem}.section-block{padding:1rem 0;border-bottom:1px solid rgba(255,255,255,.08)}.section-block:first-child{padding-top:0}.section-block:last-of-type{border-bottom:0}.section-block h3{margin:0 0 .65rem;font-size:.9rem}.section-block p{font-size:.73rem;color:rgba(255,255,255,.45);margin:0 0 .7rem}.grid{display:grid;gap:.75rem}.grid.two{grid-template-columns:1fr 1fr}.grid.three{grid-template-columns:1fr 1fr 1fr;margin-bottom:.75rem}label{display:block;color:rgba(255,255,255,.58);font-size:.72rem}input,select{display:block;width:100%;margin-top:.28rem;padding:.62rem .7rem;border:1px solid rgba(255,255,255,.11);background:rgba(0,0,0,.22);color:#fff;border-radius:9px;outline:0;font:inherit}.search-row{display:grid;grid-template-columns:1fr auto;gap:.45rem;margin-bottom:.65rem}.search-row input{margin:0}.secondary,.primary{border-radius:9px;padding:.62rem .85rem;font:inherit;cursor:pointer}.secondary{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#fff}.primary{background:#fff;color:#080710;border:0;font-weight:700}.primary:disabled,.secondary:disabled{opacity:.5;cursor:not-allowed}.hint-box{margin-top:.55rem;padding:.65rem .75rem;border-radius:9px;background:rgba(35,162,246,.06);border:1px solid rgba(35,162,246,.14);font-size:.75rem;color:#9bd7ff}.sensitive{background:rgba(255,193,7,.025);border-radius:10px}.capabilities{display:flex;gap:.65rem;margin-top:.7rem}.capabilities span{display:inline-flex;gap:.3rem;align-items:center;padding:.3rem .55rem;background:rgba(255,255,255,.05);border-radius:999px;color:#ffb6ae;font-size:.68rem}.capabilities span.ok{color:#91dc9b}.actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.8rem}.status-result{margin:0 1.1rem 1.1rem;padding:.8rem;background:rgba(35,162,246,.07);border:1px solid rgba(35,162,246,.16);border-radius:10px;display:grid;grid-template-columns:1fr auto;gap:.2rem .7rem}.status-result p{grid-column:1/-1;margin:.25rem 0 0;color:rgba(255,255,255,.65);font-size:.76rem}@media(max-width:900px){.layout{grid-template-columns:1fr}.grid.three{grid-template-columns:1fr}.grid.two{grid-template-columns:1fr}}@media(max-width:600px){.fiscal-page{padding:1rem}.page-header{flex-direction:column}}
+/* ============================================================
+   Fiscal / NFC-e — identidade visual do sistema
+   ============================================================ */
+
+:host {
+  display: block;
+  min-height: 100%;
+  background-color: #080710;
+  font-family: 'Poppins', sans-serif;
+  color: #ffffff;
+}
+
+.fiscal-page {
+  padding: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* ===== Cabeçalho ===== */
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.page-header-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.page-header h2 {
+  font-size: 1.8rem;
+  font-weight: 500;
+  margin: 0;
+  background: linear-gradient(to right, #1845ad, #23a2f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.page-header p {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+}
+
+/* ===== Layout (2 colunas) ===== */
+.layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* ===== Panels ===== */
+.panel {
+  background-color: rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 30px rgba(8, 7, 16, 0.4);
+  padding: 1.25rem;
+}
+.panel-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.panel-title h2 {
+  font-size: 1.05rem;
+  font-weight: 500;
+  margin: 0;
+  color: #ffffff;
+}
+.panel-title span {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+.count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 20px;
+  background: rgba(35, 162, 246, 0.2);
+  color: #23a2f6 !important;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid rgba(35, 162, 246, 0.4);
+}
+
+/* ===== Estado vazio ===== */
+.empty {
+  text-align: center;
+  padding: 1.25rem 0.75rem;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.85rem;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+}
+
+/* ===== Lista de estabelecimentos ===== */
+.establishments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.establishments .empty {
+  margin-top: 0.25rem;
+}
+.establishment {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  width: 100%;
+  padding: 0.75rem 0.9rem;
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #ffffff;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.establishment:hover {
+  background-color: rgba(35, 162, 246, 0.1);
+  border-color: rgba(35, 162, 246, 0.35);
+}
+.establishment.active {
+  background-color: rgba(35, 162, 246, 0.15);
+  border-color: #23a2f6;
+  box-shadow: 0 0 0 1px rgba(35, 162, 246, 0.4);
+}
+.establishment strong {
+  font-size: 0.88rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.establishment small {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+.establishment span {
+  font-size: 0.72rem;
+  color: #23a2f6;
+}
+
+/* ===== Editor ===== */
+.editor .panel-title {
+  align-items: flex-start;
+}
+.editor .panel-title > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+/* ===== Seções do formulário ===== */
+.section-block {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.section-block:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.section-block h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #23a2f6;
+  margin: 0 0 0.5rem;
+  letter-spacing: 0.3px;
+}
+.section-block > p {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0 0 0.9rem;
+  line-height: 1.5;
+}
+.section-block.sensitive h3::after {
+  content: ' 🔒';
+  font-size: 0.85rem;
+}
+
+/* ===== Grids ===== */
+.grid {
+  display: grid;
+  gap: 0.9rem;
+  margin-bottom: 0.75rem;
+}
+.grid.two { grid-template-columns: 1fr 1fr; }
+.grid.three { grid-template-columns: 1fr 1fr 1fr; }
+
+/* ===== Campos ===== */
+.field-label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+}
+.field-label input,
+.field-label select {
+  display: block;
+  width: 100%;
+  height: 40px;
+  margin-top: 4px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+  padding: 0 12px;
+  color: #ffffff;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.9rem;
+  box-sizing: border-box;
+}
+.field-label select option {
+  background-color: #080710;
+  color: #ffffff;
+}
+.field-label input:focus,
+.field-label select:focus {
+  outline: none;
+  border-color: #23a2f6;
+  background-color: rgba(255, 255, 255, 0.15);
+}
+.field-label input[type="file"] {
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.field-label input[type="file"]::file-selector-button {
+  background-color: rgba(35, 162, 246, 0.15);
+  border: 1px solid rgba(35, 162, 246, 0.4);
+  color: #23a2f6;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.78rem;
+  cursor: pointer;
+  margin-right: 0.6rem;
+  transition: all 0.2s;
+}
+.field-label input[type="file"]::file-selector-button:hover {
+  background-color: rgba(35, 162, 246, 0.3);
+  color: #ffffff;
+}
+
+/* ===== Linha de busca ===== */
+.search-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+}
+.search-row input {
+  flex: 1;
+  height: 40px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+  padding: 0 12px;
+  color: #ffffff;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.9rem;
+  box-sizing: border-box;
+}
+.search-row input:focus {
+  outline: none;
+  border-color: #23a2f6;
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* ===== Hint box ===== */
+.hint-box {
+  margin-top: 0.6rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 6px;
+  background-color: rgba(35, 162, 246, 0.08);
+  border: 1px solid rgba(35, 162, 246, 0.25);
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ===== Botões ===== */
+.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: #ffffff;
+  color: #080710;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 5px;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.primary:not(:disabled):hover {
+  background-color: #e0e0e0;
+  transform: translateY(-1px);
+}
+.primary:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  background-color: rgba(35, 162, 246, 0.15);
+  border: 1px solid rgba(35, 162, 246, 0.4);
+  color: #23a2f6;
+  padding: 0.55rem 1rem;
+  border-radius: 5px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 500;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.secondary:not(:disabled):hover {
+  background-color: rgba(35, 162, 246, 0.3);
+  color: #ffffff;
+}
+.secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== Capacidades (certificado / CSC) ===== */
+.capabilities {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.9rem;
+}
+.capabilities span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  background: rgba(255, 67, 54, 0.15);
+  border: 1px solid rgba(255, 67, 54, 0.4);
+  color: #ff6b5e;
+}
+.capabilities span.ok {
+  background: rgba(76, 175, 80, 0.15);
+  border-color: rgba(76, 175, 80, 0.4);
+  color: #81c784;
+}
+
+/* ===== Ações finais ===== */
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.actions .primary {
+  flex: 1;
+  min-width: 180px;
+}
+
+/* ===== Resultado SEFAZ ===== */
+.status-result {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  background-color: rgba(35, 162, 246, 0.08);
+  border: 1px solid rgba(35, 162, 246, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.status-result strong {
+  font-size: 0.9rem;
+  color: #23a2f6;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+.status-result span {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.65);
+}
+.status-result p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.5;
+}
+
+/* ============================================================
+   Responsividade
+   ============================================================ */
+
+/* Tablet / telas médias */
+@media (min-width: 769px) and (max-width: 1100px) {
+  .layout {
+    grid-template-columns: 260px 1fr;
+  }
+  .grid.three {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .fiscal-page {
+    padding: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .page-header h2 { font-size: 1.4rem; }
+  .page-header .secondary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .layout {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .panel { padding: 1rem; }
+
+  /* Lista de estabelecimentos vira horizontal scroll */
+  .establishments {
+    max-height: 260px;
+    overflow-y: auto;
+  }
+
+  /* Grids colapsam */
+  .grid.two,
+  .grid.three {
+    grid-template-columns: 1fr;
+  }
+
+  .search-row {
+    flex-direction: column;
+  }
+  .search-row input { width: 100%; }
+  .search-row .secondary { width: 100%; justify-content: center; }
+
+  .actions {
+    flex-direction: column;
+  }
+  .actions .primary,
+  .actions .secondary {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .capabilities span {
+    flex: 1;
+    justify-content: center;
+  }
+}
