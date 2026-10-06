@@ -72,6 +72,12 @@ export const routes: Routes = [
             .then(m => m.SalesComponent)
       },
       {
+        path: 'configuracoes/empresa',
+        loadComponent: () =>
+          import('./features/company/company-component/company-component')
+            .then(m => m.CompanyComponent)
+      },
+      {
         path: 'configuracoes/fiscal',
         loadComponent: () =>
           import('./features/fiscal/fiscal-settings-component/fiscal-settings-component')

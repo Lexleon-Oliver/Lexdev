@@ -97,12 +97,18 @@ export class DashboardComponent implements OnInit {
         ]
       },
 
-      {
+     {
         key: 'configuracoes',
         label: 'Configurações',
         icon: 'fas fa-cog',
         open: false,
         submenu: [
+          {
+            key: 'empresa',
+            label: 'Empresa',
+            icon: '',
+            route: ['/configuracoes/empresa']
+          },
           {
             key: 'fiscal',
             label: 'Fiscal / NFC-e',
