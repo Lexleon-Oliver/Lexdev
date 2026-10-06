@@ -1,5 +1,5 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { inject, Injectable, Service } from '@angular/core';
+import { inject, Injectable} from '@angular/core';
 import { Sale, SaleCreateRequest } from '../../features/models/sale';
 import { Observable } from 'rxjs';
 import { SpringPage } from '../../features/models/spring-page';

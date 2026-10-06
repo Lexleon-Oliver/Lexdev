@@ -121,6 +121,15 @@ public class ProductService {
             .map(ProductResponseDto::fromEntity);
     }
 
+    @Transactional(readOnly = true)
+    public Page<ProductResponseDto> searchForSale(String search, Pageable pageable) {
+        if (search == null || search.isBlank()) {
+            return findAll(pageable);
+        }
+        return productRepository.searchForSale(search.trim(), pageable)
+            .map(ProductResponseDto::fromEntity);
+    }
+
     // ============================================================
     // SOFT DELETE
     // ============================================================

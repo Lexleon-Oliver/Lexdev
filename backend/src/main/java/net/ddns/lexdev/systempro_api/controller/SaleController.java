@@ -23,8 +23,6 @@ import net.ddns.lexdev.systempro_api.dto.SaleCreateRequestDto;
 import net.ddns.lexdev.systempro_api.dto.SaleResponseDto;
 import net.ddns.lexdev.systempro_api.service.SaleService;
 
-
-
 @RestController
 @RequestMapping("/sales")
 public class SaleController {

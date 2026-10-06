@@ -1,7 +1,6 @@
 package net.ddns.lexdev.systempro_api.dto;
 
 import java.math.BigDecimal;
-
 import net.ddns.lexdev.systempro_api.domain.SaleItem;
 
 public record SaleItemResponseDto(

@@ -8,7 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-
 import net.ddns.lexdev.systempro_api.domain.Person;
 import net.ddns.lexdev.systempro_api.enums.TipoPessoa;
 
@@ -16,7 +15,7 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
 
     Optional<Person> findByCpfCnpj(String cpfCnpj);
 
-    @Query("""
+     @Query("""
         SELECT p FROM Person p
         LEFT JOIN FETCH p.legalEntity
         WHERE p.tipoPessoa = :type

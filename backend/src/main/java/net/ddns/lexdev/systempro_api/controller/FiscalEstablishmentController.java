@@ -2,7 +2,6 @@ package net.ddns.lexdev.systempro_api.controller;
 
 import java.time.Instant;
 import java.util.List;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -16,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-
 import jakarta.validation.Valid;
 import net.ddns.lexdev.systempro_api.dto.FiscalEstablishmentRequestDto;
 import net.ddns.lexdev.systempro_api.dto.FiscalEstablishmentResponseDto;

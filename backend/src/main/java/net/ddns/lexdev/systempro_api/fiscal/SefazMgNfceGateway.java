@@ -33,13 +33,14 @@ import javax.xml.crypto.dsig.Reference;
 import javax.xml.crypto.dsig.SignatureMethod;
 import javax.xml.crypto.dsig.SignedInfo;
 import javax.xml.crypto.dsig.Transform;
+import javax.xml.crypto.dsig.CanonicalizationMethod;
+import javax.xml.crypto.dsig.spec.C14NMethodParameterSpec;
+import javax.xml.crypto.dsig.spec.TransformParameterSpec;
 import javax.xml.crypto.dsig.XMLSignature;
 import javax.xml.crypto.dsig.XMLSignatureFactory;
 import javax.xml.crypto.dsig.keyinfo.KeyInfo;
 import javax.xml.crypto.dsig.keyinfo.KeyInfoFactory;
 import javax.xml.crypto.dsig.keyinfo.X509Data;
-import javax.xml.crypto.dsig.spec.C14NMethodParameterSpec;
-import javax.xml.crypto.dsig.spec.TransformParameterSpec;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.TransformerFactory;
@@ -99,7 +100,7 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
         String cNF = randomDigits(8);
         int tpEmis = 1;
         String accessKey = buildAccessKey(
-            establishment.getPerson().getCpfCnpj(),
+            establishment.getCompany().getPerson().getCpfCnpj(),
             emission,
             document.getSeries(),
             document.getNumber(),
@@ -285,7 +286,7 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
             + "<infEvento Id=\"" + eventId + "\">"
             + "<cOrgao>31</cOrgao>"
             + "<tpAmb>" + environmentCode(establishment.getEnvironment()) + "</tpAmb>"
-            + "<CNPJ>" + esc(establishment.getPerson().getCpfCnpj()) + "</CNPJ>"
+            + "<CNPJ>" + esc(establishment.getCompany().getPerson().getCpfCnpj()) + "</CNPJ>"
             + "<chNFe>" + esc(document.getAccessKey()) + "</chNFe>"
             + "<dhEvento>" + esc(now) + "</dhEvento>"
             + "<tpEvento>110111</tpEvento>"
@@ -539,8 +540,7 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
             }
 
             Document document = parse(xml);
-            Element target;
-            target = (Element) firstElement(document, "infNFe");
+            Element target = (Element) firstElement(document, "infNFe");
             if (target == null) {
                 target = (Element) firstElement(document, "infEvento");
             }
@@ -614,19 +614,19 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
             String schemaVersion,
             String productVersion
         ) {
-            PersonAddress address = establishment.getPerson().getAddresses().stream()
+            PersonAddress address = establishment.getCompany().getPerson().getAddresses().stream()
                 .filter(PersonAddress::isPrincipal)
                 .findFirst()
-                .orElseGet(() -> establishment.getPerson().getAddresses().stream().findFirst().orElse(null));
+                .orElseGet(() -> establishment.getCompany().getPerson().getAddresses().stream().findFirst().orElse(null));
             validateAddress(address);
 
-            String issuerName = esc(establishment.getPerson().getName());
-            String tradeName = establishment.getPerson().getLegalEntity() == null
+            String issuerName = esc(establishment.getCompany().getPerson().getName());
+            String tradeName = establishment.getCompany().getPerson().getLegalEntity() == null
                 ? null
-                : establishment.getPerson().getLegalEntity().getNomeFantasia();
-            String stateRegistration = establishment.getPerson().getLegalEntity() == null
+                : establishment.getCompany().getPerson().getLegalEntity().getNomeFantasia();
+            String stateRegistration = establishment.getCompany().getPerson().getLegalEntity() == null
                 ? null
-                : establishment.getPerson().getLegalEntity().getInscricaoEstadual();
+                : establishment.getCompany().getPerson().getLegalEntity().getInscricaoEstadual();
 
             if (stateRegistration == null || stateRegistration.isBlank()) {
                 throw new FiscalIntegrationException("A Inscrição Estadual do emitente é obrigatória para a emissão configurada.");
@@ -661,7 +661,7 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
                 .append("</ide>");
 
             xml.append("<emit>")
-                .append("<CNPJ>").append(esc(establishment.getPerson().getCpfCnpj())).append("</CNPJ>")
+                .append("<CNPJ>").append(esc(establishment.getCompany().getPerson().getCpfCnpj())).append("</CNPJ>")
                 .append("<xNome>").append(issuerName).append("</xNome>");
             if (tradeName != null && !tradeName.isBlank()) {
                 xml.append("<xFant>").append(esc(tradeName)).append("</xFant>");

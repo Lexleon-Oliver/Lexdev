@@ -1,7 +1,6 @@
 package net.ddns.lexdev.systempro_api.domain;
 
 import java.math.BigDecimal;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

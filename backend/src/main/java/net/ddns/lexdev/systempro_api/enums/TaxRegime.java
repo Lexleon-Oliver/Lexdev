@@ -4,4 +4,3 @@ public enum TaxRegime {
     SIMPLES_NACIONAL,
     REGIME_NORMAL
 }
-

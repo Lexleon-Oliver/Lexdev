@@ -1,4 +1,5 @@
 package net.ddns.lexdev.systempro_api.service;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
@@ -39,11 +40,12 @@ import net.ddns.lexdev.systempro_api.fiscal.NfceIssueResult;
 import net.ddns.lexdev.systempro_api.fiscal.SefazNfceGateway;
 import net.ddns.lexdev.systempro_api.repository.ClientRepository;
 import net.ddns.lexdev.systempro_api.repository.FiscalDocumentRepository;
-import net.ddns.lexdev.systempro_api.repository.FiscalEstablishmentRepository;
 import net.ddns.lexdev.systempro_api.repository.FiscalEventRepository;
+import net.ddns.lexdev.systempro_api.repository.FiscalEstablishmentRepository;
 import net.ddns.lexdev.systempro_api.repository.FiscalProductProfileRepository;
 import net.ddns.lexdev.systempro_api.repository.ProductRepository;
 import net.ddns.lexdev.systempro_api.repository.SaleRepository;
+
 @Service
 public class SaleService {
 

@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { inject, Injectable, Service } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ProductFiscalProfile, ProductFiscalProfileRequest } from '../../features/models/product-fiscal-profile';
 

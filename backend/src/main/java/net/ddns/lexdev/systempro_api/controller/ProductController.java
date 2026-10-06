@@ -111,6 +111,14 @@ public class ProductController {
         );
     }
 
+    @GetMapping("/sale-search")
+    public ResponseEntity<Page<ProductResponseDto>> saleSearch(
+        @RequestParam String q,
+        @PageableDefault(size = 20, sort = "name") Pageable pageable
+    ) {
+        return ResponseEntity.ok(productService.searchForSale(q, pageable));
+    }
+
     // ============================================================
     // SOFT DELETE
     // ============================================================

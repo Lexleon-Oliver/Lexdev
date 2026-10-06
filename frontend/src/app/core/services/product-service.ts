@@ -1,11 +1,11 @@
-import { inject, Service } from '@angular/core';
+import { inject, Injectable} from '@angular/core';
 import { Product } from '../../features/models/product';
 import { Observable } from 'rxjs';
 import { SpringPage } from '../../features/models/spring-page';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { ProductRequest } from '../../features/models/product-request';
 
-@Service()
+@Injectable({ providedIn: 'root' })
 export class ProductService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/products';

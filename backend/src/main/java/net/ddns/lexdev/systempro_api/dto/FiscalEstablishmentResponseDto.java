@@ -6,7 +6,7 @@ import net.ddns.lexdev.systempro_api.enums.TaxRegime;
 
 public record FiscalEstablishmentResponseDto(
     Long id,
-    Long personId,
+    Long companyId,
     String cnpj,
     String legalName,
     String tradeName,
@@ -22,9 +22,10 @@ public record FiscalEstablishmentResponseDto(
     boolean active
 ) {
     public static FiscalEstablishmentResponseDto fromEntity(FiscalEstablishment e) {
-        var legal = e.getPerson().getLegalEntity();
+        var person = e.getCompany().getPerson();
+        var legal = person.getLegalEntity();
         return new FiscalEstablishmentResponseDto(
-            e.getId(), e.getPerson().getId(), e.getPerson().getCpfCnpj(), e.getPerson().getName(),
+            e.getId(), e.getCompany().getId(), person.getCpfCnpj(), person.getName(),
             legal != null ? legal.getNomeFantasia() : null,
             legal != null ? legal.getInscricaoEstadual() : null,
             e.getMunicipalityIbgeCode(), e.getTaxRegime(), e.getEnvironment(), e.getSeries(), e.getNextNumber(),

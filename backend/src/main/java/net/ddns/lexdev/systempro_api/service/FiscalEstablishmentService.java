@@ -5,33 +5,38 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import jakarta.persistence.EntityNotFoundException;
-
-import net.ddns.lexdev.systempro_api.config.FiscalProperties;
+import net.ddns.lexdev.systempro_api.domain.Company;
 import net.ddns.lexdev.systempro_api.domain.FiscalEstablishment;
 import net.ddns.lexdev.systempro_api.domain.LegalEntity;
-import net.ddns.lexdev.systempro_api.domain.Person;
 import net.ddns.lexdev.systempro_api.dto.FiscalEstablishmentRequestDto;
 import net.ddns.lexdev.systempro_api.dto.FiscalEstablishmentResponseDto;
-import net.ddns.lexdev.systempro_api.enums.TipoPessoa;
+import net.ddns.lexdev.systempro_api.enums.FiscalEnvironment;
 import net.ddns.lexdev.systempro_api.exception.FiscalConfigurationException;
+import net.ddns.lexdev.systempro_api.repository.CompanyRepository;
+import net.ddns.lexdev.systempro_api.repository.FiscalDocumentRepository;
 import net.ddns.lexdev.systempro_api.repository.FiscalEstablishmentRepository;
-import net.ddns.lexdev.systempro_api.repository.PersonRepository;
+import net.ddns.lexdev.systempro_api.config.FiscalProperties;
 import net.ddns.lexdev.systempro_api.storage.FileStorageService;
 
 @Service
 public class FiscalEstablishmentService {
     private final FiscalEstablishmentRepository repository;
-    private final PersonRepository personRepository;
+    private final CompanyRepository companyRepository;
     private final SecretCryptoService crypto;
     private final FileStorageService storage;
     private final FiscalProperties fiscalProperties;
-    private final net.ddns.lexdev.systempro_api.repository.FiscalDocumentRepository fiscalDocumentRepository;
+    private final FiscalDocumentRepository fiscalDocumentRepository;
 
-    public FiscalEstablishmentService(FiscalEstablishmentRepository repository, PersonRepository personRepository,
-                                      SecretCryptoService crypto, FileStorageService storage, FiscalProperties fiscalProperties,
-                                      net.ddns.lexdev.systempro_api.repository.FiscalDocumentRepository fiscalDocumentRepository) {
+    public FiscalEstablishmentService(
+        FiscalEstablishmentRepository repository,
+        CompanyRepository companyRepository,
+        SecretCryptoService crypto,
+        FileStorageService storage,
+        FiscalProperties fiscalProperties,
+        FiscalDocumentRepository fiscalDocumentRepository
+    ) {
         this.repository = repository;
-        this.personRepository = personRepository;
+        this.companyRepository = companyRepository;
         this.crypto = crypto;
         this.storage = storage;
         this.fiscalProperties = fiscalProperties;
@@ -45,25 +50,23 @@ public class FiscalEstablishmentService {
 
     @Transactional
     public FiscalEstablishmentResponseDto create(FiscalEstablishmentRequestDto dto) {
-        if (repository.existsByPersonId(dto.personId())) {
-            throw new FiscalConfigurationException("A pessoa informada já possui um estabelecimento fiscal.");
+        Company company = requireCompany();
+        if (repository.existsByCompanyId(company.getId())) {
+            throw new FiscalConfigurationException("A empresa proprietária já possui um estabelecimento fiscal configurado.");
         }
-        Person person = personRepository.findById(dto.personId()).orElseThrow(() -> new EntityNotFoundException("Pessoa não encontrada."));
-        validateIssuer(person);
-        FiscalEstablishment e = new FiscalEstablishment(person);
+        FiscalEstablishment e = new FiscalEstablishment(company);
         apply(e, dto);
         return response(repository.save(e));
     }
 
     @Transactional
     public FiscalEstablishmentResponseDto update(Long id, FiscalEstablishmentRequestDto dto) {
-        FiscalEstablishment e = repository.findById(id).orElseThrow(() -> new EntityNotFoundException("Estabelecimento fiscal não encontrado."));
-        Person person = personRepository.findById(dto.personId()).orElseThrow(() -> new EntityNotFoundException("Pessoa não encontrada."));
-        validateIssuer(person);
-        if (!person.getId().equals(e.getPerson().getId()) && repository.existsByPersonId(dto.personId())) {
-            throw new FiscalConfigurationException("A pessoa informada já possui outro estabelecimento fiscal.");
+        FiscalEstablishment e = repository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Estabelecimento fiscal não encontrado."));
+        Company company = requireCompany();
+        if (!company.getId().equals(e.getCompany().getId())) {
+            throw new FiscalConfigurationException("O estabelecimento fiscal não pertence à empresa proprietária configurada.");
         }
-        e.setPerson(person);
         apply(e, dto);
         return response(e);
     }
@@ -89,7 +92,7 @@ public class FiscalEstablishmentService {
             throw ex;
         } catch (Exception ex) {
             if (stored) deleteStoredCertificate(key, ex);
-            throw new FiscalConfigurationException("Não foi possível validar e armazenar o certificado A1.");
+            throw new FiscalConfigurationException("Não foi possível validar e armazenar o certificado A1.", ex);
         } finally {
             if (temp != null) try { java.nio.file.Files.deleteIfExists(temp); } catch (Exception ignored) {}
         }
@@ -123,24 +126,29 @@ public class FiscalEstablishmentService {
 
     public void assertReadyForEmission(FiscalEstablishment e) {
         if (!e.isActive()) throw new FiscalConfigurationException("O estabelecimento fiscal está inativo.");
-        if (e.getEnvironment() == net.ddns.lexdev.systempro_api.enums.FiscalEnvironment.PRODUCAO
-                && !fiscalProperties.productionReady()) {
+        if (e.getEnvironment() == FiscalEnvironment.PRODUCAO && !fiscalProperties.productionReady()) {
             throw new FiscalConfigurationException(
                 "Emissão fiscal em PRODUÇÃO está bloqueada até a validação formal do emissor NFC-e e seus artefatos técnicos."
             );
         }
         if (e.getEnvironment() == null) throw new FiscalConfigurationException("Ambiente fiscal não configurado.");
-        if (e.getPerson() == null || e.getPerson().getTipoPessoa() != TipoPessoa.PJ) throw new FiscalConfigurationException("O emitente fiscal precisa ser uma pessoa jurídica.");
-        LegalEntity legal = e.getPerson().getLegalEntity();
+        Company company = e.getCompany();
+        if (company == null || company.getPerson() == null) throw new FiscalConfigurationException("A empresa proprietária não está configurada.");
+        if (!net.ddns.lexdev.systempro_api.enums.TipoPessoa.PJ.equals(company.getPerson().getTipoPessoa())) {
+            throw new FiscalConfigurationException("O emitente fiscal precisa ser uma pessoa jurídica.");
+        }
+        LegalEntity legal = company.getPerson().getLegalEntity();
         if (legal == null || blank(legal.getInscricaoEstadual())) throw new FiscalConfigurationException("A Inscrição Estadual do emitente precisa estar cadastrada.");
         if (blank(e.getMunicipalityIbgeCode())) throw new FiscalConfigurationException("O código IBGE do município do estabelecimento fiscal é obrigatório.");
         if (e.getCertificateStorageKey() == null || e.getEncryptedCertificatePassword() == null) throw new FiscalConfigurationException("O certificado A1 ainda não foi configurado.");
         if (e.getCscId() == null || blank(e.getEncryptedCsc())) throw new FiscalConfigurationException("O CSC ainda não foi configurado.");
     }
 
-    private void validateIssuer(Person person) {
-        if (person.getTipoPessoa() != TipoPessoa.PJ) throw new FiscalConfigurationException("O estabelecimento emissor precisa estar vinculado a uma pessoa jurídica.");
-        if (person.getCpfCnpj() == null || !person.getCpfCnpj().matches("\\d{14}")) throw new FiscalConfigurationException("O CNPJ do emitente deve possuir 14 dígitos.");
+    private Company requireCompany() {
+        return companyRepository.findFirstByOrderByIdAsc()
+            .orElseThrow(() -> new FiscalConfigurationException(
+                "Cadastre a empresa proprietária em Configurações > Empresa antes de configurar o estabelecimento fiscal."
+            ));
     }
 
     private void apply(FiscalEstablishment e, FiscalEstablishmentRequestDto dto) {

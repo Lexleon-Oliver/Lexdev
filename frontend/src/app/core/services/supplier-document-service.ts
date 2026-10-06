@@ -1,5 +1,5 @@
 import { HttpClient, HttpResponse } from '@angular/common/http';
-import { inject, Injectable, Service } from '@angular/core';
+import { inject, Injectable} from '@angular/core';
 import { Observable } from 'rxjs';
 import { SupplierDocumentDetailResponse, SupplierDocumentUploadRequest } from '../../features/models/supplier-document-dto';
 

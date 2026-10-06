@@ -1,7 +1,6 @@
 package net.ddns.lexdev.systempro_api.dto;
 
 import java.time.Instant;
-
 import net.ddns.lexdev.systempro_api.domain.FiscalDocument;
 import net.ddns.lexdev.systempro_api.enums.FiscalDocumentStatus;
 import net.ddns.lexdev.systempro_api.enums.FiscalEmissionType;

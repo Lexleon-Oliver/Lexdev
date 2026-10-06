@@ -3,7 +3,7 @@ export type TaxRegime = 'SIMPLES_NACIONAL' | 'REGIME_NORMAL';
 
 export interface FiscalEstablishment {
   id?: number;
-  personId: number;
+  companyId: number;
   cnpj: string;
   legalName: string;
   tradeName?: string | null;
@@ -20,7 +20,6 @@ export interface FiscalEstablishment {
 }
 
 export interface FiscalEstablishmentRequest {
-  personId: number;
   municipalityIbgeCode: string;
   taxRegime: TaxRegime;
   environment: FiscalEnvironment;

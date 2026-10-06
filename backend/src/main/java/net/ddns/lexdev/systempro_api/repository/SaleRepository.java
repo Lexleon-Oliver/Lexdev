@@ -19,7 +19,8 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
         LEFT JOIN FETCH c.person cp
         JOIN FETCH s.user u
         JOIN FETCH s.fiscalEstablishment e
-        LEFT JOIN FETCH e.person ep
+        JOIN FETCH e.company ec
+        JOIN FETCH ec.person ep
         LEFT JOIN FETCH ep.legalEntity
         LEFT JOIN FETCH s.items i
         WHERE s.id = :id
@@ -27,7 +28,7 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
     Optional<Sale> findDetailed(@Param("id") Long id);
 
     @Query("""
-        SELECT DISTINCT s
+        SELECT s
         FROM Sale s
         JOIN FETCH s.user
         JOIN FETCH s.fiscalEstablishment
@@ -35,5 +36,8 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
         """)
     Optional<Sale> findForFiscal(@Param("id") Long id);
 
-    Page<Sale> findByFiscalEstablishmentId(Long establishmentId, Pageable pageable);
+    Page<Sale> findByFiscalEstablishmentId(
+        Long establishmentId,
+        Pageable pageable
+    );
 }

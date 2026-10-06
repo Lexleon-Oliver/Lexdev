@@ -10,7 +10,6 @@ import net.ddns.lexdev.systempro_api.enums.FiscalEnvironment;
 import net.ddns.lexdev.systempro_api.enums.TaxRegime;
 
 public record FiscalEstablishmentRequestDto(
-    @NotNull Long personId,
     @NotBlank @Pattern(regexp = "\\d{7}") String municipalityIbgeCode,
     @NotNull TaxRegime taxRegime,
     @NotNull FiscalEnvironment environment,

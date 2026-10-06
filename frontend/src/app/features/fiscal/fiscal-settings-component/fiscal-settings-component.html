@@ -1,230 +1,278 @@
 <div class="fiscal-page">
-  <!-- ===== Cabeçalho ===== -->
   <header class="page-header">
     <div class="page-header-title">
       <h2>Fiscal / NFC-e</h2>
-      <p>Configuração do estabelecimento emissor. Segredos fiscais permanecem somente no backend.</p>
+      <p>
+        Configure a empresa proprietária e o estabelecimento emissor.
+        Segredos fiscais permanecem somente no backend.
+      </p>
     </div>
-    <button type="button" class="secondary" (click)="resetForCreate()">
-      <i class="fas fa-plus"></i> Novo estabelecimento
-    </button>
   </header>
 
-  <div class="layout">
-    <!-- ============ Lista de estabelecimentos ============ -->
-    <aside class="panel establishments">
-      <div class="panel-title">
-        <h2>Estabelecimentos</h2>
-        <span class="count-badge">{{ establishments().length }}</span>
+  <section class="panel company-panel">
+    <div class="panel-title">
+      <div>
+        <h2>1. Empresa proprietária</h2>
+        <span>
+          A empresa identificada aqui é a referência usada por toda a configuração fiscal deste ambiente.
+        </span>
       </div>
+    </div>
 
-      @if (establishments().length === 0) {
-        <div class="empty">Nenhum estabelecimento fiscal configurado.</div>
-      } @else {
-        @for (item of establishments(); track item.id) {
-          <button
-            type="button"
-            class="establishment"
-            [class.active]="selected()?.id === item.id"
-            (click)="select(item)"
-          >
-            <strong>{{ item.tradeName || item.legalName }}</strong>
-            <small>CNPJ {{ item.cnpj }}</small>
-            <span>
-              {{ item.environment === 'PRODUCAO' ? 'Produção' : 'Homologação' }} · série {{ item.series }}
-            </span>
-          </button>
-        }
-      }
-    </aside>
-
-    <!-- ============ Editor ============ -->
-    <main class="panel editor">
-      <div class="panel-title">
-        <div>
-          <h2>{{ selected() ? 'Editar estabelecimento fiscal' : 'Cadastrar estabelecimento fiscal' }}</h2>
-          <span>{{ selected() ? selected()?.cnpj : 'Vincule uma Pessoa Jurídica existente' }}</span>
-        </div>
+    @if (isLoadingCompany) {
+      <div class="setup-state">
+        <i class="fas fa-spinner fa-spin"></i>
+        Carregando dados da empresa…
       </div>
-
-      <form [formGroup]="form" (ngSubmit)="save()">
-        <!-- ===== Emitente ===== -->
-        <section class="section-block">
-          <h3>Emitente</h3>
-
-          <div class="search-row">
-            <input
-              [(ngModel)]="personSearch"
-              [ngModelOptions]="{standalone:true}"
-              (keyup.enter)="searchLegalEntities()"
-              placeholder="Pesquisar CNPJ ou razão social"
-            />
-            <button type="button" class="secondary" (click)="searchLegalEntities()">
-              Pesquisar
-            </button>
-          </div>
-
-          <label class="field-label">
-            Pessoa Jurídica
-            <select formControlName="personId">
-              <option [ngValue]="null">Selecione</option>
-              @for (person of legalEntities(); track person.id) {
-                <option [ngValue]="person.id">
-                  {{ person.tradeName || person.name }} · {{ person.cpfCnpj }}{{ person.stateRegistration ? ' · IE ' + person.stateRegistration : '' }}
-                </option>
-              }
-            </select>
-          </label>
-
-          <div class="hint-box">{{ displaySelectedName() }}</div>
-        </section>
-
-        <!-- ===== Parâmetros fiscais ===== -->
-        <section class="section-block">
-          <h3>Parâmetros fiscais</h3>
-
-          <div class="grid three">
-            <label class="field-label">
-              Código IBGE do município
-              <input
-                formControlName="municipalityIbgeCode"
-                inputmode="numeric"
-                maxlength="7"
-                placeholder="3100000"
-              />
-            </label>
-            <label class="field-label">
-              Regime tributário
-              <select formControlName="taxRegime">
-                <option value="SIMPLES_NACIONAL">Simples Nacional</option>
-                <option value="REGIME_NORMAL">Regime normal</option>
-              </select>
-            </label>
-            <label class="field-label">
-              Ambiente
-              <select formControlName="environment">
-                <option value="HOMOLOGACAO">Homologação</option>
-                <option value="PRODUCAO">Produção</option>
-              </select>
-            </label>
-          </div>
-
-          <div class="grid two">
-            <label class="field-label">
-              Série NFC-e
-              <input type="number" min="1" max="999" formControlName="series" />
-            </label>
-            <label class="field-label">
-              Próximo número
-              <input type="number" min="1" formControlName="nextNumber" />
-            </label>
-          </div>
-        </section>
-
-        <!-- ===== CSC ===== -->
-        <section class="section-block sensitive">
-          <h3>CSC</h3>
-          <p>O CSC é armazenado cifrado no backend e nunca é devolvido ao frontend.</p>
-
-          <div class="grid two">
-            <label class="field-label">
-              ID do CSC
-              <input type="number" min="1" formControlName="cscId" />
-            </label>
-            <label class="field-label">
-              Novo CSC
-              <input
-                type="password"
-                autocomplete="new-password"
-                formControlName="csc"
-                placeholder="Deixe vazio para manter"
-              />
-            </label>
-          </div>
-        </section>
-
-        <!-- ===== Certificado A1 ===== -->
-        <section class="section-block sensitive">
-          <h3>Certificado digital A1</h3>
+    } @else if (companyLoadFailed()) {
+      <div class="setup-state error">
+        Não foi possível carregar a empresa proprietária.
+      </div>
+    } @else {
+      @if (!company()) {
+        <div class="setup-hint">
+          <strong>Empresa proprietária ainda não cadastrada.</strong>
           <p>
-            Envie o arquivo PKCS#12/PFX somente pelo formulário. O arquivo é armazenado
-            pelo backend e a senha é protegida.
+            Cadastre a empresa abaixo para liberar a configuração do estabelecimento fiscal.
           </p>
+        </div>
+      }
 
-          <div class="grid two">
-            <label class="field-label">
-              Arquivo A1
-              <input
-                type="file"
-                accept=".p12,.pfx,application/x-pkcs12"
-                (change)="onCertificateSelected($event)"
-              />
-            </label>
-            <label class="field-label">
-              Senha do A1
-              <input
-                type="password"
-                autocomplete="new-password"
-                formControlName="certificatePassword"
-                [placeholder]="selected()?.hasCertificate ? 'Deixe vazio se não trocar o certificado' : 'Senha do certificado'"
-              />
-            </label>
+      <app-company-form
+        [company]="company()"
+        (saved)="onCompanySaved($event)"
+      />
+    }
+  </section>
+
+  @if (company() && !isLoadingCompany && !companyLoadFailed()) {
+    <div class="layout">
+      <aside class="panel establishments">
+        <div class="panel-title">
+          <h2>Estabelecimentos</h2>
+          <span class="count-badge">{{ establishments().length }}</span>
+        </div>
+
+        @if (establishments().length === 0) {
+          <div class="empty">
+            Nenhum estabelecimento fiscal configurado.
           </div>
-
-          <div class="capabilities">
-            <span [class.ok]="selected()?.hasCertificate">
-              <i
-                class="fas"
-                [class.fa-circle-check]="selected()?.hasCertificate"
-                [class.fa-circle-xmark]="!selected()?.hasCertificate"
-              ></i>
-              Certificado
-            </span>
-            <span [class.ok]="selected()?.hasCsc">
-              <i
-                class="fas"
-                [class.fa-circle-check]="selected()?.hasCsc"
-                [class.fa-circle-xmark]="!selected()?.hasCsc"
-              ></i>
-              CSC
-            </span>
-          </div>
-        </section>
-
-        <!-- ===== Ações ===== -->
-        <div class="actions">
-          <button type="submit" class="primary" [disabled]="isSaving">
-            @if (isSaving) {
-              <i class="fas fa-spinner fa-spin"></i> Salvando…
-            } @else {
-              Salvar configuração
-            }
-          </button>
-
-          @if (selected()?.id) {
+        } @else {
+          @for (item of establishments(); track item.id) {
             <button
               type="button"
-              class="secondary"
-              (click)="checkSefaz()"
-              [disabled]="isCheckingStatus"
+              class="establishment"
+              [class.active]="selected()?.id === item.id"
+              (click)="select(item)"
             >
-              @if (isCheckingStatus) {
-                Consultando…
-              } @else {
-                <i class="fas fa-satellite-dish"></i> Testar SEFAZ/MG
-              }
+              <strong>{{ item.tradeName || item.legalName }}</strong>
+              <small>CNPJ {{ item.cnpj }}</small>
+              <span>
+                {{ item.environment === 'PRODUCAO' ? 'Produção' : 'Homologação' }}
+                · série {{ item.series }}
+              </span>
             </button>
           }
-        </div>
-      </form>
+        }
+      </aside>
 
-      @if (statusMessage()) {
-        <div class="status-result">
-          <strong>SEFAZ/MG</strong>
-          <span>Código {{ statusCode() || '—' }}</span>
-          <p>{{ statusMessage() }}</p>
+      <main class="panel editor">
+        <div class="panel-title">
+          <div>
+            <h2>
+              {{ selected()
+                ? '2. Editar estabelecimento fiscal'
+                : '2. Configurar estabelecimento fiscal' }}
+            </h2>
+            <span>
+              {{ selected()?.cnpj || company()?.person?.cpfCnpj || 'Emitente' }}
+            </span>
+          </div>
         </div>
-      }
-    </main>
-  </div>
+
+        <form [formGroup]="form" (ngSubmit)="save()">
+          <section class="section-block">
+            <h3>Emitente</h3>
+
+            <div class="emitter-summary">
+              <div>
+                <span>Razão social</span>
+                <strong>{{ company()?.person?.name }}</strong>
+              </div>
+              <div>
+                <span>CNPJ</span>
+                <strong>{{ company()?.person?.cpfCnpj }}</strong>
+              </div>
+              @if (company()?.legalEntity?.nomeFantasia) {
+                <div>
+                  <span>Nome fantasia</span>
+                  <strong>{{ company()?.legalEntity?.nomeFantasia }}</strong>
+                </div>
+              }
+              @if (company()?.legalEntity?.inscricaoEstadual) {
+                <div>
+                  <span>Inscrição estadual</span>
+                  <strong>{{ company()?.legalEntity?.inscricaoEstadual }}</strong>
+                </div>
+              }
+            </div>
+
+            <p class="field-help">
+              O emitente é automaticamente vinculado à empresa proprietária cadastrada acima.
+            </p>
+          </section>
+
+          <section class="section-block">
+            <h3>Parâmetros fiscais</h3>
+
+            <div class="grid three">
+              <label class="field-label">
+                Código IBGE do município
+                <input
+                  formControlName="municipalityIbgeCode"
+                  inputmode="numeric"
+                  maxlength="7"
+                  placeholder="3100000"
+                />
+              </label>
+
+              <label class="field-label">
+                Regime tributário
+                <select formControlName="taxRegime">
+                  <option value="SIMPLES_NACIONAL">Simples Nacional</option>
+                  <option value="REGIME_NORMAL">Regime normal</option>
+                </select>
+              </label>
+
+              <label class="field-label">
+                Ambiente
+                <select formControlName="environment">
+                  <option value="HOMOLOGACAO">Homologação</option>
+                  <option value="PRODUCAO">Produção</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="grid two">
+              <label class="field-label">
+                Série NFC-e
+                <input type="number" min="1" max="999" formControlName="series" />
+              </label>
+
+              <label class="field-label">
+                Próximo número
+                <input type="number" min="1" formControlName="nextNumber" />
+              </label>
+            </div>
+          </section>
+
+          <section class="section-block sensitive">
+            <h3>CSC</h3>
+            <p>O CSC é armazenado cifrado no backend e nunca é devolvido ao frontend.</p>
+
+            <div class="grid two">
+              <label class="field-label">
+                ID do CSC
+                <input type="number" min="1" formControlName="cscId" />
+              </label>
+
+              <label class="field-label">
+                Novo CSC
+                <input
+                  type="password"
+                  autocomplete="new-password"
+                  formControlName="csc"
+                  placeholder="Deixe vazio para manter"
+                />
+              </label>
+            </div>
+          </section>
+
+          <section class="section-block sensitive">
+            <h3>Certificado digital A1</h3>
+            <p>
+              Envie o arquivo PKCS#12/PFX somente pelo formulário. O arquivo é armazenado
+              pelo backend e a senha é protegida.
+            </p>
+
+            <div class="grid two">
+              <label class="field-label">
+                Arquivo A1
+                <input
+                  type="file"
+                  accept=".p12,.pfx,application/x-pkcs12"
+                  (change)="onCertificateSelected($event)"
+                />
+              </label>
+
+              <label class="field-label">
+                Senha do A1
+                <input
+                  type="password"
+                  autocomplete="new-password"
+                  formControlName="certificatePassword"
+                  [placeholder]="selected()?.hasCertificate
+                    ? 'Deixe vazio se não trocar o certificado'
+                    : 'Senha do certificado'"
+                />
+              </label>
+            </div>
+
+            <div class="capabilities">
+              <span [class.ok]="selected()?.hasCertificate">
+                <i
+                  class="fas"
+                  [class.fa-circle-check]="selected()?.hasCertificate"
+                  [class.fa-circle-xmark]="!selected()?.hasCertificate"
+                ></i>
+                Certificado
+              </span>
+
+              <span [class.ok]="selected()?.hasCsc">
+                <i
+                  class="fas"
+                  [class.fa-circle-check]="selected()?.hasCsc"
+                  [class.fa-circle-xmark]="!selected()?.hasCsc"
+                ></i>
+                CSC
+              </span>
+            </div>
+          </section>
+
+          <div class="actions">
+            <button type="submit" class="primary" [disabled]="isSaving">
+              @if (isSaving) {
+                <i class="fas fa-spinner fa-spin"></i> Salvando…
+              } @else {
+                Salvar configuração fiscal
+              }
+            </button>
+
+            @if (selected()?.id) {
+              <button
+                type="button"
+                class="secondary"
+                (click)="checkSefaz()"
+                [disabled]="isCheckingStatus"
+              >
+                @if (isCheckingStatus) {
+                  Consultando…
+                } @else {
+                  <i class="fas fa-satellite-dish"></i> Testar SEFAZ/MG
+                }
+              </button>
+            }
+          </div>
+        </form>
+
+        @if (statusMessage()) {
+          <div class="status-result">
+            <strong>SEFAZ/MG</strong>
+            <span>Código {{ statusCode() || '—' }}</span>
+            <p>{{ statusMessage() }}</p>
+          </div>
+        }
+      </main>
+    </div>
+  }
 </div>

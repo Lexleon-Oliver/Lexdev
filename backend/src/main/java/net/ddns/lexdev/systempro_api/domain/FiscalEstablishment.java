@@ -17,9 +17,13 @@ import net.ddns.lexdev.systempro_api.enums.TaxRegime;
 public class FiscalEstablishment extends AuditableEntity {
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "person_id", nullable = false, unique = true,
-        foreignKey = @ForeignKey(name = "fk_fiscal_establishment_person"))
-    private Person person;
+    @JoinColumn(
+        name = "company_id",
+        nullable = false,
+        unique = true,
+        foreignKey = @ForeignKey(name = "fk_fiscal_establishment_company")
+    )
+    private Company company;
 
     @Column(name = "municipality_ibge_code", nullable = false, length = 7)
     private String municipalityIbgeCode;
@@ -56,12 +60,12 @@ public class FiscalEstablishment extends AuditableEntity {
     protected FiscalEstablishment() {
     }
 
-    public FiscalEstablishment(Person person) {
-        this.person = person;
+    public FiscalEstablishment(Company company) {
+        this.company = company;
     }
 
-    public Person getPerson() { return person; }
-    public void setPerson(Person person) { this.person = person; }
+    public Company getCompany() { return company; }
+    public void setCompany(Company company) { this.company = company; }
     public String getMunicipalityIbgeCode() { return municipalityIbgeCode; }
     public void setMunicipalityIbgeCode(String value) { this.municipalityIbgeCode = value; }
     public TaxRegime getTaxRegime() { return taxRegime; }
@@ -82,5 +86,5 @@ public class FiscalEstablishment extends AuditableEntity {
     public void setEncryptedCsc(String value) { this.encryptedCsc = value; }
     public boolean isActive() { return active; }
     public void setActive(boolean value) { this.active = value; }
-    public String cnpj() { return person.getCpfCnpj(); }
+    public String cnpj() { return company.getPerson().getCpfCnpj(); }
 }

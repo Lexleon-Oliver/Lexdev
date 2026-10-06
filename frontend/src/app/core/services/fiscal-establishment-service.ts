@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { inject, Injectable, Service } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { FiscalEstablishment, FiscalEstablishmentRequest, FiscalServiceStatus } from '../../features/models/fiscal-establishment';
 

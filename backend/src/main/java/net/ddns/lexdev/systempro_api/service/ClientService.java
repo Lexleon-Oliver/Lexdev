@@ -42,6 +42,14 @@ public class ClientService {
     }
 
     @Transactional(readOnly = true)
+    public ClientResponseDto findByDocument(String document) {
+        String cpfCnpj = CpfCnpjNormalizer.normalize(document);
+        Client client = clientRepository.findByPersonCpfCnpj(cpfCnpj)
+            .orElseThrow(() -> new EntityNotFoundException("Cliente não encontrado para o CPF/CNPJ informado."));
+        return ClientResponseDto.fromEntity(client);
+    }
+
+    @Transactional(readOnly = true)
     public ClientResponseDto findById(Long id) {
 
         Client client = clientRepository.findByIdWithPerson(id)

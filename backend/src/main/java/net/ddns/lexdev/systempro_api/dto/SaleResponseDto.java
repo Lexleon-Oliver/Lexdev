@@ -3,7 +3,6 @@ package net.ddns.lexdev.systempro_api.dto;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
-
 import net.ddns.lexdev.systempro_api.domain.Sale;
 import net.ddns.lexdev.systempro_api.enums.SaleStatus;
 

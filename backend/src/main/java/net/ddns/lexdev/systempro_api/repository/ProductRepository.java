@@ -19,6 +19,14 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findByGtin(String gtin);
 
     @Query("""
+        SELECT p FROM Product p
+        WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))
+           OR LOWER(p.code) LIKE LOWER(CONCAT('%', :search, '%'))
+           OR p.gtin = :search
+        """)
+    Page<Product> searchForSale(@Param("search") String search, Pageable pageable);
+
+    @Query("""
         SELECT p
         FROM Product p
         WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))

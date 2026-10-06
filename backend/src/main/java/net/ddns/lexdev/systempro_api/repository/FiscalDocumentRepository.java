@@ -2,10 +2,9 @@ package net.ddns.lexdev.systempro_api.repository;
 
 import java.util.Optional;
 
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
+import org.springframework.data.jpa.repository.JpaRepository;
 import net.ddns.lexdev.systempro_api.domain.FiscalDocument;
 
 public interface FiscalDocumentRepository extends JpaRepository<FiscalDocument, Long> {

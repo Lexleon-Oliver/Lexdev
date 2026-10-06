@@ -1,15 +1,13 @@
 package net.ddns.lexdev.systempro_api.service;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
-
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-
 import org.springframework.stereotype.Service;
-
 import net.ddns.lexdev.systempro_api.config.FiscalProperties;
 import net.ddns.lexdev.systempro_api.exception.FiscalConfigurationException;
 

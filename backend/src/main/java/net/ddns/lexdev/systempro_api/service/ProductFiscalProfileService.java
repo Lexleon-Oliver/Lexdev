@@ -1,7 +1,7 @@
 package net.ddns.lexdev.systempro_api.service;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import jakarta.persistence.EntityNotFoundException;
 import net.ddns.lexdev.systempro_api.domain.FiscalProductProfile;
 import net.ddns.lexdev.systempro_api.domain.Product;
