@@ -70,7 +70,21 @@ export class SalesComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadFiscalEstablishments();
+    this.loadInitialProducts();
     this.loadRecentSales();
+  }
+
+  loadInitialProducts(): void {
+    this.isLoadingProducts = true;
+    this.productService.findAll(0, 12)
+      .pipe(finalize(() => this.isLoadingProducts = false))
+      .subscribe({
+        next: page => this.products.set(page.content ?? []),
+        error: () => {
+          this.products.set([]);
+          this.notification.error('Não foi possível carregar os produtos.');
+        },
+      });
   }
 
   loadFiscalEstablishments(): void {
@@ -88,7 +102,7 @@ export class SalesComponent implements OnInit {
   searchProducts(): void {
     const q = this.search.trim();
     if (!q) {
-      this.products.set([]);
+      this.loadInitialProducts();
       return;
     }
     this.isLoadingProducts = true;
