@@ -18,6 +18,11 @@ export class ClientService {
     return this.http.get<SpringPage<Client>>(this.apiUrl, { params });
   }
 
+  findByDocument(document: string): Observable<Client> {
+    const params = new HttpParams().set('document', document);
+    return this.http.get<Client>(`${this.apiUrl}/by-document`, { params });
+  }
+
   findById(id: number): Observable<Client> {
     return this.http.get<Client>(`${this.apiUrl}/${id}`);
   }

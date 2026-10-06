@@ -1,0 +1,185 @@
+<div class="sales-page">
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">PDV</span>
+      <h1>Nova venda</h1>
+      <p>Venda balcão com emissão de NFC-e pelo estabelecimento configurado.</p>
+    </div>
+    <div class="header-state" [class.ok]="establishments().length > 0">
+      <i class="fas" [class.fa-circle-check]="establishments().length > 0" [class.fa-triangle-exclamation]="establishments().length === 0"></i>
+      {{ establishments().length > 0 ? 'Fiscal configurado' : 'Fiscal não configurado' }}
+    </div>
+  </header>
+
+  @if (errorMessage()) {
+    <div class="alert-error"><i class="fas fa-exclamation-circle"></i>{{ errorMessage() }}</div>
+  }
+
+  <div class="sales-layout">
+    <section class="panel products-panel">
+      <div class="panel-header">
+        <div>
+          <h2>Produtos</h2>
+          <span>Busque por código, GTIN ou nome.</span>
+        </div>
+      </div>
+
+      <div class="search-bar">
+        <i class="fas fa-search"></i>
+        <input [(ngModel)]="search" (keyup.enter)="searchProducts()" placeholder="Código, GTIN ou nome" />
+        <button type="button" (click)="searchProducts()">Buscar</button>
+      </div>
+
+      @if (isLoadingProducts) {
+        <div class="empty">Pesquisando produtos…</div>
+      } @else if (products().length > 0) {
+        <div class="product-results">
+          @for (product of products(); track product.id) {
+            <button type="button" class="product-result" (click)="addProduct(product)">
+              <span>
+                <strong>{{ product.name }}</strong>
+                <small>{{ product.code }} @if (product.gtin) { <span>· {{ product.gtin }}</span> }</small>
+              </span>
+              <b>{{ (product.salePrice ?? 0) | currency:'BRL' }}</b>
+            </button>
+          }
+        </div>
+      } @else {
+        <div class="empty compact">Digite uma busca para localizar produtos.</div>
+      }
+
+      <div class="cart-header">
+        <div>
+          <h2>Itens da venda</h2>
+          <span>{{ cart().length }} produto(s)</span>
+        </div>
+      </div>
+
+      @if (cart().length === 0) {
+        <div class="empty cart-empty"><i class="fas fa-shopping-basket"></i><p>A venda está vazia.</p></div>
+      } @else {
+        <div class="cart-list">
+          @for (item of cart(); track item.product.id; let i = $index) {
+            <div class="cart-item">
+              <div class="cart-item-main">
+                <strong>{{ item.product.name }}</strong>
+                <small>{{ item.product.code }} · {{ item.product.unitOfMeasure }}</small>
+              </div>
+              <div class="cart-controls">
+                <label>Qtd.<input type="number" min="0.000001" step="0.001" [ngModel]="item.quantity" (ngModelChange)="updateCartItem(i, 'quantity', $event)" /></label>
+                <label>Preço<input type="number" min="0" step="0.01" [ngModel]="item.unitPrice" (ngModelChange)="updateCartItem(i, 'unitPrice', $event)" /></label>
+                <label>Desc.<input type="number" min="0" step="0.01" [ngModel]="item.discount" (ngModelChange)="updateCartItem(i, 'discount', $event)" /></label>
+              </div>
+              <div class="item-total">{{ (item.quantity * item.unitPrice - item.discount) | currency:'BRL' }} <button type="button" class="icon-button danger" (click)="removeCartItem(i)"><i class="fas fa-trash"></i></button></div>
+            </div>
+          }
+        </div>
+      }
+    </section>
+
+    <section class="panel checkout-panel">
+      <div class="panel-header">
+        <div>
+          <h2>Fechamento</h2>
+          <span>Dados do consumidor e pagamento.</span>
+        </div>
+      </div>
+
+      <label class="field-label">Estabelecimento fiscal
+        <select [ngModel]="selectedEstablishmentId()" (ngModelChange)="selectedEstablishmentId.set($event ? +$event : null)">
+          <option [ngValue]="null">Selecione</option>
+          @for (establishment of establishments(); track establishment.id) {
+            <option [ngValue]="establishment.id">{{ establishment.tradeName || establishment.legalName }} · série {{ establishment.series }}</option>
+          }
+        </select>
+      </label>
+
+      <div class="consumer-row">
+        <label class="field-label">CPF/CNPJ do consumidor
+          <input [(ngModel)]="consumerCpfCnpj" (blur)="findClient()" placeholder="Opcional" inputmode="numeric" />
+        </label>
+        <div class="client-found" [class.visible]="clientName">
+          <small>Cliente localizado</small>
+          <strong>{{ clientName || '—' }}</strong>
+        </div>
+      </div>
+
+      <div class="payment-header">
+        <div><h3>Pagamentos</h3><span>Total recebido: {{ totalPaid() | currency:'BRL' }}</span></div>
+        <button type="button" class="secondary" (click)="addPayment()"><i class="fas fa-plus"></i> Forma</button>
+      </div>
+      <div class="payments">
+        @for (payment of payments(); track $index; let i = $index) {
+          <div class="payment-row">
+            <select [ngModel]="payment.paymentMethod" (ngModelChange)="setPayment(i, { paymentMethod: $event })">
+              @for (method of paymentMethods; track method.value) { <option [ngValue]="method.value">{{ method.label }}</option> }
+            </select>
+            <input type="number" min="0" step="0.01" [ngModel]="payment.amount" (ngModelChange)="setPayment(i, { amount: +$event })" placeholder="Valor" />
+            @if (payment.paymentMethod === 'CREDITO' || payment.paymentMethod === 'DEBITO') {
+              <input [ngModel]="payment.cardBrand" (ngModelChange)="setPayment(i, { cardBrand: $event })" placeholder="Bandeira (código SEFAZ)" />
+              <input [ngModel]="payment.authorizationCode" (ngModelChange)="setPayment(i, { authorizationCode: $event })" placeholder="Autorização" />
+            }
+            <button type="button" class="icon-button danger" (click)="removePayment(i)" [disabled]="payments().length === 1"><i class="fas fa-trash"></i></button>
+          </div>
+        }
+      </div>
+
+      <div class="summary">
+        <div><span>Subtotal</span><strong>{{ subtotal() | currency:'BRL' }}</strong></div>
+        <div><span>Descontos nos itens</span><strong>- {{ itemDiscounts() | currency:'BRL' }}</strong></div>
+        <div><label>Desconto da venda<input type="number" min="0" step="0.01" [(ngModel)]="saleDiscount" /></label><strong>- {{ (saleDiscount || 0) | currency:'BRL' }}</strong></div>
+        <div class="total-line"><span>Total</span><strong>{{ total() | currency:'BRL' }}</strong></div>
+        <div><span>Falta receber</span><strong>{{ remaining() | currency:'BRL' }}</strong></div>
+        <div class="change-line"><span>Troco</span><strong>{{ change() | currency:'BRL' }}</strong></div>
+      </div>
+
+      <label class="field-label">Observação
+        <textarea [(ngModel)]="note" maxlength="500" rows="2" placeholder="Opcional"></textarea>
+      </label>
+
+      <button type="button" class="finish-button" (click)="finishSale()" [disabled]="isSaving || cart().length === 0 || remaining() > 0.0001">
+        @if (isSaving) { <i class="fas fa-spinner fa-spin"></i> Emitindo… } @else { <i class="fas fa-check"></i> Finalizar venda e emitir NFC-e }
+      </button>
+
+      @if (selectedSale()) {
+        <div class="last-result">
+          <div class="result-title"><span>Última operação</span><strong>#{{ selectedSale()?.id }}</strong></div>
+          <span class="status-pill">{{ fiscalStatusLabel(selectedSale()?.fiscalDocument?.status) }}</span>
+          @if (selectedSale()?.fiscalDocument?.number) { <p>NFC-e {{ selectedSale()?.fiscalDocument?.number }} · série {{ selectedSale()?.fiscalDocument?.series }}</p> }
+          @if (selectedSale()?.fiscalDocument?.accessKey) { <p class="key">Chave: {{ selectedSale()?.fiscalDocument?.accessKey }}</p> }
+          @if (selectedSale()?.fiscalDocument?.reason) { <p class="reason">{{ selectedSale()?.fiscalDocument?.reason }}</p> }
+          @if (selectedSale()?.fiscalDocument?.accessKey) { <button type="button" class="secondary" (click)="downloadXml(selectedSale()!)"><i class="fas fa-file-code"></i> Baixar XML</button> }
+        </div>
+      }
+    </section>
+  </div>
+
+  <section class="panel history-panel">
+    <div class="panel-header">
+      <div><h2>Vendas recentes</h2><span>Consulte, atualize ou cancele documentos autorizados.</span></div>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>Venda</th><th>Data</th><th>Total</th><th>Status</th><th>NFC-e</th><th>Ações</th></tr></thead>
+        <tbody>
+          @for (sale of recentSales(); track sale.id) {
+            <tr>
+              <td>#{{ sale.id }}</td>
+              <td>{{ sale.saleAt | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td>{{ sale.total | currency:'BRL' }}</td>
+              <td><span class="status-pill">{{ statusLabel(sale.status) }}</span></td>
+              <td>{{ sale.fiscalDocument?.number || '—' }}<small>{{ fiscalStatusLabel(sale.fiscalDocument?.status) }}</small></td>
+              <td class="actions">
+                <button type="button" (click)="consult(sale)"><i class="fas fa-sync"></i></button>
+                @if (sale.fiscalDocument?.accessKey) { <button type="button" (click)="downloadXml(sale)"><i class="fas fa-file-code"></i></button> }
+                @if (sale.status === 'FISCALIZADA') { <button type="button" class="danger-icon" (click)="cancel(sale)"><i class="fas fa-ban"></i></button> }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="empty-cell">Nenhuma venda registrada.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

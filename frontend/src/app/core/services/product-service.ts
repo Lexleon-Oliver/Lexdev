@@ -15,6 +15,11 @@ export class ProductService {
     return this.http.get<SpringPage<Product>>(this.apiUrl, { params });
   }
 
+  searchForSale(search: string, page = 0, size = 20): Observable<SpringPage<Product>> {
+    const params = new HttpParams().set('q', search).set('page', page).set('size', size);
+    return this.http.get<SpringPage<Product>>(`${this.apiUrl}/sale-search`, { params });
+  }
+
   findById(id: number): Observable<Product> {
     return this.http.get<Product>(`${this.apiUrl}/${id}`);
   }

@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -42,7 +43,7 @@ public class SaleController {
     }
 
     @GetMapping
-    public Page<SaleResponseDto> findAll(@PageableDefault(size = 20, sort = "saleAt,desc") Pageable pageable) {
+    public Page<SaleResponseDto> findAll(@PageableDefault(size = 20, sort = "saleAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return service.findAll(pageable);
     }
 

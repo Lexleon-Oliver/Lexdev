@@ -43,6 +43,13 @@ export class DashboardComponent implements OnInit {
       },
 
       {
+        key: 'vendas',
+        label: 'Vendas',
+        icon: 'fas fa-cash-register',
+        route: ['/vendas']
+      },
+
+      {
         key: 'cadastros',
         label: 'Cadastros',
         icon: 'fas fa-database',
@@ -76,12 +83,6 @@ export class DashboardComponent implements OnInit {
         open: false,
         submenu: [
           {
-            key: 'vendas',
-            label: 'Vendas',
-            icon: '',
-            route: ['/vendas']
-          },
-          {
             key: 'estoque',
             label: 'Estoque',
             icon: '',
@@ -100,7 +101,15 @@ export class DashboardComponent implements OnInit {
         key: 'configuracoes',
         label: 'Configurações',
         icon: 'fas fa-cog',
-        route: ['/configuracoes']
+        open: false,
+        submenu: [
+          {
+            key: 'fiscal',
+            label: 'Fiscal / NFC-e',
+            icon: '',
+            route: ['/configuracoes/fiscal']
+          }
+        ]
       }
     ];
     if (this.authService.hasRole(['ROLE_ADMIN', 'ROLE_SUPPORT'])) {
@@ -120,8 +129,6 @@ export class DashboardComponent implements OnInit {
       });
     }
   }
-
-
   toggleProfileMenu() {
     this.profileMenuOpen = !this.profileMenuOpen;
   }
