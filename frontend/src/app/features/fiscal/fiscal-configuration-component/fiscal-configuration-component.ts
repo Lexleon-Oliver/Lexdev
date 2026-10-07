@@ -1,11 +1,15 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
 
 import { CompanyService } from '../../../core/services/company-service';
 import { FiscalEstablishmentService } from '../../../core/services/fiscal-establishment-service';
 import { NotificationService } from '../../../core/services/notification-service';
+import { CepService } from '../../../core/services/cep-service';
+import { cpfCnpjValidator } from '../../../core/validators/cpf-cnpj.validator';
+import { PersonContactResponseDto } from '../../models/person-contact-response-dto';
+import { PersonAddressResponseDto } from '../../models/person-address-response-dto';
 import { Company, CompanyRequest } from '../../models/company-model';
 import {
   FiscalEnvironment,
@@ -27,6 +31,7 @@ export class FiscalConfigurationComponent implements OnInit {
   private readonly companyService = inject(CompanyService);
   private readonly establishmentService = inject(FiscalEstablishmentService);
   private readonly notification = inject(NotificationService);
+  private readonly cepService = inject(CepService);
 
   readonly company = signal<Company | null>(null);
   readonly companyLoadFailed = signal(false);
@@ -35,27 +40,33 @@ export class FiscalConfigurationComponent implements OnInit {
   readonly statusMessage = signal<string | null>(null);
   readonly statusCode = signal<string | null>(null);
   readonly isLoading = signal(true);
+  readonly companyTab = signal<'identification' | 'contact' | 'address'>('identification');
+  readonly searchingCepIndex = signal<number | null>(null);
 
   isSavingCompany = false;
   isSavingFiscal = false;
   isCheckingStatus = false;
   certificateFile: File | null = null;
 
-  readonly companyForm = this.fb.group({
+  readonly companyForm: FormGroup = this.fb.group({
+    // Identificação — empresa proprietária é obrigatoriamente PJ.
     name: ['', Validators.required],
-    cpfCnpj: ['', [Validators.required, Validators.pattern(/^\d{14}$/)]],
+    cpfCnpj: ['', [Validators.required, cpfCnpjValidator()]],
     nomeFantasia: [''],
     inscricaoEstadual: [''],
-    email: [''],
-    telefone: [''],
-    cep: [''],
-    logradouro: [''],
-    numero: [''],
-    complemento: [''],
-    bairro: [''],
-    cidade: [''],
-    uf: [''],
+    // Contatos — mesmo padrão dos módulos de Clientes/Fornecedores.
+    contacts: this.fb.array([]),
+    // Endereços — mesmo padrão dos módulos de Clientes/Fornecedores.
+    addresses: this.fb.array([]),
   });
+
+  get contacts(): FormArray {
+    return this.companyForm.get('contacts') as FormArray;
+  }
+
+  get addresses(): FormArray {
+    return this.companyForm.get('addresses') as FormArray;
+  }
 
   readonly fiscalForm = this.fb.group({
     municipalityIbgeCode: this.fb.nonNullable.control('', [
@@ -92,7 +103,7 @@ export class FiscalConfigurationComponent implements OnInit {
     this.company.set(null);
     this.establishments.set([]);
     this.selected.set(null);
-    this.resetCompanyForm();
+    this.resetCompanyForm(true);
     this.resetFiscalForm();
 
     this.companyService
@@ -104,7 +115,7 @@ export class FiscalConfigurationComponent implements OnInit {
 
           if (!company) {
             this.companyLoadFailed.set(false);
-            this.resetCompanyForm();
+            this.resetCompanyForm(true);
             this.resetFiscalForm();
             return;
           }
@@ -129,7 +140,7 @@ export class FiscalConfigurationComponent implements OnInit {
     if (this.companyForm.invalid) {
       this.companyForm.markAllAsTouched();
       this.notification.show(
-        'Preencha a razão social e um CNPJ válido.',
+        'Preencha todos os campos obrigatórios da empresa.',
         'warning',
       );
       return;
@@ -137,8 +148,6 @@ export class FiscalConfigurationComponent implements OnInit {
 
     const creatingCompany = !this.company();
     const value = this.companyForm.getRawValue();
-    const email = String(value.email ?? '').trim();
-    const telefone = String(value.telefone ?? '').replace(/\D/g, '');
 
     const request: CompanyRequest = {
       person: {
@@ -150,27 +159,26 @@ export class FiscalConfigurationComponent implements OnInit {
         nomeFantasia: String(value.nomeFantasia ?? '').trim() || null,
         inscricaoEstadual: String(value.inscricaoEstadual ?? '').replace(/\D/g, '') || null,
       },
-      contacts: [
-        ...(email
-          ? [{ type: 'EMAIL', value: email, principal: true }]
-          : []),
-        ...(telefone
-          ? [{ type: 'TELEFONE', value: telefone, principal: !email }]
-          : []),
-      ],
-      addresses: [
-        {
-          type: 'COMERCIAL',
-          cep: String(value.cep ?? '').replace(/\D/g, '') || null,
-          logradouro: String(value.logradouro ?? '').trim() || null,
-          numero: String(value.numero ?? '').trim() || null,
-          complemento: String(value.complemento ?? '').trim() || null,
-          bairro: String(value.bairro ?? '').trim() || null,
-          cidade: String(value.cidade ?? '').trim() || null,
-          uf: String(value.uf ?? '').trim().toUpperCase() || null,
-          principal: true,
-        },
-      ],
+      contacts: (value.contacts as PersonContactResponseDto[]).map((contact) => ({
+        type: contact.type,
+        value:
+          contact.type === 'EMAIL'
+            ? String(contact.value ?? '').trim()
+            : String(contact.value ?? '').replace(/\D/g, ''),
+        principal: contact.principal,
+        description: contact.description ?? null,
+      })),
+      addresses: (value.addresses as PersonAddressResponseDto[]).map((address) => ({
+        type: address.type,
+        cep: String(address.cep ?? '').replace(/\D/g, '') || null,
+        logradouro: String(address.logradouro ?? '').trim() || null,
+        numero: String(address.numero ?? '').trim() || null,
+        complemento: String(address.complemento ?? '').trim() || null,
+        bairro: String(address.bairro ?? '').trim() || null,
+        cidade: String(address.cidade ?? '').trim() || null,
+        uf: String(address.uf ?? '').trim().toUpperCase() || null,
+        principal: address.principal,
+      })),
     };
 
     this.isSavingCompany = true;
@@ -265,47 +273,190 @@ export class FiscalConfigurationComponent implements OnInit {
   }
 
   private patchCompanyForm(company: Company): void {
-    const email = company.contacts.find(x => x.type === 'EMAIL')?.value ?? '';
-    const phone =
-      company.contacts.find(x => x.principal && x.type !== 'EMAIL')?.value ??
-      company.contacts.find(x => x.type !== 'EMAIL')?.value ??
-      '';
-    const address =
-      company.addresses.find(x => x.principal) ?? company.addresses[0];
-
-    this.companyForm.reset({
+    this.companyForm.patchValue({
       name: company.person.name ?? '',
-      cpfCnpj: company.person.cpfCnpj ?? '',
+      cpfCnpj: this.applyCpfCnpjMask(company.person.cpfCnpj, 'PJ'),
       nomeFantasia: company.legalEntity?.nomeFantasia ?? '',
       inscricaoEstadual: company.legalEntity?.inscricaoEstadual ?? '',
-      email,
-      telefone: phone,
-      cep: address?.cep ?? '',
-      logradouro: address?.logradouro ?? '',
-      numero: address?.numero ?? '',
-      complemento: address?.complemento ?? '',
-      bairro: address?.bairro ?? '',
-      cidade: address?.cidade ?? '',
-      uf: address?.uf ?? '',
     });
+
+    this.contacts.clear();
+    (company.contacts ?? []).forEach(contact => this.contacts.push(this.createContactGroup(contact)));
+
+    this.addresses.clear();
+    (company.addresses ?? []).forEach(address => this.addresses.push(this.createAddressGroup(address)));
+
+    this.companyTab.set('identification');
   }
 
-  private resetCompanyForm(): void {
+  private resetCompanyForm(addDefaults = false): void {
     this.companyForm.reset({
       name: '',
       cpfCnpj: '',
       nomeFantasia: '',
       inscricaoEstadual: '',
-      email: '',
-      telefone: '',
-      cep: '',
-      logradouro: '',
-      numero: '',
-      complemento: '',
-      bairro: '',
-      cidade: '',
-      uf: '',
     });
+
+    this.contacts.clear();
+    this.addresses.clear();
+
+    if (addDefaults) {
+      this.addContact();
+      this.addAddress();
+    }
+
+    this.companyTab.set('identification');
+  }
+
+  private createContactGroup(contact?: PersonContactResponseDto): FormGroup {
+    let maskedValue = contact?.value ?? '';
+    if (contact && contact.type !== 'EMAIL') {
+      maskedValue = this.applyPhoneMask(maskedValue);
+    }
+
+    return this.fb.group({
+      id: [contact?.id ?? null],
+      type: [contact?.type ?? 'EMAIL', Validators.required],
+      value: [maskedValue, Validators.required],
+      description: [contact?.description ?? ''],
+      principal: [contact?.principal ?? false],
+    });
+  }
+
+  private createAddressGroup(address?: PersonAddressResponseDto): FormGroup {
+    return this.fb.group({
+      id: [address?.id ?? null],
+      type: [address?.type ?? 'COMERCIAL', Validators.required],
+      cep: [this.applyCepMask(address?.cep)],
+      logradouro: [address?.logradouro ?? ''],
+      numero: [address?.numero ?? '', Validators.required],
+      complemento: [address?.complemento ?? ''],
+      bairro: [address?.bairro ?? ''],
+      cidade: [address?.cidade ?? ''],
+      uf: [address?.uf ?? ''],
+      principal: [address?.principal ?? false],
+    });
+  }
+
+  addContact(contact?: PersonContactResponseDto): void {
+    this.contacts.push(this.createContactGroup(contact));
+  }
+
+  removeContact(index: number): void {
+    this.contacts.removeAt(index);
+  }
+
+  addAddress(address?: PersonAddressResponseDto): void {
+    this.addresses.push(this.createAddressGroup(address));
+  }
+
+  removeAddress(index: number): void {
+    this.addresses.removeAt(index);
+  }
+
+  formatCpfCnpj(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const maskedValue = this.applyCpfCnpjMask(input.value, 'PJ');
+    this.companyForm.get('cpfCnpj')?.setValue(maskedValue, { emitEvent: false });
+  }
+
+  onContactValueInput(event: Event, index: number): void {
+    const group = this.contacts.at(index);
+    const type = group.get('type')?.value;
+    const input = event.target as HTMLInputElement;
+
+    if (type === 'EMAIL') {
+      group.get('value')?.setValue(input.value, { emitEvent: false });
+      return;
+    }
+
+    group.get('value')?.setValue(this.applyPhoneMask(input.value), { emitEvent: false });
+  }
+
+  onContactTypeChange(index: number): void {
+    this.contacts.at(index).get('value')?.setValue('');
+  }
+
+  formatCep(event: Event, index: number): void {
+    const input = event.target as HTMLInputElement;
+    const maskedValue = this.applyCepMask(input.value);
+    this.addresses.at(index).get('cep')?.setValue(maskedValue, { emitEvent: false });
+  }
+
+  buscarCep(index: number): void {
+    const cepCtrl = this.addresses.at(index).get('cep');
+    const cep = String(cepCtrl?.value ?? '').replace(/\D/g, '');
+    if (cep.length !== 8) {
+      return;
+    }
+
+    this.searchingCepIndex.set(index);
+    this.cepService.buscarCep(cep).subscribe({
+      next: data => {
+        this.searchingCepIndex.set(null);
+        if (!data.erro) {
+          this.addresses.at(index).patchValue({
+            logradouro: data.logradouro ?? '',
+            bairro: data.bairro ?? '',
+            cidade: data.localidade ?? '',
+            uf: data.uf ?? '',
+          });
+        } else {
+          this.notification.show('CEP não encontrado.', 'warning');
+        }
+      },
+      error: () => {
+        this.searchingCepIndex.set(null);
+        this.notification.error('Erro ao buscar CEP.');
+      },
+    });
+  }
+
+  private applyCpfCnpjMask(value: string | undefined | null, tipoPessoa: 'PJ' | 'PF' | string = 'PJ'): string {
+    if (!value) {
+      return '';
+    }
+
+    let str = value.replace(/\D/g, '');
+    const isPJ = tipoPessoa === 'PJ' || str.length > 11;
+
+    if (isPJ) {
+      str = str.substring(0, 14);
+      return str
+        .replace(/^(\d{2})(\d)/, '$1.$2')
+        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+        .replace(/\.(\d{3})(\d)/, '.$1/$2')
+        .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+    }
+
+    str = str.substring(0, 11);
+    return str
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  }
+
+  private applyPhoneMask(value: string | undefined | null): string {
+    if (!value) return '';
+    let str = value.replace(/\D/g, '');
+    if (str.length > 11) str = str.substring(0, 11);
+
+    if (str.length <= 10) {
+      return str
+        .replace(/^(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{4})(\d)/, '$1-$2');
+    }
+
+    return str
+      .replace(/^(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{5})(\d)/, '$1-$2');
+  }
+
+  private applyCepMask(value: string | undefined | null): string {
+    if (!value) return '';
+    let str = value.replace(/\D/g, '');
+    if (str.length > 8) str = str.substring(0, 8);
+    return str.replace(/^(\d{5})(\d)/, '$1-$2');
   }
 
   onCertificateSelected(event: Event): void {

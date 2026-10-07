@@ -1,5 +1,4 @@
 <div class="fiscal-page">
-  <!-- ===== Cabeçalho ===== -->
   <header class="page-header">
     <div class="page-header-title">
       <h2>Fiscal / NFC-e</h2>
@@ -10,30 +9,22 @@
     </div>
   </header>
 
-  <!-- ===== Estado: carregando ===== -->
   @if (isLoading()) {
     <section class="panel setup-state">
       <i class="fas fa-spinner fa-spin"></i>
       Carregando configuração fiscal…
     </section>
-  }
-  <!-- ===== Estado: erro ===== -->
-  @else if (companyLoadFailed()) {
+  } @else if (companyLoadFailed()) {
     <section class="panel setup-state error">
-      <i class="fas fa-exclamation-circle"></i>
       Não foi possível carregar a empresa proprietária.
     </section>
-  }
-  <!-- ===== Conteúdo ===== -->
-  @else {
-    <!-- ============ 1. Empresa proprietária ============ -->
+  } @else {
     <section class="panel company-panel">
       <div class="panel-title">
         <div>
           <h2>1. Empresa proprietária</h2>
           <span>
-            A empresa identificada aqui é a referência usada por toda a configuração
-            fiscal deste ambiente.
+            A empresa identificada aqui é a referência usada por toda a configuração fiscal deste ambiente.
           </span>
         </div>
       </div>
@@ -48,105 +39,275 @@
       }
 
       <form class="company-form" [formGroup]="companyForm" (ngSubmit)="saveCompany()">
-        <!-- ===== Identificação ===== -->
-        <section class="section-block">
-          <h3>Identificação</h3>
+        <div class="tabs">
+          <button
+            type="button"
+            class="tab-btn"
+            [class.active]="companyTab() === 'identification'"
+            (click)="companyTab.set('identification')"
+          >
+            <i class="fas fa-id-card"></i>
+            Identificação
+          </button>
 
-          <div class="grid two">
-            <label class="field-label">
-              Razão social <span class="required">*</span>
-              <input formControlName="name" autocomplete="organization" />
-            </label>
+          <button
+            type="button"
+            class="tab-btn"
+            [class.active]="companyTab() === 'contact'"
+            (click)="companyTab.set('contact')"
+          >
+            <i class="fas fa-address-book"></i>
+            Contatos
+          </button>
 
-            <label class="field-label">
-              CNPJ <span class="required">*</span>
-              <input
-                formControlName="cpfCnpj"
-                inputmode="numeric"
-                maxlength="14"
-                autocomplete="off"
-              />
-            </label>
+          <button
+            type="button"
+            class="tab-btn"
+            [class.active]="companyTab() === 'address'"
+            (click)="companyTab.set('address')"
+          >
+            <i class="fas fa-map-marker-alt"></i>
+            Endereços
+          </button>
+        </div>
+
+        <!-- Identificação -->
+        <div class="tab-panel" [hidden]="companyTab() !== 'identification'">
+          <p class="form-section-title">Dados Principais</p>
+
+          <div class="form-row full-width">
+            <label>Tipo de Pessoa</label>
+            <div class="radio-group">
+              <label>
+                <input type="radio" disabled />
+                Pessoa Física
+              </label>
+              <label>
+                <input type="radio" checked disabled />
+                Pessoa Jurídica
+              </label>
+            </div>
           </div>
 
-          <div class="grid two">
-            <label class="field-label">
-              Nome fantasia
-              <input formControlName="nomeFantasia" autocomplete="organization" />
-            </label>
-
-            <label class="field-label">
-              Inscrição estadual
-              <input formControlName="inscricaoEstadual" inputmode="numeric" />
-            </label>
-          </div>
-        </section>
-
-        <!-- ===== Contato ===== -->
-        <section class="section-block">
-          <h3>Contato</h3>
-
-          <div class="grid two">
-            <label class="field-label">
-              E-mail
-              <input formControlName="email" type="email" autocomplete="email" />
-            </label>
-
-            <label class="field-label">
-              Telefone
-              <input formControlName="telefone" inputmode="tel" autocomplete="tel" />
-            </label>
-          </div>
-        </section>
-
-        <!-- ===== Endereço ===== -->
-        <section class="section-block">
-          <h3>Endereço comercial</h3>
-
-          <div class="grid three">
-            <label class="field-label">
-              CEP
-              <input formControlName="cep" inputmode="numeric" maxlength="8" />
-            </label>
-
-            <label class="field-label">
-              UF
-              <input formControlName="uf" maxlength="2" autocomplete="address-level1" />
-            </label>
-
-            <label class="field-label">
-              Cidade
-              <input formControlName="cidade" autocomplete="address-level2" />
-            </label>
+          <div class="form-row full-width">
+            <label for="company-name">Razão Social</label>
+            <input id="company-name" type="text" formControlName="name" placeholder="Digite a razão social..." autocomplete="organization" />
+            @if (companyForm.get('name')?.invalid && companyForm.get('name')?.touched) {
+              <small class="field-error">Campo obrigatório.</small>
+            }
           </div>
 
-          <div class="grid two">
-            <label class="field-label">
-              Logradouro
-              <input formControlName="logradouro" autocomplete="street-address" />
-            </label>
-
-            <label class="field-label">
-              Número
-              <input formControlName="numero" autocomplete="address-line2" />
-            </label>
+          <div class="form-row full-width">
+            <label for="company-cnpj">CNPJ</label>
+            <input
+              id="company-cnpj"
+              type="text"
+              formControlName="cpfCnpj"
+              (input)="formatCpfCnpj($event)"
+              maxlength="18"
+              inputmode="numeric"
+              autocomplete="off"
+              placeholder="00.000.000/0000-00"
+            />
+            @if (companyForm.get('cpfCnpj')?.touched) {
+              @if (companyForm.get('cpfCnpj')?.hasError('required')) {
+                <small class="field-error">Campo obrigatório.</small>
+              } @else if (companyForm.get('cpfCnpj')?.hasError('invalidCpfCnpj')) {
+                <small class="field-error">CNPJ inválido.</small>
+              }
+            }
           </div>
 
-          <div class="grid two">
-            <label class="field-label">
-              Complemento
-              <input formControlName="complemento" />
-            </label>
+          <div class="form-row two-columns">
+            <div>
+              <label for="company-trade-name">Nome Fantasia</label>
+              <input id="company-trade-name" type="text" formControlName="nomeFantasia" placeholder="Opcional" autocomplete="organization" />
+            </div>
 
-            <label class="field-label">
-              Bairro
-              <input formControlName="bairro" />
-            </label>
+            <div>
+              <label for="company-state-registration">Inscrição Estadual</label>
+              <input id="company-state-registration" type="text" formControlName="inscricaoEstadual" placeholder="Opcional" inputmode="numeric" />
+            </div>
           </div>
-        </section>
+        </div>
+
+        <!-- Contatos -->
+        <div class="tab-panel" [hidden]="companyTab() !== 'contact'">
+          <div class="section-header">
+            <p class="form-section-title">Contatos</p>
+            <button type="button" class="btn-add" (click)="addContact()">
+              <i class="fas fa-plus"></i> Adicionar
+            </button>
+          </div>
+
+          <div formArrayName="contacts" class="items-list">
+            @for (contact of contacts.controls; track $index; let i = $index) {
+              <div [formGroupName]="i" class="item-card">
+                <div class="item-card-header">
+                  <span class="item-number">#{{ i + 1 }}</span>
+                  <button type="button" class="btn-remove-item" (click)="removeContact(i)" title="Remover contato">
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                </div>
+
+                <div class="form-row two-columns">
+                  <div>
+                    <label>Tipo</label>
+                    <select formControlName="type" (change)="onContactTypeChange(i)">
+                      <option value="EMAIL">E-mail</option>
+                      <option value="TELEFONE">Telefone</option>
+                      <option value="CELULAR">Celular</option>
+                      <option value="WHATSAPP">WhatsApp</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label>Valor</label>
+                    <input
+                      type="text"
+                      formControlName="value"
+                      [placeholder]="contact.get('type')?.value === 'EMAIL' ? 'exemplo@dominio.com' : '(00) 00000-0000'"
+                      (input)="onContactValueInput($event, i)"
+                    />
+                    @if (contact.get('value')?.invalid && contact.get('value')?.touched) {
+                      <small class="field-error">Campo obrigatório.</small>
+                    }
+                  </div>
+                </div>
+
+                <div class="form-row two-columns">
+                  <div>
+                    <label>Descrição</label>
+                    <input type="text" formControlName="description" placeholder="Ex.: Comercial, Financeiro..." />
+                  </div>
+
+                  <div class="checkbox-cell">
+                    <label class="checkbox-label">
+                      <input type="checkbox" formControlName="principal" />
+                      Contato principal
+                    </label>
+                  </div>
+                </div>
+              </div>
+            }
+
+            @if (contacts.length === 0) {
+              <div class="empty-items">
+                <i class="fas fa-address-book"></i>
+                <p>Nenhum contato cadastrado.</p>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Endereços -->
+        <div class="tab-panel" [hidden]="companyTab() !== 'address'">
+          <div class="section-header">
+            <p class="form-section-title">Endereços</p>
+            <button type="button" class="btn-add" (click)="addAddress()">
+              <i class="fas fa-plus"></i> Adicionar
+            </button>
+          </div>
+
+          <div formArrayName="addresses" class="items-list">
+            @for (address of addresses.controls; track $index; let i = $index) {
+              <div [formGroupName]="i" class="item-card">
+                <div class="item-card-header">
+                  <span class="item-number">#{{ i + 1 }}</span>
+                  <button type="button" class="btn-remove-item" (click)="removeAddress(i)" title="Remover endereço">
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                </div>
+
+                <div class="form-row two-columns">
+                  <div>
+                    <label>Tipo de Endereço</label>
+                    <select formControlName="type">
+                      <option value="COMERCIAL">Comercial</option>
+                      <option value="RESIDENCIAL">Residencial</option>
+                      <option value="COBRANCA">Cobrança</option>
+                      <option value="ENTREGA">Entrega</option>
+                      <option value="OUTRO">Outro</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label>CEP</label>
+                    <div class="cep-group">
+                      <input
+                        type="text"
+                        formControlName="cep"
+                        placeholder="00000-000"
+                        maxlength="9"
+                        inputmode="numeric"
+                        (input)="formatCep($event, i)"
+                        (blur)="buscarCep(i)"
+                      />
+                      <button type="button" class="btn-cep" (click)="buscarCep(i)" title="Buscar CEP">
+                        @if (searchingCepIndex() === i) {
+                          <i class="fas fa-spinner fa-spin"></i>
+                        } @else {
+                          <i class="fas fa-search"></i>
+                        }
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-row full-width">
+                  <label>Logradouro</label>
+                  <input type="text" formControlName="logradouro" autocomplete="street-address" />
+                </div>
+
+                <div class="form-row two-columns">
+                  <div>
+                    <label>Número</label>
+                    <input type="text" formControlName="numero" autocomplete="address-line2" />
+                    @if (address.get('numero')?.invalid && address.get('numero')?.touched) {
+                      <small class="field-error">Campo obrigatório.</small>
+                    }
+                  </div>
+                  <div>
+                    <label>Complemento</label>
+                    <input type="text" formControlName="complemento" placeholder="Opcional" />
+                  </div>
+                </div>
+
+                <div class="form-row three">
+                  <div>
+                    <label>Bairro</label>
+                    <input type="text" formControlName="bairro" />
+                  </div>
+                  <div>
+                    <label>Cidade</label>
+                    <input type="text" formControlName="cidade" autocomplete="address-level2" />
+                  </div>
+                  <div>
+                    <label>UF</label>
+                    <input type="text" formControlName="uf" maxlength="2" autocomplete="address-level1" />
+                  </div>
+                </div>
+
+                <div class="form-row full-width">
+                  <label class="checkbox-label">
+                    <input type="checkbox" formControlName="principal" />
+                    Endereço principal
+                  </label>
+                </div>
+              </div>
+            }
+
+            @if (addresses.length === 0) {
+              <div class="empty-items">
+                <i class="fas fa-map-marker-alt"></i>
+                <p>Nenhum endereço cadastrado.</p>
+              </div>
+            }
+          </div>
+        </div>
 
         <div class="actions">
-          <button type="submit" class="primary" [disabled]="isSavingCompany">
+          <button type="submit" class="primary" [disabled]="companyForm.invalid || isSavingCompany">
             @if (isSavingCompany) {
               <i class="fas fa-spinner fa-spin"></i> Salvando…
             } @else {
@@ -158,10 +319,8 @@
       </form>
     </section>
 
-    <!-- ============ 2 + 3. Estabelecimentos e editor ============ -->
     @if (company()) {
       <div class="layout">
-        <!-- ===== Lista de estabelecimentos ===== -->
         <aside class="panel establishments-panel">
           <div class="panel-title">
             <h2>2. Estabelecimentos</h2>
@@ -193,7 +352,6 @@
           }
         </aside>
 
-        <!-- ===== Editor ===== -->
         <main class="panel editor">
           <div class="panel-title">
             <div>
@@ -207,7 +365,6 @@
           </div>
 
           <form [formGroup]="fiscalForm" (ngSubmit)="saveFiscal()">
-            <!-- ===== Emitente ===== -->
             <section class="section-block">
               <h3>Emitente</h3>
 
@@ -239,7 +396,6 @@
               </p>
             </section>
 
-            <!-- ===== Parâmetros fiscais ===== -->
             <section class="section-block">
               <h3>Parâmetros fiscais</h3>
 
@@ -284,7 +440,6 @@
               </div>
             </section>
 
-            <!-- ===== CSC ===== -->
             <section class="section-block sensitive">
               <h3>CSC</h3>
               <p>O CSC é armazenado cifrado no backend e nunca é devolvido ao frontend.</p>
@@ -307,12 +462,11 @@
               </div>
             </section>
 
-            <!-- ===== Certificado A1 ===== -->
             <section class="section-block sensitive">
               <h3>Certificado digital A1</h3>
               <p>
-                Envie o arquivo PKCS#12/PFX somente pelo formulário. O arquivo é armazenado
-                pelo backend e a senha é protegida.
+                Envie o arquivo PKCS#12/PFX somente pelo formulário. O arquivo é armazenado pelo backend
+                e a senha é protegida.
               </p>
 
               <div class="grid two">
@@ -359,7 +513,6 @@
               </div>
             </section>
 
-            <!-- ===== Ações ===== -->
             <div class="actions">
               <button type="submit" class="primary" [disabled]="isSavingFiscal">
                 @if (isSavingFiscal) {
