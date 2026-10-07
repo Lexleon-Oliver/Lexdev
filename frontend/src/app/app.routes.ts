@@ -73,15 +73,14 @@ export const routes: Routes = [
       },
       {
         path: 'configuracoes/empresa',
-        loadComponent: () =>
-          import('./features/company/company-component/company-component')
-            .then(m => m.CompanyComponent)
+        redirectTo: 'configuracoes/fiscal',
+        pathMatch: 'full'
       },
       {
         path: 'configuracoes/fiscal',
         loadComponent: () =>
-          import('./features/fiscal/fiscal-settings-component/fiscal-settings-component')
-            .then(m => m.FiscalSettingsComponent)
+          import('./features/fiscal/fiscal-configuration-component/fiscal-configuration-component')
+            .then(m => m.FiscalConfigurationComponent)
       }
     ]
   },

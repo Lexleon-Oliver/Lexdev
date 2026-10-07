@@ -104,12 +104,6 @@ export class DashboardComponent implements OnInit {
         open: false,
         submenu: [
           {
-            key: 'empresa',
-            label: 'Empresa',
-            icon: '',
-            route: ['/configuracoes/empresa']
-          },
-          {
             key: 'fiscal',
             label: 'Fiscal / NFC-e',
             icon: '',
