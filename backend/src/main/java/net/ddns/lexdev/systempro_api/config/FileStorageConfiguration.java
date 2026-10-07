@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties({
     StorageProperties.class,
     ClamAvProperties.class,
-    FiscalProperties.class
+    FiscalProperties.class,
+    NfceSchemaProperties.class
 })
 public class FileStorageConfiguration {}

@@ -66,6 +66,7 @@ import net.ddns.lexdev.systempro_api.enums.PaymentMethod;
 import net.ddns.lexdev.systempro_api.exception.FiscalIntegrationException;
 import net.ddns.lexdev.systempro_api.service.FiscalEstablishmentService;
 import net.ddns.lexdev.systempro_api.storage.FileStorageService;
+import net.ddns.lexdev.systempro_api.fiscal.validation.NfceSchemaValidator;
 
 @Service
 public class SefazMgNfceGateway implements SefazNfceGateway {
@@ -78,16 +79,19 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
     private final FiscalEstablishmentService establishmentService;
     private final FileStorageService storage;
     private final FiscalProperties properties;
+    private final NfceSchemaValidator schemaValidator;
     private final SecureRandom random = new SecureRandom();
 
     public SefazMgNfceGateway(
         FiscalEstablishmentService establishmentService,
         FileStorageService storage,
-        FiscalProperties properties
+        FiscalProperties properties,
+        NfceSchemaValidator schemaValidator
     ) {
         this.establishmentService = establishmentService;
         this.storage = storage;
         this.properties = properties;
+        this.schemaValidator = schemaValidator;
     }
 
     @Override
@@ -119,6 +123,7 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
             properties.schemaVersion(),
             properties.productVersion()
         );
+        schemaValidator.validate(xml);
         String signedXml = sign(xml, establishment);
         document.setAccessKey(accessKey);
         document.setXml(signedXml);
