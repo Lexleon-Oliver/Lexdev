@@ -1,4 +1,5 @@
 <div class="fiscal-page">
+  <!-- ===== Cabeçalho ===== -->
   <header class="page-header">
     <div class="page-header-title">
       <h2>Fiscal / NFC-e</h2>
@@ -9,22 +10,30 @@
     </div>
   </header>
 
+  <!-- ===== Estado: carregando ===== -->
   @if (isLoading()) {
     <section class="panel setup-state">
       <i class="fas fa-spinner fa-spin"></i>
       Carregando configuração fiscal…
     </section>
-  } @else if (companyLoadFailed()) {
+  }
+  <!-- ===== Estado: erro ===== -->
+  @else if (companyLoadFailed()) {
     <section class="panel setup-state error">
+      <i class="fas fa-exclamation-circle"></i>
       Não foi possível carregar a empresa proprietária.
     </section>
-  } @else {
+  }
+  <!-- ===== Conteúdo ===== -->
+  @else {
+    <!-- ============ 1. Empresa proprietária ============ -->
     <section class="panel company-panel">
       <div class="panel-title">
         <div>
           <h2>1. Empresa proprietária</h2>
           <span>
-            A empresa identificada aqui é a referência usada por toda a configuração fiscal deste ambiente.
+            A empresa identificada aqui é a referência usada por toda a configuração
+            fiscal deste ambiente.
           </span>
         </div>
       </div>
@@ -39,6 +48,7 @@
       }
 
       <form class="company-form" [formGroup]="companyForm" (ngSubmit)="saveCompany()">
+        <!-- ===== Identificação ===== -->
         <section class="section-block">
           <h3>Identificação</h3>
 
@@ -72,6 +82,7 @@
           </div>
         </section>
 
+        <!-- ===== Contato ===== -->
         <section class="section-block">
           <h3>Contato</h3>
 
@@ -88,6 +99,7 @@
           </div>
         </section>
 
+        <!-- ===== Endereço ===== -->
         <section class="section-block">
           <h3>Endereço comercial</h3>
 
@@ -146,8 +158,10 @@
       </form>
     </section>
 
+    <!-- ============ 2 + 3. Estabelecimentos e editor ============ -->
     @if (company()) {
       <div class="layout">
+        <!-- ===== Lista de estabelecimentos ===== -->
         <aside class="panel establishments-panel">
           <div class="panel-title">
             <h2>2. Estabelecimentos</h2>
@@ -179,6 +193,7 @@
           }
         </aside>
 
+        <!-- ===== Editor ===== -->
         <main class="panel editor">
           <div class="panel-title">
             <div>
@@ -192,6 +207,7 @@
           </div>
 
           <form [formGroup]="fiscalForm" (ngSubmit)="saveFiscal()">
+            <!-- ===== Emitente ===== -->
             <section class="section-block">
               <h3>Emitente</h3>
 
@@ -223,6 +239,7 @@
               </p>
             </section>
 
+            <!-- ===== Parâmetros fiscais ===== -->
             <section class="section-block">
               <h3>Parâmetros fiscais</h3>
 
@@ -267,6 +284,7 @@
               </div>
             </section>
 
+            <!-- ===== CSC ===== -->
             <section class="section-block sensitive">
               <h3>CSC</h3>
               <p>O CSC é armazenado cifrado no backend e nunca é devolvido ao frontend.</p>
@@ -289,11 +307,12 @@
               </div>
             </section>
 
+            <!-- ===== Certificado A1 ===== -->
             <section class="section-block sensitive">
               <h3>Certificado digital A1</h3>
               <p>
-                Envie o arquivo PKCS#12/PFX somente pelo formulário. O arquivo é armazenado pelo backend
-                e a senha é protegida.
+                Envie o arquivo PKCS#12/PFX somente pelo formulário. O arquivo é armazenado
+                pelo backend e a senha é protegida.
               </p>
 
               <div class="grid two">
@@ -340,6 +359,7 @@
               </div>
             </section>
 
+            <!-- ===== Ações ===== -->
             <div class="actions">
               <button type="submit" class="primary" [disabled]="isSavingFiscal">
                 @if (isSavingFiscal) {
