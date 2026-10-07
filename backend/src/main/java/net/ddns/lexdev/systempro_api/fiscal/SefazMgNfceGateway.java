@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyStore;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
@@ -38,6 +39,7 @@ import javax.xml.crypto.dsig.spec.C14NMethodParameterSpec;
 import javax.xml.crypto.dsig.spec.TransformParameterSpec;
 import javax.xml.crypto.dsig.XMLSignature;
 import javax.xml.crypto.dsig.XMLSignatureFactory;
+import javax.xml.crypto.dsig.dom.DOMValidateContext;
 import javax.xml.crypto.dsig.keyinfo.KeyInfo;
 import javax.xml.crypto.dsig.keyinfo.KeyInfoFactory;
 import javax.xml.crypto.dsig.keyinfo.X509Data;
@@ -585,6 +587,8 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
 
             XMLSignature signature = factory.newXMLSignature(signedInfo, keyInfo);
             signature.sign(context);
+
+            validateGeneratedSignature(document, certificate.getPublicKey());
             return serialize(document);
         } catch (FiscalIntegrationException ex) {
             throw ex;
@@ -601,6 +605,78 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
                     // não propaga falha de limpeza do arquivo temporário
                 }
             }
+        }
+    }
+
+
+    /**
+     * Verifica criptograficamente a assinatura XML recém-gerada antes que o
+     * documento fiscal possa seguir para transmissão.
+     *
+     * A validação utiliza a chave pública do mesmo certificado que assinou o
+     * documento e também valida o digest da referência ao infNFe/infEvento.
+     * Assim, qualquer alteração no XML após a assinatura ou qualquer assinatura
+     * estruturalmente inconsistente é detectada localmente.
+     */
+    private void validateGeneratedSignature(Document document, PublicKey publicKey) {
+        try {
+            Element signatureElement = (Element) firstElement(document, "Signature");
+            if (signatureElement == null) {
+                throw new FiscalIntegrationException(
+                    "O XML fiscal não contém a assinatura digital após o processo de assinatura."
+                );
+            }
+
+            Element target = (Element) firstElement(document, "infNFe");
+            if (target == null) {
+                target = (Element) firstElement(document, "infEvento");
+            }
+            if (target == null || !target.hasAttribute("Id")) {
+                throw new FiscalIntegrationException(
+                    "O XML fiscal não contém o elemento referenciado pela assinatura digital."
+                );
+            }
+
+            DOMValidateContext validateContext = new DOMValidateContext(publicKey, signatureElement);
+            validateContext.setProperty("org.jcp.xml.dsig.secureValidation",Boolean.FALSE);
+            validateContext.setIdAttributeNS(target, null, "Id");
+
+            XMLSignatureFactory factory = XMLSignatureFactory.getInstance("DOM");
+            XMLSignature generatedSignature = factory.unmarshalXMLSignature(validateContext);
+
+            if (!generatedSignature.validate(validateContext)) {
+                boolean signatureValueValid =
+                    generatedSignature.getSignatureValue().validate(validateContext);
+
+                boolean referencesValid = true;
+                for (Object referenceObject : generatedSignature.getSignedInfo().getReferences()) {
+                    Reference signedReference = (Reference) referenceObject;
+                    if (!signedReference.validate(validateContext)) {
+                        referencesValid = false;
+                        break;
+                    }
+                }
+
+                String detail;
+                if (!signatureValueValid) {
+                    detail = "SignatureValue inválido";
+                } else if (!referencesValid) {
+                    detail = "Digest/Reference inválido";
+                } else {
+                    detail = "assinatura XMLDSig inválida";
+                }
+
+                throw new FiscalIntegrationException(
+                    "A assinatura digital gerada para o XML fiscal não pôde ser validada: " + detail + "."
+                );
+            }
+        } catch (FiscalIntegrationException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new FiscalIntegrationException(
+                "Não foi possível validar criptograficamente a assinatura digital gerada para o XML fiscal.",
+                ex
+            );
         }
     }
 
