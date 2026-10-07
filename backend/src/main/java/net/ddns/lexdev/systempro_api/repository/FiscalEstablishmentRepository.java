@@ -10,7 +10,11 @@ import net.ddns.lexdev.systempro_api.domain.FiscalEstablishment;
 
 public interface FiscalEstablishmentRepository extends JpaRepository<FiscalEstablishment, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT e FROM FiscalEstablishment e JOIN FETCH e.company c JOIN FETCH c.person p LEFT JOIN FETCH p.legalEntity LEFT JOIN FETCH p.addresses WHERE e.id = :id")
+    @Query("""
+        SELECT e
+        FROM FiscalEstablishment e
+        WHERE e.id = :id
+        """)
     Optional<FiscalEstablishment> findByIdForUpdate(@Param("id") Long id);
 
     @Query("SELECT e FROM FiscalEstablishment e JOIN FETCH e.company c JOIN FETCH c.person p LEFT JOIN FETCH p.legalEntity LEFT JOIN FETCH p.addresses WHERE e.id = :id")
