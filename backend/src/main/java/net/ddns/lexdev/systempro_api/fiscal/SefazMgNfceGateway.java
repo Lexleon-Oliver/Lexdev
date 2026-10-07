@@ -1,5 +1,6 @@
 package net.ddns.lexdev.systempro_api.fiscal;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -65,6 +66,7 @@ import net.ddns.lexdev.systempro_api.domain.SalePayment;
 import net.ddns.lexdev.systempro_api.enums.FiscalDocumentStatus;
 import net.ddns.lexdev.systempro_api.enums.FiscalEnvironment;
 import net.ddns.lexdev.systempro_api.enums.PaymentMethod;
+import net.ddns.lexdev.systempro_api.exception.FiscalCommunicationException;
 import net.ddns.lexdev.systempro_api.exception.FiscalIntegrationException;
 import net.ddns.lexdev.systempro_api.service.FiscalEstablishmentService;
 import net.ddns.lexdev.systempro_api.storage.FileStorageService;
@@ -138,26 +140,30 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
                 wrap("NFeAutorizacao4", "enviNFe", signedXml),
                 establishment
             );
-        } catch (RuntimeException ex) {
-            return new NfceIssueResult(
-                FiscalDocumentStatus.PENDENTE_CONSULTA,
-                accessKey,
-                signedXml,
-                null,
-                null,
-                null,
-                "Comunicação com a SEF/MG não concluída: " + safeMessage(ex),
-                null
-            );
+        } catch (FiscalCommunicationException ex) {
+            return pendingAuthorization(accessKey, signedXml, null, ex.getMessage());
         }
 
-        ProtocolResult protocol = extractProtocol(soap.xml());
-        String statusCode = protocol.code() == null ? firstValue(soap.xml(), "cStat") : protocol.code();
-        String reason = firstNonBlank(
-            protocol.reason(),
-            firstValue(soap.xml(), "xMotivo")
-        );
-        String receipt = firstValue(soap.xml(), "nRec");
+        ProtocolResult protocol;
+        String statusCode;
+        String reason;
+        String receipt;
+        try {
+            protocol = extractProtocol(soap.xml());
+            statusCode = protocol.code() == null ? firstValue(soap.xml(), "cStat") : protocol.code();
+            reason = firstNonBlank(
+                protocol.reason(),
+                firstValue(soap.xml(), "xMotivo")
+            );
+            receipt = firstValue(soap.xml(), "nRec");
+        } catch (RuntimeException ex) {
+            return pendingAuthorization(
+                accessKey,
+                signedXml,
+                soap.xml(),
+                "A SEFAZ/MG respondeu, mas não foi possível interpretar o retorno com segurança: " + safeMessage(ex)
+            );
+        }
 
         if ("103".equals(statusCode)) {
             return new NfceIssueResult(
@@ -190,6 +196,24 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
             signedXml,
             soap.xml(),
             protocol.protocol(),
+            null,
+            reason,
+            null
+        );
+    }
+
+    private static NfceIssueResult pendingAuthorization(
+        String accessKey,
+        String signedXml,
+        String responseXml,
+        String reason
+    ) {
+        return new NfceIssueResult(
+            FiscalDocumentStatus.PENDENTE_CONSULTA,
+            accessKey,
+            signedXml,
+            responseXml,
+            null,
             null,
             reason,
             null
@@ -382,38 +406,53 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
         String message,
         FiscalEstablishment establishment
     ) {
+        final SSLContext sslContext;
         try {
-            SSLContext sslContext = sslContext(establishment);
-            HttpClient client = HttpClient.newBuilder()
-                .sslContext(sslContext)
-                .connectTimeout(Duration.ofSeconds(properties.connectTimeoutSeconds()))
-                .build();
-
-            HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint))
-                .timeout(Duration.ofSeconds(properties.requestTimeoutSeconds()))
-                .header("Content-Type", "application/soap+xml; charset=utf-8; action=\"" + action + "\"")
-                .POST(HttpRequest.BodyPublishers.ofString(message, StandardCharsets.UTF_8))
-                .build();
-
-            HttpResponse<String> response = client.send(
-                request,
-                HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
-            );
-
-            if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new FiscalIntegrationException(
-                    "SEFAZ/MG retornou HTTP " + response.statusCode() + "."
-                );
-            }
-            return new SoapResponse(response.body());
-        } catch (FiscalIntegrationException ex) {
-            throw ex;
+            sslContext = sslContext(establishment);
         } catch (Exception ex) {
             throw new FiscalIntegrationException(
-                "Não foi possível comunicar com a SEFAZ/MG. O documento ficou pendente de consulta.",
+                "Não foi possível preparar o certificado A1/TLS para comunicação fiscal.",
                 ex
             );
         }
+
+        HttpClient client = HttpClient.newBuilder()
+            .sslContext(sslContext)
+            .connectTimeout(Duration.ofSeconds(properties.connectTimeoutSeconds()))
+            .build();
+
+        HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint))
+            .timeout(Duration.ofSeconds(properties.requestTimeoutSeconds()))
+            .header("Content-Type", "application/soap+xml; charset=utf-8; action=\"" + action + "\"")
+            .POST(HttpRequest.BodyPublishers.ofString(message, StandardCharsets.UTF_8))
+            .build();
+
+        final HttpResponse<String> response;
+        try {
+            response = client.send(
+                request,
+                HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
+            );
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new FiscalCommunicationException(
+                "Comunicação com a SEFAZ/MG foi interrompida; o resultado da transmissão é indeterminado.",
+                ex
+            );
+        } catch (IOException ex) {
+            throw new FiscalCommunicationException(
+                "Não foi possível concluir a comunicação com a SEFAZ/MG; o resultado da transmissão é indeterminado.",
+                ex
+            );
+        }
+
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            throw new FiscalCommunicationException(
+                "SEFAZ/MG retornou HTTP " + response.statusCode()
+                    + "; o resultado fiscal da transmissão deve ser confirmado por consulta."
+            );
+        }
+        return new SoapResponse(response.body());
     }
 
     private SSLContext sslContext(FiscalEstablishment establishment) throws Exception {
