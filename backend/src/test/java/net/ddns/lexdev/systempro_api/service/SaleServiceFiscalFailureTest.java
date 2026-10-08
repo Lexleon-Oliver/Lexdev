@@ -204,4 +204,50 @@ class SaleServiceFiscalFailureTest {
         verify(gateway, never()).authorize(establishment, sale, document);
     }
 
+
+    @Test
+    void naoDeveTransmitirContingenciaDuasVezesAposResultadoDefinitivo() {
+        long saleId = 5L;
+        Sale sale = mock(Sale.class);
+        FiscalDocument document = mock(FiscalDocument.class);
+
+        when(saleRepository.findForFiscal(saleId)).thenReturn(Optional.of(sale));
+        when(fiscalDocumentRepository.findBySaleId(saleId)).thenReturn(Optional.of(document));
+        org.mockito.Mockito.doThrow(new net.ddns.lexdev.systempro_api.exception.BusinessException(
+            "A NFC-e não está pendente de transmissão como contingência offline."
+        )).when(contingencyPolicy).assertCanTransmitOfflineContingency(document);
+
+        assertThatThrownBy(() -> service.transmitOfflineContingency(saleId))
+            .isInstanceOf(net.ddns.lexdev.systempro_api.exception.BusinessException.class)
+            .hasMessageContaining("não está pendente de transmissão");
+
+        verify(gateway, never()).transmitOfflineContingency(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+        verify(gateway, never()).authorize(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void pendenteConsultaNaoDeveSerConvertidoEmContingenciaOffline() {
+        long saleId = 6L;
+        Sale sale = mock(Sale.class);
+        FiscalDocument document = mock(FiscalDocument.class);
+
+        when(saleRepository.findForFiscal(saleId)).thenReturn(Optional.of(sale));
+        when(fiscalDocumentRepository.findBySaleId(saleId)).thenReturn(Optional.of(document));
+        org.mockito.Mockito.doThrow(new net.ddns.lexdev.systempro_api.exception.BusinessException(
+            "Somente uma NFC-e ainda não transmitida pode entrar em contingência offline."
+        )).when(contingencyPolicy).assertCanEnterOfflineContingency(document);
+
+        assertThatThrownBy(() -> service.enterOfflineContingency(
+            saleId, "Falha de comunicação conhecida antes da transmissão."
+        ))
+            .isInstanceOf(net.ddns.lexdev.systempro_api.exception.BusinessException.class)
+            .hasMessageContaining("ainda não transmitida");
+
+        verify(gateway, never()).prepareOfflineContingency(
+            org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString()
+        );
+        verify(gateway, never()).authorize(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+    }
+
 }
