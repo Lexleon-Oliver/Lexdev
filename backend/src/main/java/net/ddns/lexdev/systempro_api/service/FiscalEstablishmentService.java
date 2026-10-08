@@ -182,13 +182,23 @@ public class FiscalEstablishmentService {
             try (java.io.InputStream input = java.nio.file.Files.newInputStream(path)) {
                 java.security.KeyStore ks = java.security.KeyStore.getInstance("PKCS12");
                 ks.load(input, password.toCharArray());
-                String alias = ks.aliases().nextElement();
+                var aliases = ks.aliases();
+                if (!aliases.hasMoreElements()) {
+                    throw new FiscalConfigurationException("O arquivo informado não contém certificado A1 utilizável.");
+                }
+                String alias = aliases.nextElement();
                 if (!ks.isKeyEntry(alias)) throw new FiscalConfigurationException("O arquivo informado não contém uma chave privada válida.");
                 var cert = ks.getCertificate(alias);
                 if (!(cert instanceof java.security.cert.X509Certificate x509)) {
                     throw new FiscalConfigurationException("O certificado A1 informado não é um certificado X.509.");
                 }
-                x509.checkValidity();
+                try {
+                    x509.checkValidity();
+                } catch (java.security.cert.CertificateExpiredException ex) {
+                    throw new FiscalConfigurationException("O certificado A1 está expirado.");
+                } catch (java.security.cert.CertificateNotYetValidException ex) {
+                    throw new FiscalConfigurationException("O certificado A1 ainda não está válido.");
+                }
             } catch (FiscalConfigurationException ex) { throw ex; }
             catch (Exception ex) { throw new FiscalConfigurationException("O certificado A1 não pôde ser aberto com a senha informada."); }
         }
