@@ -141,7 +141,6 @@ public class FiscalEstablishmentService {
         if (legal == null || blank(legal.getInscricaoEstadual())) throw new FiscalConfigurationException("A Inscrição Estadual do emitente precisa estar cadastrada.");
         if (blank(e.getMunicipalityIbgeCode())) throw new FiscalConfigurationException("O código IBGE do município do estabelecimento fiscal é obrigatório.");
         if (e.getCertificateStorageKey() == null || e.getEncryptedCertificatePassword() == null) throw new FiscalConfigurationException("O certificado A1 ainda não foi configurado.");
-        if (e.getCscId() == null || blank(e.getEncryptedCsc())) throw new FiscalConfigurationException("O CSC ainda não foi configurado.");
     }
 
     private Company requireCompany() {

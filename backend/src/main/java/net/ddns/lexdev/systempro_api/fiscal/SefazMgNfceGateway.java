@@ -84,18 +84,21 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
     private final FileStorageService storage;
     private final FiscalProperties properties;
     private final NfceSchemaValidator schemaValidator;
+    private final NfceQrCodeGenerator qrCodeGenerator;
     private final SecureRandom random = new SecureRandom();
 
     public SefazMgNfceGateway(
         FiscalEstablishmentService establishmentService,
         FileStorageService storage,
         FiscalProperties properties,
-        NfceSchemaValidator schemaValidator
+        NfceSchemaValidator schemaValidator,
+        NfceQrCodeGenerator qrCodeGenerator
     ) {
         this.establishmentService = establishmentService;
         this.storage = storage;
         this.properties = properties;
         this.schemaValidator = schemaValidator;
+        this.qrCodeGenerator = qrCodeGenerator;
     }
 
     @Override
@@ -125,7 +128,9 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
             tpEmis,
             XML_DATE_TIME.format(emission),
             properties.schemaVersion(),
-            properties.productVersion()
+            properties.productVersion(),
+            qrCodeGenerator.onlineUrl(accessKey, establishment.getEnvironment()),
+            qrCodeGenerator.consultationUrl(establishment.getEnvironment())
         );
         schemaValidator.validate(xml);
         String signedXml = sign(xml, establishment);
@@ -765,7 +770,9 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
             int tpEmis,
             String emissionDateTime,
             String schemaVersion,
-            String productVersion
+            String productVersion,
+            String qrCodeUrl,
+            String consultationUrl
         ) {
             PersonAddress address = establishment.getCompany().getPerson().getAddresses().stream()
                 .filter(PersonAddress::isPrincipal)
@@ -935,7 +942,12 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
             if (sale.getNote() != null && !sale.getNote().isBlank()) {
                 xml.append("<infAdic><infCpl>").append(esc(sale.getNote())).append("</infCpl></infAdic>");
             }
-            xml.append("</infNFe></NFe></enviNFe>");
+            xml.append("</infNFe>")
+                .append("<infNFeSupl>")
+                .append("<qrCode><![CDATA[").append(qrCodeUrl).append("]]></qrCode>")
+                .append("<urlChave>").append(esc(consultationUrl)).append("</urlChave>")
+                .append("</infNFeSupl>")
+                .append("</NFe></enviNFe>");
             return xml.toString();
         }
 
