@@ -58,3 +58,53 @@ describe('fiscalActionsFor', () => {
     expect(Object.values(fiscalActionsFor(sale('CANCELADA', 'CANCELADA', 'NORMAL', 'KEY'))).some(Boolean)).toBe(false);
   });
 });
+
+describe('fiscalActionsFor - complete fiscal state matrix', () => {
+  const none = {
+    issueNormal: false,
+    prepareOfflineContingency: false,
+    transmitOfflineContingency: false,
+    consult: false,
+    consultPendingCancellation: false,
+    downloadDanfe: false,
+    downloadXml: false,
+    cancel: false,
+  };
+
+  it.each([
+    ['AGUARDANDO_FISCAL', 'AGUARDANDO_AUTORIZACAO', 'NORMAL', null, {
+      ...none, issueNormal: true, prepareOfflineContingency: true,
+    }],
+    ['FISCAL_PENDENTE', 'PENDENTE_CONSULTA', 'NORMAL', 'KEY', {
+      ...none, consult: true, downloadXml: true,
+    }],
+    ['FISCALIZADA', 'AUTORIZADA', 'NORMAL', 'KEY', {
+      ...none, downloadDanfe: true, downloadXml: true, cancel: true,
+    }],
+    ['FISCAL_REJEITADA', 'REJEITADA', 'NORMAL', null, none],
+    ['FISCAL_PENDENTE', 'CANCELAMENTO_PENDENTE', 'NORMAL', 'KEY', {
+      ...none, consultPendingCancellation: true,
+    }],
+    ['CANCELADA', 'CANCELADA', 'NORMAL', 'KEY', none],
+    ['FISCAL_PENDENTE', 'CONTINGENCIA', 'CONTINGENCIA_OFFLINE', 'KEY', {
+      ...none, transmitOfflineContingency: true, downloadDanfe: true, downloadXml: true,
+    }],
+  ] as const)(
+    '%s / %s / %s exposes exactly the expected actions',
+    (saleStatus, fiscalStatus, emissionType, accessKey, expected) => {
+      expect(fiscalActionsFor(sale(saleStatus, fiscalStatus, emissionType, accessKey))).toEqual(expected);
+    },
+  );
+
+  it('does not expose normal issue when status and emission type are inconsistent', () => {
+    expect(fiscalActionsFor(sale('FISCAL_PENDENTE', 'AGUARDANDO_AUTORIZACAO', 'CONTINGENCIA_OFFLINE'))).toEqual(none);
+  });
+
+  it('does not expose contingency transmission without offline contingency state', () => {
+    const actions = fiscalActionsFor(sale('FISCAL_PENDENTE', 'CONTINGENCIA', 'NORMAL', 'KEY'));
+    expect(actions.transmitOfflineContingency).toBe(false);
+    expect(actions.issueNormal).toBe(false);
+    expect(actions.consult).toBe(false);
+    expect(actions.consultPendingCancellation).toBe(false);
+  });
+});
