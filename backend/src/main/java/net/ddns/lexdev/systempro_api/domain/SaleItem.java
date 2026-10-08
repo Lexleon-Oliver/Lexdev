@@ -11,6 +11,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import net.ddns.lexdev.systempro_api.fiscal.rtc.IbsCbsCalculation;
+import net.ddns.lexdev.systempro_api.fiscal.rtc.IbsCbsJurisdictionCalculation;
 
 @Entity
 @Table(name = "tb_sale_item")
@@ -43,6 +45,19 @@ public class SaleItem {
     @Column(name = "pis_rate", precision = 7, scale = 4) private BigDecimal pisRate;
     @Column(name = "cofins_rate", precision = 7, scale = 4) private BigDecimal cofinsRate;
 
+    // Snapshot RTC da operação. Valores calculados pertencem ao item vendido,
+    // não ao cadastro mutável do produto/perfil fiscal.
+    @Column(name = "ibs_cbs_cst_snapshot", length = 3) private String ibsCbsCstSnapshot;
+    @Column(name = "c_class_trib_snapshot", length = 6) private String cClassTribSnapshot;
+    @Column(name = "ibs_cbs_tax_base", precision = 19, scale = 2) private BigDecimal ibsCbsTaxBase;
+    @Column(name = "ibs_uf_rate", precision = 9, scale = 6) private BigDecimal ibsUfRate;
+    @Column(name = "ibs_uf_amount", precision = 19, scale = 2) private BigDecimal ibsUfAmount;
+    @Column(name = "ibs_municipal_rate", precision = 9, scale = 6) private BigDecimal ibsMunicipalRate;
+    @Column(name = "ibs_municipal_amount", precision = 19, scale = 2) private BigDecimal ibsMunicipalAmount;
+    @Column(name = "ibs_total_amount", precision = 19, scale = 2) private BigDecimal ibsTotalAmount;
+    @Column(name = "cbs_rate_rtc", precision = 9, scale = 6) private BigDecimal cbsRateRtc;
+    @Column(name = "cbs_amount", precision = 19, scale = 2) private BigDecimal cbsAmount;
+
     public Long getId() { return id; }
     public Sale getSale() { return sale; } public void setSale(Sale v) { sale = v; }
     public Product getProduct() { return product; } public void setProduct(Product v) { product = v; }
@@ -65,4 +80,56 @@ public class SaleItem {
     public BigDecimal getIcmsRate() { return icmsRate; } public void setIcmsRate(BigDecimal v) { icmsRate = v; }
     public BigDecimal getPisRate() { return pisRate; } public void setPisRate(BigDecimal v) { pisRate = v; }
     public BigDecimal getCofinsRate() { return cofinsRate; } public void setCofinsRate(BigDecimal v) { cofinsRate = v; }
+
+    public String getIbsCbsCstSnapshot() { return ibsCbsCstSnapshot; }
+    public String getCClassTribSnapshot() { return cClassTribSnapshot; }
+    public BigDecimal getIbsCbsTaxBase() { return ibsCbsTaxBase; }
+    public BigDecimal getIbsUfRate() { return ibsUfRate; }
+    public BigDecimal getIbsUfAmount() { return ibsUfAmount; }
+    public BigDecimal getIbsMunicipalRate() { return ibsMunicipalRate; }
+    public BigDecimal getIbsMunicipalAmount() { return ibsMunicipalAmount; }
+    public BigDecimal getIbsTotalAmount() { return ibsTotalAmount; }
+    public BigDecimal getCbsRateRtc() { return cbsRateRtc; }
+    public BigDecimal getCbsAmount() { return cbsAmount; }
+
+    public void setIbsCbsCalculation(IbsCbsCalculation calculation) {
+        if (calculation == null) {
+            ibsCbsCstSnapshot = null;
+            cClassTribSnapshot = null;
+            ibsCbsTaxBase = null;
+            ibsUfRate = null;
+            ibsUfAmount = null;
+            ibsMunicipalRate = null;
+            ibsMunicipalAmount = null;
+            ibsTotalAmount = null;
+            cbsRateRtc = null;
+            cbsAmount = null;
+            return;
+        }
+        ibsCbsCstSnapshot = calculation.cst();
+        cClassTribSnapshot = calculation.cClassTrib();
+        ibsCbsTaxBase = calculation.taxBase();
+        ibsUfRate = calculation.ibsUf().rate();
+        ibsUfAmount = calculation.ibsUf().amount();
+        ibsMunicipalRate = calculation.ibsMunicipal().rate();
+        ibsMunicipalAmount = calculation.ibsMunicipal().amount();
+        ibsTotalAmount = calculation.totalIbs();
+        cbsRateRtc = calculation.cbs().rate();
+        cbsAmount = calculation.cbs().amount();
+    }
+
+    public IbsCbsCalculation getIbsCbsCalculation() {
+        if (ibsCbsCstSnapshot == null && cClassTribSnapshot == null) {
+            return null;
+        }
+        return new IbsCbsCalculation(
+            ibsCbsCstSnapshot,
+            cClassTribSnapshot,
+            ibsCbsTaxBase,
+            new IbsCbsJurisdictionCalculation(ibsUfRate, ibsUfAmount),
+            new IbsCbsJurisdictionCalculation(ibsMunicipalRate, ibsMunicipalAmount),
+            ibsTotalAmount,
+            new IbsCbsJurisdictionCalculation(cbsRateRtc, cbsAmount)
+        );
+    }
 }
