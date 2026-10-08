@@ -35,7 +35,8 @@
       <div class="search-bar">
         <i class="fas fa-search"></i>
         <input
-          [(ngModel)]="search"
+          [ngModel]="search"
+          (ngModelChange)="onProductSearchChange($event)"
           (keyup.enter)="searchProducts()"
           placeholder="Código, GTIN ou nome"
         />
@@ -116,7 +117,7 @@
                 </label>
               </div>
               <div class="item-total">
-                {{ (item.quantity * item.unitPrice - item.discount) | currency:'BRL' }}
+                {{ itemTotal(item) | currency:'BRL' }}
                 <button type="button" class="icon-button danger" (click)="removeCartItem(i)">
                   <i class="fas fa-trash"></i>
                 </button>
@@ -232,7 +233,13 @@
         <div>
           <label>
             Desconto da venda
-            <input type="number" min="0" step="0.01" [(ngModel)]="saleDiscount" />
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              [ngModel]="saleDiscount"
+              (ngModelChange)="onSaleDiscountChange($event)"
+            />
           </label>
           <strong>- {{ (saleDiscount || 0) | currency:'BRL' }}</strong>
         </div>

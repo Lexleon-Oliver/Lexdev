@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { Product } from '../../models/product';
 import { PaymentMethod, Sale, SaleCreateRequest } from '../../models/sale';
 import { CommonModule } from '@angular/common';
@@ -8,8 +8,8 @@ import { FiscalEstablishmentService } from '../../../core/services/fiscal-establ
 import { ClientService } from '../../../core/services/client-service';
 import { NotificationService } from '../../../core/services/notification-service';
 import { FiscalEstablishment } from '../../models/fiscal-establishment';
-import { finalize } from 'rxjs';
-import { ProductFiscalProfileService } from '../../../core/services/product-fiscal-profile-service';
+import { catchError, debounceTime, distinctUntilChanged, EMPTY, finalize, Subject, switchMap } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SaleService } from '../../../core/services/sale-service';
 
 interface CartItem {
@@ -36,10 +36,12 @@ interface PaymentLine {
 export class SalesComponent implements OnInit {
   private readonly productService = inject(ProductService);
   private readonly fiscalEstablishmentService = inject(FiscalEstablishmentService);
-  private readonly productFiscalProfileService = inject(ProductFiscalProfileService);
   private readonly saleService = inject(SaleService);
   private readonly clientService = inject(ClientService);
   private readonly notification = inject(NotificationService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly productSearch = new Subject<string>();
+  private autoSuggestedPayment = true;
 
   establishments = signal<FiscalEstablishment[]>([]);
   products = signal<Product[]>([]);
@@ -69,6 +71,7 @@ export class SalesComponent implements OnInit {
   ];
 
   ngOnInit(): void {
+    this.configureProductSearch();
     this.loadFiscalEstablishments();
     this.loadInitialProducts();
     this.loadRecentSales();
@@ -99,30 +102,41 @@ export class SalesComponent implements OnInit {
     });
   }
 
+  private configureProductSearch(): void {
+    this.productSearch.pipe(
+      debounceTime(250),
+      distinctUntilChanged(),
+      switchMap(query => {
+        this.isLoadingProducts = true;
+        const request = query
+          ? this.productService.searchForSale(query, 0, 12)
+          : this.productService.findAll(0, 12);
+
+        return request.pipe(
+          catchError(() => {
+            this.products.set([]);
+            this.notification.error('Não foi possível pesquisar os produtos.');
+            return EMPTY;
+          }),
+          finalize(() => this.isLoadingProducts = false),
+        );
+      }),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(page => this.products.set(page.content ?? []));
+  }
+
+  onProductSearchChange(value: string): void {
+    this.search = value;
+    this.productSearch.next(value.trim());
+  }
+
   searchProducts(): void {
-    const q = this.search.trim();
-    if (!q) {
-      this.loadInitialProducts();
-      return;
-    }
-    this.isLoadingProducts = true;
-    this.productService.searchForSale(q, 0, 12)
-      .pipe(finalize(() => this.isLoadingProducts = false))
-      .subscribe({
-        next: page => this.products.set(page.content ?? []),
-        error: () => this.notification.error('Não foi possível pesquisar os produtos.'),
-      });
+    this.productSearch.next(this.search.trim());
   }
 
   addProduct(product: Product): void {
     if (!product.id) return;
-    this.productFiscalProfileService.findByProductId(product.id).subscribe({
-      next: () => this.addToCart(product),
-      error: (error) => {
-        console.error(error);
-        this.notification.show(`O produto ${product.code} ainda não possui perfil fiscal configurado.`,'warning', 6000);
-      },
-    });
+    this.addToCart(product);
   }
 
   private addToCart(product: Product): void {
@@ -151,6 +165,7 @@ export class SalesComponent implements OnInit {
   updateCartItem(index: number, field: 'quantity' | 'unitPrice' | 'discount', value: number): void {
     const amount = Number.isFinite(value) ? Math.max(0, value) : 0;
     this.cart.set(this.cart().map((item, i) => i === index ? { ...item, [field]: amount } : item));
+    this.recalculateSuggestedPayment();
   }
 
   removeCartItem(index: number): void {
@@ -159,6 +174,7 @@ export class SalesComponent implements OnInit {
   }
 
   addPayment(): void {
+    this.autoSuggestedPayment = false;
     this.payments.update(items => [
       ...items,
       { paymentMethod: 'PIX', amount: 0, cardBrand: '', authorizationCode: '' },
@@ -167,11 +183,22 @@ export class SalesComponent implements OnInit {
 
   removePayment(index: number): void {
     if (this.payments().length === 1) return;
+    this.autoSuggestedPayment = false;
     this.payments.update(items => items.filter((_, i) => i !== index));
   }
 
   setPayment(index: number, patch: Partial<PaymentLine>): void {
+    this.autoSuggestedPayment = false;
     this.payments.update(items => items.map((item, i) => i === index ? { ...item, ...patch } : item));
+  }
+
+  onSaleDiscountChange(value: number): void {
+    this.saleDiscount = Number.isFinite(+value) ? Math.max(0, +value) : 0;
+    this.recalculateSuggestedPayment();
+  }
+
+  itemTotal(item: CartItem): number {
+    return Math.max(0, item.quantity * item.unitPrice - Math.min(item.discount, item.quantity * item.unitPrice));
   }
 
   subtotal(): number {
@@ -285,6 +312,7 @@ export class SalesComponent implements OnInit {
     this.clientName = '';
     this.saleDiscount = 0;
     this.note = '';
+    this.autoSuggestedPayment = true;
     this.payments.set([{ paymentMethod: 'DINHEIRO', amount: 0, cardBrand: '', authorizationCode: '' }]);
   }
 
@@ -362,7 +390,7 @@ export class SalesComponent implements OnInit {
   }
 
   private recalculateSuggestedPayment(): void {
-    if (this.payments().length === 1 && this.payments()[0].paymentMethod === 'DINHEIRO') {
+    if (this.autoSuggestedPayment && this.payments().length === 1 && this.payments()[0].paymentMethod === 'DINHEIRO') {
       this.payments.update(items => items.map((item, index) => index === 0 ? { ...item, amount: this.total() } : item));
     }
   }
