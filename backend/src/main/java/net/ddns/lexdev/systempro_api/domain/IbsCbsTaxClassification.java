@@ -49,6 +49,63 @@ public class IbsCbsTaxClassification {
     @Column(name = "source_version", length = 40, nullable = false)
     private String sourceVersion;
 
+    @Column(name = "rate_type", length = 80)
+    private String rateType;
+
+    @Column(name = "ind_g_ibs_cbs", nullable = false)
+    private boolean ibsCbsGroup;
+
+    @Column(name = "ind_g_ibs_cbs_mono", nullable = false)
+    private boolean ibsCbsMonoGroup;
+
+    @Column(name = "ind_g_reduction", nullable = false)
+    private boolean reductionGroup;
+
+    @Column(name = "ind_g_deferral", nullable = false)
+    private boolean deferralGroup;
+
+    @Column(name = "ind_g_transfer_credit", nullable = false)
+    private boolean transferCreditGroup;
+
+    @Column(name = "ind_g_presumed_credit_zfm", nullable = false)
+    private boolean presumedCreditZfmGroup;
+
+    @Column(name = "ind_g_competence_adjustment", nullable = false)
+    private boolean competenceAdjustmentGroup;
+
+    @Column(name = "ind_base_reducer", nullable = false)
+    private boolean baseReducer;
+
+    @Column(name = "ind_regular_taxation", nullable = false)
+    private boolean regularTaxationGroup;
+
+    @Column(name = "ind_presumed_credit_operation", nullable = false)
+    private boolean presumedCreditOperationGroup;
+
+    @Column(name = "ind_mono_standard", nullable = false)
+    private boolean monoStandardGroup;
+
+    @Column(name = "ind_mono_withholding", nullable = false)
+    private boolean monoWithholdingGroup;
+
+    @Column(name = "ind_mono_withheld", nullable = false)
+    private boolean monoWithheldGroup;
+
+    @Column(name = "ind_biofuel_difference", nullable = false)
+    private boolean biofuelDifferenceGroup;
+
+    @Column(name = "ind_credit_reversal", nullable = false)
+    private boolean creditReversalGroup;
+
+    @Column(name = "gross_revenue_type")
+    private Integer grossRevenueType;
+
+    @Column(name = "donation_type")
+    private Integer donationType;
+
+    @Column(name = "source_updated_at")
+    private LocalDate sourceUpdatedAt;
+
     protected IbsCbsTaxClassification() {}
 
     public IbsCbsTaxClassification(String cClassTrib, String cst, String description,
@@ -77,4 +134,23 @@ public class IbsCbsTaxClassification {
     public LocalDate getValidFrom() { return validFrom; }
     public LocalDate getValidTo() { return validTo; }
     public String getSourceVersion() { return sourceVersion; }
+    public String getRateType() { return rateType; }
+    public boolean isIbsCbsGroup() { return ibsCbsGroup; }
+    public boolean isIbsCbsMonoGroup() { return ibsCbsMonoGroup; }
+    public boolean isReductionGroup() { return reductionGroup; }
+    public boolean isDeferralGroup() { return deferralGroup; }
+    public boolean isTransferCreditGroup() { return transferCreditGroup; }
+    public boolean isPresumedCreditZfmGroup() { return presumedCreditZfmGroup; }
+    public boolean isCompetenceAdjustmentGroup() { return competenceAdjustmentGroup; }
+    public boolean isBaseReducer() { return baseReducer; }
+    public boolean isRegularTaxationGroup() { return regularTaxationGroup; }
+    public boolean isPresumedCreditOperationGroup() { return presumedCreditOperationGroup; }
+    public boolean isMonoStandardGroup() { return monoStandardGroup; }
+    public boolean isMonoWithholdingGroup() { return monoWithholdingGroup; }
+    public boolean isMonoWithheldGroup() { return monoWithheldGroup; }
+    public boolean isBiofuelDifferenceGroup() { return biofuelDifferenceGroup; }
+    public boolean isCreditReversalGroup() { return creditReversalGroup; }
+    public Integer getGrossRevenueType() { return grossRevenueType; }
+    public Integer getDonationType() { return donationType; }
+    public LocalDate getSourceUpdatedAt() { return sourceUpdatedAt; }
 }
