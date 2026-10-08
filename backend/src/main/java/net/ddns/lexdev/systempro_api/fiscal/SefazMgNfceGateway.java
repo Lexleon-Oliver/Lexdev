@@ -946,7 +946,9 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
                 .append("<vCOFINS>").append(fmt(vCofins, 2)).append("</vCOFINS>")
                 .append("<vOutro>0.00</vOutro>")
                 .append("<vNF>").append(fmt(sale.getTotal(), 2)).append("</vNF>")
-                .append("</ICMSTot></total>")
+                .append("</ICMSTot>")
+                .append(ibsCbsTotalXml(sale.getItems()))
+                .append("</total>")
                 .append("<transp><modFrete>9</modFrete></transp>")
                 .append("<pag>");
 
@@ -972,6 +974,48 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
                 .append("</infNFeSupl>")
                 .append("</NFe></enviNFe>");
             return xml.toString();
+        }
+
+        static String ibsCbsTotalXml(List<SaleItem> items) {
+            BigDecimal taxBase = BigDecimal.ZERO;
+            BigDecimal ibsUf = BigDecimal.ZERO;
+            BigDecimal ibsMunicipal = BigDecimal.ZERO;
+            BigDecimal ibs = BigDecimal.ZERO;
+            BigDecimal cbs = BigDecimal.ZERO;
+            boolean hasRtcSnapshot = false;
+
+            for (SaleItem item : items) {
+                var calculation = item.getIbsCbsCalculation();
+                if (calculation == null) {
+                    continue;
+                }
+                hasRtcSnapshot = true;
+                taxBase = taxBase.add(calculation.taxBase());
+                ibsUf = ibsUf.add(calculation.ibsUf().amount());
+                ibsMunicipal = ibsMunicipal.add(calculation.ibsMunicipal().amount());
+                ibs = ibs.add(calculation.totalIbs());
+                cbs = cbs.add(calculation.cbs().amount());
+            }
+
+            if (!hasRtcSnapshot) {
+                return "";
+            }
+
+            return "<IBSCBSTot>"
+                + "<vBCIBSCBS>" + fmt(taxBase, 2) + "</vBCIBSCBS>"
+                + "<gIBS>"
+                + "<gIBSUF><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSUF>" + fmt(ibsUf, 2) + "</vIBSUF></gIBSUF>"
+                + "<gIBSMun><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSMun>" + fmt(ibsMunicipal, 2) + "</vIBSMun></gIBSMun>"
+                + "<vIBS>" + fmt(ibs, 2) + "</vIBS>"
+                + "<vCredPres>0.00</vCredPres>"
+                + "<vCredPresCondSus>0.00</vCredPresCondSus>"
+                + "</gIBS>"
+                + "<gCBS>"
+                + "<vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vCBS>" + fmt(cbs, 2) + "</vCBS>"
+                + "<vCredPres>0.00</vCredPres>"
+                + "<vCredPresCondSus>0.00</vCredPresCondSus>"
+                + "</gCBS>"
+                + "</IBSCBSTot>";
         }
 
         static String ibsCbsXml(SaleItem item) {
