@@ -3,7 +3,11 @@ package net.ddns.lexdev.systempro_api.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -60,6 +64,9 @@ public class SaleService {
     private final FiscalEstablishmentService fiscalEstablishmentService;
     private final SefazNfceGateway gateway;
     private final FiscalProperties fiscalProperties;
+    private final IbsCbsSaleSnapshotService rtcSnapshotService;
+
+    private static final ZoneId FISCAL_ZONE = ZoneId.of("America/Sao_Paulo");
 
     public SaleService(
         SaleRepository saleRepository,
@@ -72,7 +79,8 @@ public class SaleService {
         CurrentUserProvider currentUserProvider,
         FiscalEstablishmentService fiscalEstablishmentService,
         SefazNfceGateway gateway,
-        FiscalProperties fiscalProperties
+        FiscalProperties fiscalProperties,
+        IbsCbsSaleSnapshotService rtcSnapshotService
     ) {
         this.saleRepository = saleRepository;
         this.productRepository = productRepository;
@@ -85,6 +93,7 @@ public class SaleService {
         this.fiscalEstablishmentService = fiscalEstablishmentService;
         this.gateway = gateway;
         this.fiscalProperties = fiscalProperties;
+        this.rtcSnapshotService = rtcSnapshotService;
     }
 
     @Transactional
@@ -123,6 +132,7 @@ public class SaleService {
         BigDecimal subtotal = BigDecimal.ZERO;
         BigDecimal totalBeforeSaleDiscount = BigDecimal.ZERO;
         int itemNumber = 1;
+        Map<SaleItem, FiscalProductProfile> rtcProfiles = new IdentityHashMap<>();
 
         for (SaleItemRequestDto request : dto.items()) {
             Product product = productRepository.findById(request.productId())
@@ -182,6 +192,7 @@ public class SaleService {
             item.setPisRate(profile.getPisRate());
             item.setCofinsRate(profile.getCofinsRate());
             sale.addItem(item);
+            rtcProfiles.put(item, profile);
 
             subtotal = subtotal.add(gross);
             totalBeforeSaleDiscount = totalBeforeSaleDiscount.add(itemTotal);
@@ -192,6 +203,11 @@ public class SaleService {
             throw new BusinessException("O desconto total não pode superar o valor da venda após os descontos dos itens.");
         }
         allocateSaleDiscount(sale.getItems(), saleDiscount, totalBeforeSaleDiscount);
+
+        LocalDate operationDate = sale.getSaleAt().atZone(FISCAL_ZONE).toLocalDate();
+        for (SaleItem item : sale.getItems()) {
+            rtcSnapshotService.apply(establishment, rtcProfiles.get(item), item, operationDate);
+        }
 
         BigDecimal total = totalBeforeSaleDiscount.subtract(saleDiscount).setScale(4, RoundingMode.HALF_UP);
         BigDecimal totalPaid = BigDecimal.ZERO;
@@ -401,10 +417,9 @@ public class SaleService {
             throw new FiscalConfigurationException("O perfil fiscal do produto " + product.getCode() + " está incompleto ou possui códigos inválidos.");
         }
 
-        if (profile.getIbsCbsCst() != null || profile.getCClassTrib() != null
-            || profile.getIbsRate() != null || profile.getCbsRate() != null) {
+        if (profile.getIbsRate() != null || profile.getCbsRate() != null) {
             throw new FiscalConfigurationException(
-                "O perfil do produto contém parametrização de IBS/CBS. O emissor NFC-e desta versão não envia esse grupo automaticamente; revise a parametrização fiscal antes da emissão."
+                "O perfil do produto ainda utiliza as alíquotas IBS/CBS legadas. Remova ibsRate/cbsRate; as alíquotas RTC são resolvidas por vigência."
             );
         }
 

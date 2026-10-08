@@ -52,6 +52,7 @@ class SaleServiceProductFiscalValidationTest {
     @Mock private CurrentUserProvider currentUserProvider;
     @Mock private FiscalEstablishmentService fiscalEstablishmentService;
     @Mock private SefazNfceGateway gateway;
+    @Mock private IbsCbsSaleSnapshotService rtcSnapshotService;
 
     private SaleService service;
     private FiscalEstablishment establishment;
@@ -76,7 +77,8 @@ class SaleServiceProductFiscalValidationTest {
             currentUserProvider,
             fiscalEstablishmentService,
             gateway,
-            properties
+            properties,
+            rtcSnapshotService
         );
 
         establishment = new FiscalEstablishment(null);
@@ -159,10 +161,10 @@ class SaleServiceProductFiscalValidationTest {
     }
 
     @Test
-    void shouldRejectRtcFieldsWhileCurrentEmitterDoesNotSerializeIbsCbs() {
-        profile.setIbsCbsCst("000");
+    void shouldRejectLegacyRtcRatesBeforePersistingSaleOrConsumingNumber() {
+        profile.setIbsRate(new BigDecimal("0.1000"));
 
-        assertFiscalRejection("contém parametrização de IBS/CBS");
+        assertFiscalRejection("alíquotas IBS/CBS legadas");
     }
 
     @Test

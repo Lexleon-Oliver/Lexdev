@@ -49,6 +49,7 @@ class SaleServiceConsultationTest {
     @Mock private CurrentUserProvider currentUserProvider;
     @Mock private FiscalEstablishmentService fiscalEstablishmentService;
     @Mock private SefazNfceGateway gateway;
+    @Mock private IbsCbsSaleSnapshotService rtcSnapshotService;
     @Mock private FiscalProperties fiscalProperties;
 
     private SaleService service;
@@ -66,7 +67,8 @@ class SaleServiceConsultationTest {
             currentUserProvider,
             fiscalEstablishmentService,
             gateway,
-            fiscalProperties
+            fiscalProperties,
+            rtcSnapshotService
         );
     }
 

@@ -3,11 +3,14 @@ package net.ddns.lexdev.systempro_api.fiscal.rtc;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+import org.springframework.stereotype.Component;
+
 import net.ddns.lexdev.systempro_api.domain.IbsCbsTaxClassification;
 import net.ddns.lexdev.systempro_api.exception.FiscalConfigurationException;
 import net.ddns.lexdev.systempro_api.repository.IbsCbsTaxClassificationRepository;
 
 /** Resolve a regra usando o snapshot local da tabela oficial e um provedor separado de alíquotas. */
+@Component
 public class CatalogIbsCbsTaxRuleResolver implements IbsCbsTaxRuleResolver {
     private static final int NFCE_MODEL = 65;
     private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");

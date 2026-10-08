@@ -55,6 +55,7 @@ class SaleServiceCancellationTest {
     @Mock private CurrentUserProvider currentUserProvider;
     @Mock private FiscalEstablishmentService fiscalEstablishmentService;
     @Mock private SefazNfceGateway gateway;
+    @Mock private IbsCbsSaleSnapshotService rtcSnapshotService;
     @Mock private FiscalProperties fiscalProperties;
 
     private SaleService service;
@@ -64,7 +65,7 @@ class SaleServiceCancellationTest {
         service = new SaleService(
             saleRepository, productRepository, profileRepository, establishmentRepository,
             clientRepository, fiscalDocumentRepository, fiscalEventRepository,
-            currentUserProvider, fiscalEstablishmentService, gateway, fiscalProperties
+            currentUserProvider, fiscalEstablishmentService, gateway, fiscalProperties, rtcSnapshotService
         );
     }
 

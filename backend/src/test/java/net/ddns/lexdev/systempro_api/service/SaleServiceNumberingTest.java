@@ -50,6 +50,7 @@ class SaleServiceNumberingTest {
     @Mock private CurrentUserProvider currentUserProvider;
     @Mock private FiscalEstablishmentService fiscalEstablishmentService;
     @Mock private SefazNfceGateway gateway;
+    @Mock private IbsCbsSaleSnapshotService rtcSnapshotService;
 
     private SaleService service;
     private FiscalEstablishment establishment;
@@ -72,7 +73,8 @@ class SaleServiceNumberingTest {
             currentUserProvider,
             fiscalEstablishmentService,
             gateway,
-            properties
+            properties,
+            rtcSnapshotService
         );
 
         establishment = new FiscalEstablishment(null);
