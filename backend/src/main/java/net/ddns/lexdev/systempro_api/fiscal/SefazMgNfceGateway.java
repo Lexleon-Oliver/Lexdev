@@ -379,22 +379,26 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
                 wrap("NFeRecepcaoEvento4", "nfeDadosMsg", signedXml),
                 establishment
             );
-        } catch (RuntimeException ex) {
-            return new NfceIssueResult(
-                FiscalDocumentStatus.CANCELAMENTO_PENDENTE,
-                document.getAccessKey(),
-                signedXml,
-                null,
-                null,
-                null,
-                "Comunicação com a SEF/MG não concluída: " + safeMessage(ex),
-                null
-            );
+        } catch (FiscalCommunicationException ex) {
+            return pendingCancellation(document, signedXml, null, ex.getMessage());
         }
 
-        ProtocolResult protocol = extractEventProtocol(soap.xml());
-        String statusCode = protocol.code() == null ? firstValue(soap.xml(), "cStat") : protocol.code();
-        String reason = firstNonBlank(protocol.reason(), firstValue(soap.xml(), "xMotivo"));
+        final ProtocolResult protocol;
+        final String statusCode;
+        final String reason;
+        try {
+            protocol = extractEventProtocol(soap.xml());
+            statusCode = protocol.code() == null ? firstValue(soap.xml(), "cStat") : protocol.code();
+            reason = firstNonBlank(protocol.reason(), firstValue(soap.xml(), "xMotivo"));
+        } catch (RuntimeException ex) {
+            return pendingCancellation(
+                document,
+                signedXml,
+                soap.xml(),
+                "A SEFAZ/MG respondeu ao cancelamento, mas não foi possível interpretar o retorno com segurança: "
+                    + safeMessage(ex)
+            );
+        }
         boolean cancelled = "135".equals(statusCode)
             || "136".equals(statusCode)
             || "155".equals(statusCode);
@@ -405,6 +409,24 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
             signedXml,
             soap.xml(),
             protocol.protocol(),
+            null,
+            reason,
+            null
+        );
+    }
+
+    private NfceIssueResult pendingCancellation(
+        FiscalDocument document,
+        String signedXml,
+        String responseXml,
+        String reason
+    ) {
+        return new NfceIssueResult(
+            FiscalDocumentStatus.CANCELAMENTO_PENDENTE,
+            document.getAccessKey(),
+            signedXml,
+            responseXml,
+            null,
             null,
             reason,
             null

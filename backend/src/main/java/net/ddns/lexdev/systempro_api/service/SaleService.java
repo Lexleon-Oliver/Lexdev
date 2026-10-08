@@ -327,39 +327,20 @@ public class SaleService {
             throw new BusinessException("A NFC-e não possui chave de acesso e protocolo necessários ao cancelamento.");
         }
 
-        document.setStatus(FiscalDocumentStatus.CANCELAMENTO_PENDENTE);
+        NfceIssueResult result = gateway.cancel(document.getEstablishment(), document, justification.trim());
+        document.setResponseXml(result.responseXml());
+        document.setReason(result.reason());
+        document.setCancellationProtocol(result.protocol());
+        document.setStatus(result.status());
 
-        try {
-            NfceIssueResult result = gateway.cancel(document.getEstablishment(), document, justification.trim());
-            document.setResponseXml(result.responseXml());
-            document.setReason(result.reason());
-            document.setCancellationProtocol(result.protocol());
-            document.setStatus(result.status());
+        saveCancellationEvent(document, result, justification.trim());
 
-            saveCancellationEvent(document, result, justification.trim());
-
-            if (result.status() == FiscalDocumentStatus.CANCELADA) {
-                document.setCanceledAt(Instant.now());
-                sale.setStatus(SaleStatus.CANCELADA);
-            }
-
-            return response(sale, document);
-        } catch (RuntimeException ex) {
-            String reason = safeMessage(ex);
-            document.setReason(reason);
-            document.setStatus(FiscalDocumentStatus.CANCELAMENTO_PENDENTE);
-            saveCancellationEvent(document, new NfceIssueResult(
-                FiscalDocumentStatus.CANCELAMENTO_PENDENTE,
-                document.getAccessKey(),
-                null,
-                null,
-                null,
-                null,
-                reason,
-                null
-            ), justification.trim());
-            return response(sale, document);
+        if (result.status() == FiscalDocumentStatus.CANCELADA) {
+            document.setCanceledAt(Instant.now());
+            sale.setStatus(SaleStatus.CANCELADA);
         }
+
+        return response(sale, document);
     }
 
     private void saveCancellationEvent(FiscalDocument document, NfceIssueResult result, String justification) {
@@ -517,9 +498,4 @@ public class SaleService {
         return value == null || value.isBlank() ? null : value.trim();
     }
 
-    private static String safeMessage(RuntimeException ex) {
-        return ex.getMessage() == null || ex.getMessage().isBlank()
-            ? "Não foi possível concluir a comunicação fiscal."
-            : ex.getMessage();
-    }
 }
