@@ -512,6 +512,15 @@ export class SalesComponent implements OnInit {
     this.runFiscalAction(sale, this.saleService.consult(sale.id), 'Situação fiscal atualizada.');
   }
 
+  consultPendingCancellation(sale: Sale): void {
+    if (!this.fiscalActions(sale).consultPendingCancellation || this.fiscalActionSaleId() !== null) return;
+    this.runFiscalAction(
+      sale,
+      this.saleService.consultPendingCancellation(sale.id),
+      'Situação do cancelamento atualizada.',
+    );
+  }
+
   cancel(sale: Sale): void {
     if (!this.fiscalActions(sale).cancel) return;
     const justification = window.prompt('Justificativa do cancelamento (mínimo de 15 caracteres):', 'Cancelamento solicitado pelo estabelecimento');

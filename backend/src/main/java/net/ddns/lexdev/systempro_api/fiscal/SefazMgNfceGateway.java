@@ -531,6 +531,124 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
         );
     }
 
+    @Override
+    public NfceIssueResult consultCancellation(
+        FiscalEstablishment establishment,
+        FiscalDocument document
+    ) {
+        if (document.getAccessKey() == null || document.getAccessKey().length() != 44) {
+            throw new FiscalIntegrationException("A chave de acesso da NFC-e não está disponível para consultar o cancelamento.");
+        }
+
+        String body = "<consSitNFe xmlns=\"" + NFE_NS + "\" versao=\"4.00\">"
+            + "<tpAmb>" + environmentCode(establishment.getEnvironment()) + "</tpAmb>"
+            + "<xServ>CONSULTAR</xServ>"
+            + "<chNFe>" + esc(document.getAccessKey()) + "</chNFe>"
+            + "</consSitNFe>";
+
+        final SoapResponse soap;
+        try {
+            soap = post(
+                endpoint(establishment, "NFeConsultaProtocolo4"),
+                action("NFeConsultaProtocolo4", "nfeConsultaNF"),
+                wrap("NFeConsultaProtocolo4", "nfeDadosMsg", body),
+                establishment
+            );
+        } catch (FiscalCommunicationException ex) {
+            return pendingCancellationConsultation(document, null, ex.getMessage());
+        }
+
+        try {
+            return parseCancellationConsultationResponse(document, soap.xml());
+        } catch (RuntimeException ex) {
+            return pendingCancellationConsultation(
+                document,
+                soap.xml(),
+                "A SEFAZ/MG respondeu à consulta do cancelamento, mas o retorno não pôde ser interpretado com segurança: "
+                    + safeMessage(ex)
+            );
+        }
+    }
+
+    static NfceIssueResult parseCancellationConsultationResponse(FiscalDocument document, String responseXml) {
+        try {
+            Document response = parse(responseXml);
+            var processedEvents = response.getElementsByTagNameNS("*", "procEventoNFe");
+            for (int i = 0; i < processedEvents.getLength(); i++) {
+                var event = processedEvents.item(i);
+                var eventInfos = ((Element) event).getElementsByTagNameNS("*", "infEvento");
+                for (int j = 0; j < eventInfos.getLength(); j++) {
+                    var info = eventInfos.item(j);
+                    String eventType = childValue(info, "tpEvento");
+                    String code = childValue(info, "cStat");
+                    if (!"110111".equals(eventType) || isBlank(code)) {
+                        continue;
+                    }
+                    String reason = childValue(info, "xMotivo");
+                    String protocol = childValue(info, "nProt");
+                    if ("135".equals(code) || "136".equals(code) || "155".equals(code)) {
+                        return new NfceIssueResult(
+                            FiscalDocumentStatus.CANCELADA,
+                            document.getAccessKey(),
+                            document.getXml(),
+                            responseXml,
+                            protocol,
+                            null,
+                            reason,
+                            null
+                        );
+                    }
+                }
+            }
+
+            var legacyCancellation = response.getElementsByTagNameNS("*", "retCancNFe").item(0);
+            if (legacyCancellation != null) {
+                String code = childValue(legacyCancellation, "cStat");
+                if ("101".equals(code) || "151".equals(code)) {
+                    return new NfceIssueResult(
+                        FiscalDocumentStatus.CANCELADA,
+                        document.getAccessKey(),
+                        document.getXml(),
+                        responseXml,
+                        childValue(legacyCancellation, "nProt"),
+                        null,
+                        childValue(legacyCancellation, "xMotivo"),
+                        null
+                    );
+                }
+            }
+
+            String reason = firstValue(responseXml, "xMotivo");
+            return pendingCancellationConsultation(
+                document,
+                responseXml,
+                firstNonBlank(
+                    reason,
+                    "A consulta ainda não confirmou o registro do evento de cancelamento na SEFAZ/MG."
+                )
+            );
+        } catch (Exception ex) {
+            throw new FiscalIntegrationException("Não foi possível interpretar a consulta do cancelamento.", ex);
+        }
+    }
+
+    private static NfceIssueResult pendingCancellationConsultation(
+        FiscalDocument document,
+        String responseXml,
+        String reason
+    ) {
+        return new NfceIssueResult(
+            FiscalDocumentStatus.CANCELAMENTO_PENDENTE,
+            document.getAccessKey(),
+            document.getXml(),
+            responseXml,
+            null,
+            null,
+            reason,
+            null
+        );
+    }
+
     private NfceIssueResult pendingCancellation(
         FiscalDocument document,
         String signedXml,

@@ -34,6 +34,17 @@ describe('fiscalActionsFor', () => {
     expect(actions.prepareOfflineContingency).toBe(false);
   });
 
+
+  it('allows only the dedicated recovery action for pending cancellation', () => {
+    const actions = fiscalActionsFor(sale('FISCAL_PENDENTE', 'CANCELAMENTO_PENDENTE', 'NORMAL', 'KEY'));
+    expect(actions.consultPendingCancellation).toBe(true);
+    expect(actions.consult).toBe(false);
+    expect(actions.issueNormal).toBe(false);
+    expect(actions.prepareOfflineContingency).toBe(false);
+    expect(actions.transmitOfflineContingency).toBe(false);
+    expect(actions.cancel).toBe(false);
+  });
+
   it('allows DANFE XML and cancellation only for authorized sale', () => {
     const actions = fiscalActionsFor(sale('FISCALIZADA', 'AUTORIZADA', 'NORMAL', 'KEY'));
     expect(actions.downloadDanfe).toBe(true);

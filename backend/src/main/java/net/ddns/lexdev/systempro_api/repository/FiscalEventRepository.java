@@ -4,6 +4,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Optional;
+
 import net.ddns.lexdev.systempro_api.domain.FiscalEvent;
 import net.ddns.lexdev.systempro_api.enums.FiscalEventType;
 
@@ -18,5 +20,10 @@ public interface FiscalEventRepository extends JpaRepository<FiscalEvent, Long> 
     int findMaxSequenceNumber(
         @Param("documentId") Long documentId,
         @Param("eventType") FiscalEventType eventType
+    );
+
+    Optional<FiscalEvent> findTopByDocumentIdAndEventTypeOrderBySequenceNumberDesc(
+        Long documentId,
+        FiscalEventType eventType
     );
 }

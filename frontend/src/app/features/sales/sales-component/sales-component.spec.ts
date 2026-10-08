@@ -291,6 +291,34 @@ describe('SalesComponent', () => {
     expect(component.selectedSale()).toEqual(authorized);
   });
 
+
+  it('should recover pending cancellation only through the dedicated endpoint', () => {
+    const pendingCancellation = fiscalSale('FISCAL_PENDENTE', 'CANCELAMENTO_PENDENTE', 'NORMAL', 'KEY-AUTH');
+    const cancelled = fiscalSale('CANCELADA', 'CANCELADA', 'NORMAL', 'KEY-AUTH');
+    const saleService = (component as any).saleService;
+    const normalConsultSpy = vi.spyOn(saleService, 'consult');
+    const cancelSpy = vi.spyOn(saleService, 'cancel');
+    const cancellationConsultSpy = vi.spyOn(saleService, 'consultPendingCancellation').mockReturnValue(of(cancelled));
+
+    component.consultPendingCancellation(pendingCancellation);
+
+    expect(cancellationConsultSpy).toHaveBeenCalledWith(pendingCancellation.id);
+    expect(normalConsultSpy).not.toHaveBeenCalled();
+    expect(cancelSpy).not.toHaveBeenCalled();
+    expect(component.selectedSale()).toEqual(cancelled);
+    expect(component.fiscalActionSaleId()).toBeNull();
+  });
+
+  it('should not use pending-cancellation recovery for ordinary pending consultation', () => {
+    const pending = fiscalSale('FISCAL_PENDENTE', 'PENDENTE_CONSULTA', 'NORMAL', 'KEY-PENDING');
+    const saleService = (component as any).saleService;
+    const cancellationConsultSpy = vi.spyOn(saleService, 'consultPendingCancellation');
+
+    component.consultPendingCancellation(pending);
+
+    expect(cancellationConsultSpy).not.toHaveBeenCalled();
+  });
+
   it('should load the fiscal pending queue from the dedicated paginated endpoint', () => {
     const pending = fiscalSale('FISCAL_PENDENTE', 'PENDENTE_CONSULTA', 'NORMAL', 'KEY-PENDING');
     const saleService = (component as any).saleService;

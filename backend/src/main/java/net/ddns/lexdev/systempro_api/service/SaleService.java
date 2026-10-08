@@ -406,6 +406,41 @@ public class SaleService {
     }
 
     @Transactional
+    public SaleResponseDto consultPendingCancellation(Long saleId) {
+        Sale sale = saleRepository.findForFiscal(saleId)
+            .orElseThrow(() -> new EntityNotFoundException("Venda não encontrada."));
+        FiscalDocument document = fiscalDocumentRepository.findBySaleId(saleId)
+            .orElseThrow(() -> new EntityNotFoundException("Documento fiscal não encontrado."));
+
+        if (document.getStatus() == FiscalDocumentStatus.CANCELADA) {
+            return response(sale, document);
+        }
+        if (document.getStatus() != FiscalDocumentStatus.CANCELAMENTO_PENDENTE) {
+            throw new BusinessException("Somente um cancelamento pendente pode ser consultado por este fluxo.");
+        }
+        if (document.getAccessKey() == null || document.getAccessKey().length() != 44) {
+            throw new BusinessException("A NFC-e não possui chave de acesso válida para consultar o cancelamento.");
+        }
+
+        NfceIssueResult result = gateway.consultCancellation(document.getEstablishment(), document);
+        document.setResponseXml(result.responseXml());
+        document.setReason(result.reason());
+
+        if (result.status() == FiscalDocumentStatus.CANCELADA) {
+            document.setStatus(FiscalDocumentStatus.CANCELADA);
+            document.setCancellationProtocol(result.protocol());
+            document.setCanceledAt(Instant.now());
+            sale.setStatus(SaleStatus.CANCELADA);
+            updatePendingCancellationEvent(document, result);
+        } else {
+            document.setStatus(FiscalDocumentStatus.CANCELAMENTO_PENDENTE);
+            sale.setStatus(SaleStatus.FISCAL_PENDENTE);
+        }
+
+        return response(sale, document);
+    }
+
+    @Transactional
     public SaleResponseDto cancel(Long saleId, String justification) {
         if (justification == null || justification.trim().length() < 15) {
             throw new BusinessException("A justificativa do cancelamento deve possuir pelo menos 15 caracteres.");
@@ -437,6 +472,20 @@ public class SaleService {
         }
 
         return response(sale, document);
+    }
+
+    private void updatePendingCancellationEvent(FiscalDocument document, NfceIssueResult result) {
+        fiscalEventRepository.findTopByDocumentIdAndEventTypeOrderBySequenceNumberDesc(
+            document.getId(), FiscalEventType.CANCELAMENTO
+        ).ifPresent(event -> {
+            if (event.getStatus() == FiscalDocumentStatus.CANCELAMENTO_PENDENTE) {
+                event.setStatus(FiscalDocumentStatus.CANCELADA);
+                event.setResponseXml(result.responseXml());
+                event.setProtocol(result.protocol());
+                event.setReason(result.reason());
+                fiscalEventRepository.save(event);
+            }
+        });
     }
 
     private void saveCancellationEvent(FiscalDocument document, NfceIssueResult result, String justification) {

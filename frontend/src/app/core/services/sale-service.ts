@@ -48,6 +48,11 @@ export class SaleService {
     return this.http.post<Sale>(`${this.apiUrl}/${id}/consult`, {});
   }
 
+  consultPendingCancellation(id: number): Observable<Sale> {
+    const context = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
+    return this.http.post<Sale>(`${this.apiUrl}/${id}/cancel/consult`, {}, { context });
+  }
+
   cancel(id: number, justification: string): Observable<Sale> {
     const params = new HttpParams().set('justification', justification);
     return this.http.post<Sale>(`${this.apiUrl}/${id}/cancel`, {}, { params });

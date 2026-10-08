@@ -12,5 +12,6 @@ public interface SefazNfceGateway {
     NfceIssueResult transmitOfflineContingency(FiscalEstablishment establishment, FiscalDocument document);
     NfceIssueResult consult(FiscalEstablishment establishment, FiscalDocument document);
     NfceIssueResult cancel(FiscalEstablishment establishment, FiscalDocument document, String justification);
+    NfceIssueResult consultCancellation(FiscalEstablishment establishment, FiscalDocument document);
     NfceIssueResult status(FiscalEstablishment establishment);
 }

@@ -149,6 +149,72 @@ class SaleServiceCancellationTest {
         verify(fiscalEventRepository, never()).save(any(FiscalEvent.class));
     }
 
+
+    @Test
+    void deveResolverCancelamentoPendenteQuandoConsultaConfirmaEvento() {
+        Fixture fixture = fixture(5L, FiscalDocumentStatus.CANCELAMENTO_PENDENTE);
+        FiscalEvent pendingEvent = mock(FiscalEvent.class);
+        when(pendingEvent.getStatus()).thenReturn(FiscalDocumentStatus.CANCELAMENTO_PENDENTE);
+        when(fiscalEventRepository.findTopByDocumentIdAndEventTypeOrderBySequenceNumberDesc(
+            5L, FiscalEventType.CANCELAMENTO
+        )).thenReturn(Optional.of(pendingEvent));
+        when(gateway.consultCancellation(fixture.establishment(), fixture.document())).thenReturn(new NfceIssueResult(
+            FiscalDocumentStatus.CANCELADA,
+            ACCESS_KEY,
+            null,
+            "<retConsSitNFe/>",
+            "131260000000999",
+            null,
+            "Evento de cancelamento localizado",
+            null
+        ));
+
+        service.consultPendingCancellation(fixture.saleId());
+
+        verify(fixture.document()).setStatus(FiscalDocumentStatus.CANCELADA);
+        verify(fixture.document()).setCancellationProtocol("131260000000999");
+        verify(fixture.document()).setCanceledAt(any());
+        verify(fixture.sale()).setStatus(SaleStatus.CANCELADA);
+        verify(pendingEvent).setStatus(FiscalDocumentStatus.CANCELADA);
+        verify(pendingEvent).setProtocol("131260000000999");
+        verify(fiscalEventRepository).save(pendingEvent);
+        verify(gateway, never()).cancel(any(), any(), any());
+    }
+
+    @Test
+    void deveManterCancelamentoPendenteQuandoConsultaAindaNaoLocalizaEvento() {
+        Fixture fixture = fixture(6L, FiscalDocumentStatus.CANCELAMENTO_PENDENTE);
+        when(gateway.consultCancellation(fixture.establishment(), fixture.document())).thenReturn(new NfceIssueResult(
+            FiscalDocumentStatus.CANCELAMENTO_PENDENTE,
+            ACCESS_KEY,
+            null,
+            "<retConsSitNFe/>",
+            null,
+            null,
+            "Cancelamento ainda não localizado",
+            null
+        ));
+
+        service.consultPendingCancellation(fixture.saleId());
+
+        verify(fixture.document()).setStatus(FiscalDocumentStatus.CANCELAMENTO_PENDENTE);
+        verify(fixture.sale()).setStatus(SaleStatus.FISCAL_PENDENTE);
+        verify(fixture.document(), never()).setCanceledAt(any());
+        verify(gateway, never()).cancel(any(), any(), any());
+        verify(fiscalEventRepository, never()).save(any(FiscalEvent.class));
+    }
+
+    @Test
+    void deveRecusarConsultaDeCancelamentoParaDocumentoQueNaoEstaPendente() {
+        Fixture fixture = fixture(7L, FiscalDocumentStatus.AUTORIZADA);
+
+        assertThatThrownBy(() -> service.consultPendingCancellation(fixture.saleId()))
+            .hasMessageContaining("Somente um cancelamento pendente");
+
+        verify(gateway, never()).consultCancellation(any(), any());
+        verify(gateway, never()).cancel(any(), any(), any());
+    }
+
     private Fixture fixture(long saleId) {
         return fixture(saleId, FiscalDocumentStatus.AUTORIZADA);
     }

@@ -89,6 +89,7 @@ export interface FiscalActions {
   prepareOfflineContingency: boolean;
   transmitOfflineContingency: boolean;
   consult: boolean;
+  consultPendingCancellation: boolean;
   downloadDanfe: boolean;
   downloadXml: boolean;
   cancel: boolean;
@@ -110,12 +111,14 @@ export function fiscalActionsFor(sale: Sale): FiscalActions {
 
   const authorized = document.status === 'AUTORIZADA';
   const pendingConsultation = document.status === 'PENDENTE_CONSULTA';
+  const pendingCancellation = document.status === 'CANCELAMENTO_PENDENTE';
 
   return {
     issueNormal: normalAwaitingAuthorization,
     prepareOfflineContingency: normalAwaitingAuthorization,
     transmitOfflineContingency: offlineContingency,
     consult: pendingConsultation,
+    consultPendingCancellation: pendingCancellation,
     downloadDanfe: authorized || offlineContingency,
     downloadXml: Boolean(document.accessKey) && (authorized || offlineContingency || pendingConsultation),
     cancel: authorized && sale.status === 'FISCALIZADA',
@@ -128,6 +131,7 @@ function noFiscalActions(): FiscalActions {
     prepareOfflineContingency: false,
     transmitOfflineContingency: false,
     consult: false,
+    consultPendingCancellation: false,
     downloadDanfe: false,
     downloadXml: false,
     cancel: false,

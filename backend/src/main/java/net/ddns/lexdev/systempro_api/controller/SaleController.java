@@ -84,6 +84,11 @@ public class SaleController {
         return ResponseEntity.ok(service.cancel(id, justification));
     }
 
+    @PostMapping("/{id}/cancel/consult")
+    public ResponseEntity<SaleResponseDto> consultPendingCancellation(@PathVariable Long id) {
+        return ResponseEntity.ok(service.consultPendingCancellation(id));
+    }
+
     @GetMapping("/{id}/fiscal/danfe")
     public ResponseEntity<byte[]> downloadDanfe(@PathVariable Long id) {
         byte[] body = danfeService.generate(id);
