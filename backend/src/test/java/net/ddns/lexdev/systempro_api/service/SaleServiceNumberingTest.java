@@ -35,6 +35,7 @@ import net.ddns.lexdev.systempro_api.repository.FiscalProductProfileRepository;
 import net.ddns.lexdev.systempro_api.repository.ProductRepository;
 import net.ddns.lexdev.systempro_api.repository.SaleRepository;
 import net.ddns.lexdev.systempro_api.fiscal.SefazNfceGateway;
+import net.ddns.lexdev.systempro_api.fiscal.contingency.NfceContingencyPolicy;
 
 @ExtendWith(MockitoExtension.class)
 class SaleServiceNumberingTest {
@@ -50,6 +51,8 @@ class SaleServiceNumberingTest {
     @Mock private FiscalEstablishmentService fiscalEstablishmentService;
     @Mock private SefazNfceGateway gateway;
     @Mock private IbsCbsSaleSnapshotService rtcSnapshotService;
+
+    @Mock private NfceContingencyPolicy contingencyPolicy;
 
     private SaleService service;
     private FiscalEstablishment establishment;
@@ -73,7 +76,8 @@ class SaleServiceNumberingTest {
             fiscalEstablishmentService,
             gateway,
             properties,
-            rtcSnapshotService
+            rtcSnapshotService,
+            contingencyPolicy
         );
 
         establishment = new FiscalEstablishment(null);

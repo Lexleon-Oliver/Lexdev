@@ -39,6 +39,8 @@ public class FiscalDocument extends AuditableEntity {
     @Column(name = "protocol", length = 30) private String protocol;
     @Column(name = "reason", length = 1000) private String reason;
     @Column(name = "issued_at") private Instant issuedAt;
+    @Column(name = "contingency_at") private Instant contingencyAt;
+    @Column(name = "contingency_justification", length = 256) private String contingencyJustification;
     @Column(name = "canceled_at") private Instant canceledAt;
     @Column(name = "cancellation_protocol", length = 30) private String cancellationProtocol;
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true) private List<FiscalEvent> events = new ArrayList<>();
@@ -56,6 +58,8 @@ public class FiscalDocument extends AuditableEntity {
     public String getProtocol() { return protocol; } public void setProtocol(String v) { protocol = v; }
     public String getReason() { return reason; } public void setReason(String v) { reason = v; }
     public Instant getIssuedAt() { return issuedAt; } public void setIssuedAt(Instant v) { issuedAt = v; }
+    public Instant getContingencyAt() { return contingencyAt; } public void setContingencyAt(Instant v) { contingencyAt = v; }
+    public String getContingencyJustification() { return contingencyJustification; } public void setContingencyJustification(String v) { contingencyJustification = v; }
     public Instant getCanceledAt() { return canceledAt; } public void setCanceledAt(Instant v) { canceledAt = v; }
     public String getCancellationProtocol() { return cancellationProtocol; } public void setCancellationProtocol(String v) { cancellationProtocol = v; }
     public List<FiscalEvent> getEvents() { return events; }

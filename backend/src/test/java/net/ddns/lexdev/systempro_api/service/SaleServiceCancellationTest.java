@@ -30,6 +30,7 @@ import net.ddns.lexdev.systempro_api.enums.SaleStatus;
 import net.ddns.lexdev.systempro_api.exception.FiscalIntegrationException;
 import net.ddns.lexdev.systempro_api.fiscal.NfceIssueResult;
 import net.ddns.lexdev.systempro_api.fiscal.SefazNfceGateway;
+import net.ddns.lexdev.systempro_api.fiscal.contingency.NfceContingencyPolicy;
 import net.ddns.lexdev.systempro_api.repository.ClientRepository;
 import net.ddns.lexdev.systempro_api.repository.FiscalDocumentRepository;
 import net.ddns.lexdev.systempro_api.repository.FiscalEstablishmentRepository;
@@ -58,6 +59,8 @@ class SaleServiceCancellationTest {
     @Mock private IbsCbsSaleSnapshotService rtcSnapshotService;
     @Mock private FiscalProperties fiscalProperties;
 
+    @Mock private NfceContingencyPolicy contingencyPolicy;
+
     private SaleService service;
 
     @BeforeEach
@@ -65,7 +68,7 @@ class SaleServiceCancellationTest {
         service = new SaleService(
             saleRepository, productRepository, profileRepository, establishmentRepository,
             clientRepository, fiscalDocumentRepository, fiscalEventRepository,
-            currentUserProvider, fiscalEstablishmentService, gateway, fiscalProperties, rtcSnapshotService
+            currentUserProvider, fiscalEstablishmentService, gateway, fiscalProperties, rtcSnapshotService, contingencyPolicy
         );
     }
 

@@ -2,6 +2,7 @@ package net.ddns.lexdev.systempro_api.fiscal;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
@@ -82,6 +83,87 @@ class NfceXmlBuilderSchemaRegressionTest {
         int eanTrib = xml.indexOf("<cEANTrib>SEM GTIN</cEANTrib>");
         int discount = xml.indexOf("<vDesc>1.00</vDesc>");
         assertTrue(eanTrib >= 0 && discount > eanTrib);
+    }
+
+    @Test
+    void deveEmitirDadosDeContingenciaOfflineNaIde() throws Exception {
+        FiscalEstablishment establishment = establishment();
+        Sale sale = basicSale(establishment);
+        FiscalDocument document = basicDocument(establishment, sale);
+
+        String accessKey = "31261012345678000195650010000000019000000018";
+        String xml = SefazMgNfceGateway.NfceXmlBuilder.build(
+            establishment, sale, document, accessKey, "00000001", 9,
+            "2026-10-08T12:00:00-03:00", "4.00", "SystemPro 1.0",
+            "https://portalsped.fazenda.mg.gov.br/portalnfce/sistema/qrcode.xhtml?p=offline-test",
+            "https://hportalsped.fazenda.mg.gov.br/portalnfce",
+            "2026-10-08T12:01:00-03:00",
+            "Sem comunicação com a SEFAZ/MG no momento da venda"
+        );
+
+        assertTrue(xml.contains("<tpEmis>9</tpEmis>"));
+        assertTrue(xml.contains("<dhCont>2026-10-08T12:01:00-03:00</dhCont>"));
+        assertTrue(xml.contains("<xJust>Sem comunicação com a SEFAZ/MG no momento da venda</xJust>"));
+        assertTrue(xml.indexOf("<verProc>SystemPro 1.0</verProc>") < xml.indexOf("<dhCont>"));
+        assertTrue(xml.indexOf("<dhCont>") < xml.indexOf("<xJust>"));
+    }
+
+    @Test
+    void deveRecusarContingenciaSemJustificativaValida() throws Exception {
+        FiscalEstablishment establishment = establishment();
+        Sale sale = basicSale(establishment);
+        FiscalDocument document = basicDocument(establishment, sale);
+
+        assertThrows(net.ddns.lexdev.systempro_api.exception.FiscalIntegrationException.class, () ->
+            SefazMgNfceGateway.NfceXmlBuilder.build(
+                establishment, sale, document, "31261012345678000195650010000000019000000018",
+                "00000001", 9, "2026-10-08T12:00:00-03:00", "4.00", "SystemPro 1.0",
+                "https://portalsped.fazenda.mg.gov.br/portalnfce/sistema/qrcode.xhtml?p=offline-test",
+                "https://hportalsped.fazenda.mg.gov.br/portalnfce",
+                "2026-10-08T12:01:00-03:00", "curta"
+            )
+        );
+    }
+
+    private static Sale basicSale(FiscalEstablishment establishment) {
+        Sale sale = new Sale();
+        sale.setFiscalEstablishment(establishment);
+        sale.setSubtotal(new BigDecimal("10.00"));
+        sale.setDiscount(BigDecimal.ZERO);
+        sale.setTotal(new BigDecimal("10.00"));
+
+        SaleItem item = new SaleItem();
+        item.setItemNumber(1);
+        item.setCodeSnapshot("P1");
+        item.setNameSnapshot("PRODUTO");
+        item.setUnitSnapshot("UN");
+        item.setNcmSnapshot("61091000");
+        item.setOriginSnapshot("0");
+        item.setCfopSnapshot("5102");
+        item.setIcmsCstCsosnSnapshot("40");
+        item.setPisCstSnapshot("06");
+        item.setCofinsCstSnapshot("06");
+        item.setQuantity(BigDecimal.ONE);
+        item.setUnitPrice(new BigDecimal("10.00"));
+        item.setDiscount(BigDecimal.ZERO);
+        item.setTotal(new BigDecimal("10.00"));
+        sale.addItem(item);
+
+        SalePayment payment = new SalePayment();
+        payment.setPaymentMethod(PaymentMethod.DINHEIRO);
+        payment.setAmount(new BigDecimal("10.00"));
+        sale.addPayment(payment);
+        return sale;
+    }
+
+    private static FiscalDocument basicDocument(FiscalEstablishment establishment, Sale sale) throws Exception {
+        FiscalDocument document = new FiscalDocument();
+        document.setSale(sale);
+        document.setEstablishment(establishment);
+        document.setSeries(1);
+        document.setNumber(1L);
+        setId(document, 1L);
+        return document;
     }
 
     private static FiscalEstablishment establishment() {

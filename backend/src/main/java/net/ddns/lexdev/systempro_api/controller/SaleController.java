@@ -44,6 +44,19 @@ public class SaleController {
         return ResponseEntity.ok(service.issue(id));
     }
 
+    @PostMapping("/{id}/contingency/offline")
+    public ResponseEntity<SaleResponseDto> enterOfflineContingency(
+        @PathVariable Long id,
+        @RequestParam String justification
+    ) {
+        return ResponseEntity.ok(service.enterOfflineContingency(id, justification));
+    }
+
+    @PostMapping("/{id}/contingency/transmit")
+    public ResponseEntity<SaleResponseDto> transmitOfflineContingency(@PathVariable Long id) {
+        return ResponseEntity.ok(service.transmitOfflineContingency(id));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<SaleResponseDto> findById(@PathVariable Long id) {
         return ResponseEntity.ok(service.findById(id));

@@ -6,12 +6,39 @@ import net.ddns.lexdev.systempro_api.enums.FiscalDocumentStatus;
 import net.ddns.lexdev.systempro_api.enums.FiscalEmissionType;
 
 public record FiscalDocumentResponseDto(
-    Long id, String model, int series, long number, String accessKey, FiscalEmissionType emissionType,
-    FiscalDocumentStatus status, String protocol, String receiptNumber, String reason, Instant issuedAt,
-    Instant canceledAt, String cancellationProtocol
+    Long id,
+    String model,
+    int series,
+    long number,
+    String accessKey,
+    FiscalEmissionType emissionType,
+    FiscalDocumentStatus status,
+    String protocol,
+    String receiptNumber,
+    String reason,
+    Instant issuedAt,
+    Instant contingencyAt,
+    String contingencyJustification,
+    Instant canceledAt,
+    String cancellationProtocol
 ) {
     public static FiscalDocumentResponseDto fromEntity(FiscalDocument d) {
-        return new FiscalDocumentResponseDto(d.getId(), d.getModel(), d.getSeries(), d.getNumber(), d.getAccessKey(), d.getEmissionType(),
-            d.getStatus(), d.getProtocol(), d.getReceiptNumber(), d.getReason(), d.getIssuedAt(), d.getCanceledAt(), d.getCancellationProtocol());
+        return new FiscalDocumentResponseDto(
+            d.getId(),
+            d.getModel(),
+            d.getSeries(),
+            d.getNumber(),
+            d.getAccessKey(),
+            d.getEmissionType(),
+            d.getStatus(),
+            d.getProtocol(),
+            d.getReceiptNumber(),
+            d.getReason(),
+            d.getIssuedAt(),
+            d.getContingencyAt(),
+            d.getContingencyJustification(),
+            d.getCanceledAt(),
+            d.getCancellationProtocol()
+        );
     }
 }

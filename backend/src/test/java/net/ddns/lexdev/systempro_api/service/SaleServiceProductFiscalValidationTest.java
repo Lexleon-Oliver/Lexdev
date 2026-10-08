@@ -31,6 +31,7 @@ import net.ddns.lexdev.systempro_api.dto.SalePaymentRequestDto;
 import net.ddns.lexdev.systempro_api.enums.PaymentMethod;
 import net.ddns.lexdev.systempro_api.exception.FiscalConfigurationException;
 import net.ddns.lexdev.systempro_api.fiscal.SefazNfceGateway;
+import net.ddns.lexdev.systempro_api.fiscal.contingency.NfceContingencyPolicy;
 import net.ddns.lexdev.systempro_api.repository.ClientRepository;
 import net.ddns.lexdev.systempro_api.repository.FiscalDocumentRepository;
 import net.ddns.lexdev.systempro_api.repository.FiscalEventRepository;
@@ -53,6 +54,8 @@ class SaleServiceProductFiscalValidationTest {
     @Mock private FiscalEstablishmentService fiscalEstablishmentService;
     @Mock private SefazNfceGateway gateway;
     @Mock private IbsCbsSaleSnapshotService rtcSnapshotService;
+
+    @Mock private NfceContingencyPolicy contingencyPolicy;
 
     private SaleService service;
     private FiscalEstablishment establishment;
@@ -78,7 +81,8 @@ class SaleServiceProductFiscalValidationTest {
             fiscalEstablishmentService,
             gateway,
             properties,
-            rtcSnapshotService
+            rtcSnapshotService,
+            contingencyPolicy
         );
 
         establishment = new FiscalEstablishment(null);

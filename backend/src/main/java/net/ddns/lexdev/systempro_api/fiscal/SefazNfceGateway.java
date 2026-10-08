@@ -6,6 +6,10 @@ import net.ddns.lexdev.systempro_api.domain.Sale;
 
 public interface SefazNfceGateway {
     NfceIssueResult authorize(FiscalEstablishment establishment, Sale sale, FiscalDocument document);
+    NfceIssueResult prepareOfflineContingency(
+        FiscalEstablishment establishment, Sale sale, FiscalDocument document, String justification
+    );
+    NfceIssueResult transmitOfflineContingency(FiscalEstablishment establishment, FiscalDocument document);
     NfceIssueResult consult(FiscalEstablishment establishment, FiscalDocument document);
     NfceIssueResult cancel(FiscalEstablishment establishment, FiscalDocument document, String justification);
     NfceIssueResult status(FiscalEstablishment establishment);

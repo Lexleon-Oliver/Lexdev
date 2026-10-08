@@ -42,6 +42,7 @@ import net.ddns.lexdev.systempro_api.exception.BusinessException;
 import net.ddns.lexdev.systempro_api.exception.FiscalConfigurationException;
 import net.ddns.lexdev.systempro_api.fiscal.NfceIssueResult;
 import net.ddns.lexdev.systempro_api.fiscal.SefazNfceGateway;
+import net.ddns.lexdev.systempro_api.fiscal.contingency.NfceContingencyPolicy;
 import net.ddns.lexdev.systempro_api.repository.ClientRepository;
 import net.ddns.lexdev.systempro_api.repository.FiscalDocumentRepository;
 import net.ddns.lexdev.systempro_api.repository.FiscalEventRepository;
@@ -65,6 +66,7 @@ public class SaleService {
     private final SefazNfceGateway gateway;
     private final FiscalProperties fiscalProperties;
     private final IbsCbsSaleSnapshotService rtcSnapshotService;
+    private final NfceContingencyPolicy contingencyPolicy;
 
     private static final ZoneId FISCAL_ZONE = ZoneId.of("America/Sao_Paulo");
 
@@ -80,7 +82,8 @@ public class SaleService {
         FiscalEstablishmentService fiscalEstablishmentService,
         SefazNfceGateway gateway,
         FiscalProperties fiscalProperties,
-        IbsCbsSaleSnapshotService rtcSnapshotService
+        IbsCbsSaleSnapshotService rtcSnapshotService,
+        NfceContingencyPolicy contingencyPolicy
     ) {
         this.saleRepository = saleRepository;
         this.productRepository = productRepository;
@@ -94,6 +97,7 @@ public class SaleService {
         this.gateway = gateway;
         this.fiscalProperties = fiscalProperties;
         this.rtcSnapshotService = rtcSnapshotService;
+        this.contingencyPolicy = contingencyPolicy;
     }
 
     @Transactional
@@ -272,8 +276,68 @@ public class SaleService {
         if (document.getStatus() == FiscalDocumentStatus.PENDENTE_CONSULTA) {
             throw new BusinessException("A NFC-e está aguardando retorno da SEFAZ/MG. Consulte o documento antes de realizar nova tentativa.");
         }
+        if (document.getStatus() == FiscalDocumentStatus.CONTINGENCIA
+            || document.getEmissionType() == FiscalEmissionType.CONTINGENCIA_OFFLINE) {
+            throw new BusinessException(
+                "A NFC-e foi emitida em contingência offline. Utilize a transmissão da contingência; não gere uma nova emissão normal."
+            );
+        }
 
         NfceIssueResult result = gateway.authorize(establishment, sale, document);
+        applyResult(document, result);
+        sale.setStatus(saleStatusForFiscalResult(result.status()));
+        return response(sale, document);
+    }
+
+    @Transactional
+    public SaleResponseDto enterOfflineContingency(Long saleId, String justification) {
+        if (!fiscalProperties.enabled()) {
+            throw new FiscalConfigurationException("A emissão fiscal está desabilitada no backend.");
+        }
+        String normalizedJustification = justification == null ? null : justification.trim();
+        if (normalizedJustification == null || normalizedJustification.length() < 15
+            || normalizedJustification.length() > 256) {
+            throw new BusinessException("A justificativa da contingência deve possuir entre 15 e 256 caracteres.");
+        }
+
+        Sale sale = saleRepository.findForFiscal(saleId)
+            .orElseThrow(() -> new EntityNotFoundException("Venda não encontrada."));
+        FiscalDocument document = fiscalDocumentRepository.findBySaleId(saleId)
+            .orElseThrow(() -> new EntityNotFoundException("Documento fiscal da venda não encontrado."));
+        contingencyPolicy.assertCanEnterOfflineContingency(document);
+
+        FiscalEstablishment establishment = fiscalEstablishmentService.requireDetailed(document.getEstablishment().getId());
+        fiscalEstablishmentService.assertReadyForEmission(establishment);
+
+        Instant contingencyAt = Instant.now();
+        document.setEmissionType(FiscalEmissionType.CONTINGENCIA_OFFLINE);
+        document.setStatus(FiscalDocumentStatus.CONTINGENCIA);
+        document.setContingencyAt(contingencyAt);
+        document.setContingencyJustification(normalizedJustification);
+
+        NfceIssueResult result = gateway.prepareOfflineContingency(
+            establishment, sale, document, normalizedJustification
+        );
+        applyResult(document, result);
+        sale.setStatus(saleStatusForFiscalResult(result.status()));
+        return response(sale, document);
+    }
+
+    @Transactional
+    public SaleResponseDto transmitOfflineContingency(Long saleId) {
+        if (!fiscalProperties.enabled()) {
+            throw new FiscalConfigurationException("A emissão fiscal está desabilitada no backend.");
+        }
+        Sale sale = saleRepository.findForFiscal(saleId)
+            .orElseThrow(() -> new EntityNotFoundException("Venda não encontrada."));
+        FiscalDocument document = fiscalDocumentRepository.findBySaleId(saleId)
+            .orElseThrow(() -> new EntityNotFoundException("Documento fiscal da venda não encontrado."));
+        contingencyPolicy.assertCanTransmitOfflineContingency(document);
+
+        FiscalEstablishment establishment = fiscalEstablishmentService.requireDetailed(document.getEstablishment().getId());
+        fiscalEstablishmentService.assertReadyForEmission(establishment);
+
+        NfceIssueResult result = gateway.transmitOfflineContingency(establishment, document);
         applyResult(document, result);
         sale.setStatus(saleStatusForFiscalResult(result.status()));
         return response(sale, document);

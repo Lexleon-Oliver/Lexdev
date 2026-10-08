@@ -22,11 +22,13 @@ import net.ddns.lexdev.systempro_api.domain.FiscalEstablishment;
 import net.ddns.lexdev.systempro_api.domain.Sale;
 import net.ddns.lexdev.systempro_api.domain.User;
 import net.ddns.lexdev.systempro_api.enums.FiscalDocumentStatus;
+import net.ddns.lexdev.systempro_api.enums.FiscalEmissionType;
 import net.ddns.lexdev.systempro_api.enums.SaleStatus;
 import net.ddns.lexdev.systempro_api.exception.FiscalConfigurationException;
 import net.ddns.lexdev.systempro_api.exception.FiscalIntegrationException;
 import net.ddns.lexdev.systempro_api.fiscal.NfceIssueResult;
 import net.ddns.lexdev.systempro_api.fiscal.SefazNfceGateway;
+import net.ddns.lexdev.systempro_api.fiscal.contingency.NfceContingencyPolicy;
 import net.ddns.lexdev.systempro_api.repository.ClientRepository;
 import net.ddns.lexdev.systempro_api.repository.FiscalDocumentRepository;
 import net.ddns.lexdev.systempro_api.repository.FiscalEstablishmentRepository;
@@ -52,6 +54,8 @@ class SaleServiceFiscalFailureTest {
     @Mock private IbsCbsSaleSnapshotService rtcSnapshotService;
     @Mock private FiscalProperties fiscalProperties;
 
+    @Mock private NfceContingencyPolicy contingencyPolicy;
+
     private SaleService service;
 
     @BeforeEach
@@ -69,7 +73,8 @@ class SaleServiceFiscalFailureTest {
             fiscalEstablishmentService,
             gateway,
             fiscalProperties,
-            rtcSnapshotService
+            rtcSnapshotService,
+            contingencyPolicy
         );
     }
 
@@ -152,4 +157,51 @@ class SaleServiceFiscalFailureTest {
         verify(document).setReason("resultado da transmissão é indeterminado");
         verify(sale).setStatus(SaleStatus.FISCAL_PENDENTE);
     }
+    @Test
+    void naoDeveReemitirComoNormalDocumentoJaPreparadoEmContingencia() {
+        long saleId = 3L;
+        Sale sale = mock(Sale.class);
+        FiscalDocument document = mock(FiscalDocument.class);
+        FiscalEstablishment establishmentRef = mock(FiscalEstablishment.class);
+        FiscalEstablishment establishment = mock(FiscalEstablishment.class);
+
+        when(establishmentRef.getId()).thenReturn(30L);
+        when(document.getEstablishment()).thenReturn(establishmentRef);
+        when(document.getStatus()).thenReturn(FiscalDocumentStatus.CONTINGENCIA);
+        when(saleRepository.findForFiscal(saleId)).thenReturn(Optional.of(sale));
+        when(fiscalDocumentRepository.findBySaleId(saleId)).thenReturn(Optional.of(document));
+        when(fiscalEstablishmentService.requireDetailed(30L)).thenReturn(establishment);
+
+        assertThatThrownBy(() -> service.issue(saleId))
+            .isInstanceOf(net.ddns.lexdev.systempro_api.exception.BusinessException.class)
+            .hasMessageContaining("transmissão da contingência");
+
+        verify(gateway, never()).authorize(establishment, sale, document);
+    }
+
+    @Test
+    void transmissaoDaContingenciaDeveUsarDocumentoPersistidoSemNovaAutorizacaoNormal() {
+        long saleId = 4L;
+        Sale sale = mock(Sale.class);
+        FiscalDocument document = mock(FiscalDocument.class);
+        FiscalEstablishment establishmentRef = mock(FiscalEstablishment.class);
+        FiscalEstablishment establishment = mock(FiscalEstablishment.class);
+
+        when(establishmentRef.getId()).thenReturn(40L);
+        when(document.getEstablishment()).thenReturn(establishmentRef);
+        when(saleRepository.findForFiscal(saleId)).thenReturn(Optional.of(sale));
+        when(fiscalDocumentRepository.findBySaleId(saleId)).thenReturn(Optional.of(document));
+        when(fiscalEstablishmentService.requireDetailed(40L)).thenReturn(establishment);
+        when(gateway.transmitOfflineContingency(establishment, document))
+            .thenThrow(new FiscalIntegrationException("falha controlada após validar roteamento"));
+
+        assertThatThrownBy(() -> service.transmitOfflineContingency(saleId))
+            .isInstanceOf(FiscalIntegrationException.class)
+            .hasMessageContaining("falha controlada");
+
+        verify(contingencyPolicy).assertCanTransmitOfflineContingency(document);
+        verify(gateway).transmitOfflineContingency(establishment, document);
+        verify(gateway, never()).authorize(establishment, sale, document);
+    }
+
 }

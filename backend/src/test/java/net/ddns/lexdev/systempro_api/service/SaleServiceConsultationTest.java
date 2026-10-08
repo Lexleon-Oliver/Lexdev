@@ -28,6 +28,7 @@ import net.ddns.lexdev.systempro_api.enums.SaleStatus;
 import net.ddns.lexdev.systempro_api.exception.FiscalIntegrationException;
 import net.ddns.lexdev.systempro_api.fiscal.NfceIssueResult;
 import net.ddns.lexdev.systempro_api.fiscal.SefazNfceGateway;
+import net.ddns.lexdev.systempro_api.fiscal.contingency.NfceContingencyPolicy;
 import net.ddns.lexdev.systempro_api.repository.ClientRepository;
 import net.ddns.lexdev.systempro_api.repository.FiscalDocumentRepository;
 import net.ddns.lexdev.systempro_api.repository.FiscalEstablishmentRepository;
@@ -52,6 +53,8 @@ class SaleServiceConsultationTest {
     @Mock private IbsCbsSaleSnapshotService rtcSnapshotService;
     @Mock private FiscalProperties fiscalProperties;
 
+    @Mock private NfceContingencyPolicy contingencyPolicy;
+
     private SaleService service;
 
     @BeforeEach
@@ -68,7 +71,8 @@ class SaleServiceConsultationTest {
             fiscalEstablishmentService,
             gateway,
             fiscalProperties,
-            rtcSnapshotService
+            rtcSnapshotService,
+            contingencyPolicy
         );
     }
 

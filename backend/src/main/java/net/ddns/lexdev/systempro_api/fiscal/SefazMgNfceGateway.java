@@ -130,7 +130,9 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
             properties.schemaVersion(),
             properties.productVersion(),
             qrCodeGenerator.onlineUrl(accessKey, establishment.getEnvironment()),
-            qrCodeGenerator.consultationUrl(establishment.getEnvironment())
+            qrCodeGenerator.consultationUrl(establishment.getEnvironment()),
+            null,
+            null
         );
         String signedXml = sign(xml, establishment);
         schemaValidator.validate(signedXml);
@@ -222,6 +224,120 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
             null,
             reason,
             null
+        );
+    }
+
+    @Override
+    public NfceIssueResult prepareOfflineContingency(
+        FiscalEstablishment establishment,
+        Sale sale,
+        FiscalDocument document,
+        String justification
+    ) {
+        if (document.getContingencyAt() == null) {
+            throw new FiscalIntegrationException("A data de entrada em contingência é obrigatória.");
+        }
+        ZonedDateTime emission = ZonedDateTime.ofInstant(document.getContingencyAt(), BRAZIL_ZONE);
+        String cNF = randomDigits(8);
+        int tpEmis = 9;
+        String accessKey = buildAccessKey(
+            establishment.getCompany().getPerson().getCpfCnpj(),
+            emission,
+            document.getSeries(),
+            document.getNumber(),
+            tpEmis,
+            cNF
+        );
+        PrivateKey privateKey = loadPrivateKey(establishment);
+        String qrCodeUrl = qrCodeGenerator.offlineUrl(
+            accessKey,
+            establishment.getEnvironment(),
+            emission,
+            sale.getTotal(),
+            sale.getConsumerCpfCnpj(),
+            privateKey
+        );
+        String xml = NfceXmlBuilder.build(
+            establishment,
+            sale,
+            document,
+            accessKey,
+            cNF,
+            tpEmis,
+            XML_DATE_TIME.format(emission),
+            properties.schemaVersion(),
+            properties.productVersion(),
+            qrCodeUrl,
+            qrCodeGenerator.consultationUrl(establishment.getEnvironment()),
+            XML_DATE_TIME.format(emission),
+            justification
+        );
+        String signedXml = sign(xml, establishment);
+        schemaValidator.validate(signedXml);
+        return new NfceIssueResult(
+            FiscalDocumentStatus.CONTINGENCIA,
+            accessKey,
+            signedXml,
+            null,
+            null,
+            null,
+            "NFC-e emitida em contingência offline e pendente de transmissão à SEFAZ/MG.",
+            document.getContingencyAt()
+        );
+    }
+
+    @Override
+    public NfceIssueResult transmitOfflineContingency(
+        FiscalEstablishment establishment,
+        FiscalDocument document
+    ) {
+        String persistedXml = document.getXml();
+        String accessKey = document.getAccessKey();
+        schemaValidator.validate(persistedXml);
+
+        SoapResponse soap;
+        try {
+            soap = post(
+                endpoint(establishment, "NFeAutorizacao4"),
+                action("NFeAutorizacao4", "nfeAutorizacaoLote"),
+                wrap("NFeAutorizacao4", "enviNFe", persistedXml),
+                establishment
+            );
+        } catch (FiscalCommunicationException ex) {
+            return pendingAuthorization(accessKey, persistedXml, null, ex.getMessage());
+        }
+
+        ProtocolResult protocol;
+        String statusCode;
+        String reason;
+        String receipt;
+        try {
+            protocol = extractProtocol(soap.xml());
+            statusCode = protocol.code() == null ? firstValue(soap.xml(), "cStat") : protocol.code();
+            reason = firstNonBlank(protocol.reason(), firstValue(soap.xml(), "xMotivo"));
+            receipt = firstValue(soap.xml(), "nRec");
+        } catch (RuntimeException ex) {
+            return pendingAuthorization(
+                accessKey, persistedXml, soap.xml(),
+                "A SEFAZ/MG respondeu à transmissão da contingência, mas o retorno não pôde ser interpretado com segurança: " + safeMessage(ex)
+            );
+        }
+
+        if ("103".equals(statusCode)) {
+            return new NfceIssueResult(
+                FiscalDocumentStatus.PENDENTE_CONSULTA, accessKey, persistedXml, soap.xml(),
+                null, receipt, reason, document.getIssuedAt()
+            );
+        }
+        if ("100".equals(statusCode) || "150".equals(statusCode)) {
+            return new NfceIssueResult(
+                FiscalDocumentStatus.AUTORIZADA, firstNonBlank(protocol.accessKey(), accessKey), persistedXml, soap.xml(),
+                protocol.protocol(), null, reason, document.getIssuedAt() == null ? Instant.now() : document.getIssuedAt()
+            );
+        }
+        return new NfceIssueResult(
+            FiscalDocumentStatus.REJEITADA, accessKey, persistedXml, soap.xml(),
+            protocol.protocol(), null, reason, document.getIssuedAt()
         );
     }
 
@@ -623,6 +739,36 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
         return base + digit;
     }
 
+    private PrivateKey loadPrivateKey(FiscalEstablishment establishment) {
+        Path temp = null;
+        try {
+            Resource resource = storage.download(establishment.getCertificateStorageKey());
+            temp = Files.createTempFile("systempro-fiscal-key-", ".p12");
+            try (InputStream in = resource.getInputStream()) {
+                Files.copy(in, temp, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+            String password = establishmentService.decryptCertificatePassword(establishment);
+            KeyStore keyStore = KeyStore.getInstance("PKCS12");
+            try (InputStream in = Files.newInputStream(temp)) {
+                keyStore.load(in, password.toCharArray());
+            }
+            String alias = keyStore.aliases().nextElement();
+            PrivateKey privateKey = (PrivateKey) keyStore.getKey(alias, password.toCharArray());
+            if (privateKey == null) {
+                throw new FiscalIntegrationException("O certificado A1 não possui chave privada utilizável.");
+            }
+            return privateKey;
+        } catch (FiscalIntegrationException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new FiscalIntegrationException("Não foi possível carregar a chave privada do certificado A1.", ex);
+        } finally {
+            if (temp != null) {
+                try { Files.deleteIfExists(temp); } catch (IOException ignored) {}
+            }
+        }
+    }
+
     private String sign(String xml, FiscalEstablishment establishment) {
         Path temp = null;
         try {
@@ -800,6 +946,28 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
             String qrCodeUrl,
             String consultationUrl
         ) {
+            return build(
+                establishment, sale, document, accessKey, cNF, tpEmis, emissionDateTime,
+                schemaVersion, productVersion, qrCodeUrl, consultationUrl, null, null
+            );
+        }
+
+        static String build(
+            FiscalEstablishment establishment,
+            Sale sale,
+            FiscalDocument document,
+            String accessKey,
+            String cNF,
+            int tpEmis,
+            String emissionDateTime,
+            String schemaVersion,
+            String productVersion,
+            String qrCodeUrl,
+            String consultationUrl,
+            String contingencyDateTime,
+            String contingencyJustification
+        ) {
+            validateContingencyFields(tpEmis, contingencyDateTime, contingencyJustification);
             PersonAddress address = establishment.getCompany().getPerson().getAddresses().stream()
                 .filter(PersonAddress::isPrincipal)
                 .findFirst()
@@ -844,8 +1012,12 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
                 .append("<indFinal>1</indFinal>")
                 .append("<indPres>1</indPres>")
                 .append("<procEmi>0</procEmi>")
-                .append("<verProc>").append(esc(productVersion)).append("</verProc>")
-                .append("</ide>");
+                .append("<verProc>").append(esc(productVersion)).append("</verProc>");
+            if (tpEmis != 1) {
+                xml.append("<dhCont>").append(esc(contingencyDateTime)).append("</dhCont>")
+                    .append("<xJust>").append(esc(contingencyJustification)).append("</xJust>");
+            }
+            xml.append("</ide>");
 
             xml.append("<emit>")
                 .append("<CNPJ>").append(esc(establishment.getCompany().getPerson().getCpfCnpj())).append("</CNPJ>")
@@ -1173,6 +1345,38 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
                 xml.append("<cAut>").append(esc(payment.getAuthorizationCode())).append("</cAut>");
             }
             xml.append("</card>");
+        }
+
+        private static void validateContingencyFields(
+            int tpEmis,
+            String contingencyDateTime,
+            String contingencyJustification
+        ) {
+            if (tpEmis == 1) {
+                if (notBlank(contingencyDateTime) || notBlank(contingencyJustification)) {
+                    throw new FiscalIntegrationException(
+                        "Emissão normal não pode conter dados de entrada em contingência."
+                    );
+                }
+                return;
+            }
+            if (tpEmis != 9) {
+                throw new FiscalIntegrationException("Tipo de emissão fiscal ainda não suportado: " + tpEmis + ".");
+            }
+            if (!notBlank(contingencyDateTime)) {
+                throw new FiscalIntegrationException("A data/hora de entrada em contingência é obrigatória.");
+            }
+            if (contingencyJustification == null
+                || contingencyJustification.trim().length() < 15
+                || contingencyJustification.trim().length() > 256) {
+                throw new FiscalIntegrationException(
+                    "A justificativa da contingência deve possuir entre 15 e 256 caracteres."
+                );
+            }
+        }
+
+        private static boolean notBlank(String value) {
+            return value != null && !value.isBlank();
         }
 
         private static void validateAddress(PersonAddress address) {

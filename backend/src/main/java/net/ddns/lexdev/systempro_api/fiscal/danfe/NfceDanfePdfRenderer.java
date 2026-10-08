@@ -63,6 +63,17 @@ public class NfceDanfePdfRenderer {
                     centered(cs, c, "Documento Auxiliar da Nota Fiscal", NORMAL, 6.5f);
                     centered(cs, c, "de Consumidor Eletronica", NORMAL, 6.5f);
                     centered(cs, c, "Nao permite aproveitamento de credito de ICMS", NORMAL, 6);
+                    if (data.contingency()) {
+                        separator(cs, c);
+                        centered(cs, c, "EMITIDA EM CONTINGÊNCIA", BOLD, 9);
+                        centered(cs, c, "Pendente de autorizacao", BOLD, 7);
+                        if (!data.contingencyAt().isBlank()) {
+                            centered(cs, c, "Entrada em contingencia: " + data.contingencyAt(), NORMAL, 6.5f);
+                        }
+                        for (String line : wrap("Justificativa: " + data.contingencyJustification(), 52)) {
+                            centered(cs, c, line, NORMAL, 6);
+                        }
+                    }
                     separator(cs, c);
 
                     text(cs, c, "COD  DESCRICAO", BOLD, 6.2f);
@@ -89,7 +100,11 @@ public class NfceDanfePdfRenderer {
                     centered(cs, c, groupKey(data.accessKey()), BOLD, 6.5f);
                     centered(cs, c, "NFC-e n. " + data.number() + " Serie " + data.series(), NORMAL, 7);
                     centered(cs, c, "Emissao: " + data.emissionDate(), NORMAL, 6.5f);
-                    centered(cs, c, "Protocolo: " + data.protocol(), NORMAL, 6.5f);
+                    if (data.contingency()) {
+                        centered(cs, c, "EMITIDA EM CONTINGÊNCIA - Pendente de autorizacao", BOLD, 6.5f);
+                    } else {
+                        centered(cs, c, "Protocolo: " + data.protocol(), NORMAL, 6.5f);
+                    }
                     separator(cs, c);
                     centered(cs, c, data.consumer(), BOLD, 6.5f);
 
@@ -153,6 +168,15 @@ public class NfceDanfePdfRenderer {
                 consumerDoc = dest == null ? "" : valueOptional(dest, "CNPJ");
             }
             String consumer = consumerDoc.isBlank() ? "CONSUMIDOR NAO IDENTIFICADO" : "CONSUMIDOR: " + formatDocument(consumerDoc);
+            boolean contingency = "9".equals(valueOptional(ide, "tpEmis"));
+            String contingencyAt = "";
+            String contingencyJustification = "";
+            if (contingency) {
+                String dhCont = value(ide, "dhCont");
+                contingencyAt = dhCont;
+                try { contingencyAt = OffsetDateTime.parse(dhCont).format(DATE_TIME); } catch (Exception ignored) { }
+                contingencyJustification = value(ide, "xJust");
+            }
             String issuerAddress = ender == null ? "" : String.join(", ", nonBlank(
                 valueOptional(ender,"xLgr") + " " + valueOptional(ender,"nro"),
                 valueOptional(ender,"xBairro"),
@@ -162,7 +186,7 @@ public class NfceDanfePdfRenderer {
                 fiscalDocument.getAccessKey(), value(ide,"nNF"), value(ide,"serie"), emission,
                 fiscalDocument.getProtocol(), decimal(total,"vNF"), decimal(total,"vDesc"), items, payments,
                 value(first(doc,"infNFeSupl"),"qrCode"), value(first(doc,"infNFeSupl"),"urlChave"),
-                optionalValue(doc,"infCpl"), consumer);
+                optionalValue(doc,"infCpl"), consumer, contingency, contingencyAt, contingencyJustification);
         } catch (Exception ex) {
             throw new FiscalIntegrationException("O XML da NFC-e não pôde ser interpretado para gerar o DANFE.", ex);
         }
@@ -198,5 +222,5 @@ public class NfceDanfePdfRenderer {
     private static final class Cursor { float y; Cursor(float y){this.y=y;} }
     record Item(String code,String description,String quantity,String unit,BigDecimal unitPrice,BigDecimal total){}
     record Payment(String label,BigDecimal amount){}
-    record DanfeData(String issuerName,String issuerCnpj,String issuerAddress,String accessKey,String number,String series,String emissionDate,String protocol,BigDecimal total,BigDecimal discount,List<Item> items,List<Payment> payments,String qrCode,String consultationUrl,String additionalInfo,String consumer){}
+    record DanfeData(String issuerName,String issuerCnpj,String issuerAddress,String accessKey,String number,String series,String emissionDate,String protocol,BigDecimal total,BigDecimal discount,List<Item> items,List<Payment> payments,String qrCode,String consultationUrl,String additionalInfo,String consumer,boolean contingency,String contingencyAt,String contingencyJustification){}
 }
