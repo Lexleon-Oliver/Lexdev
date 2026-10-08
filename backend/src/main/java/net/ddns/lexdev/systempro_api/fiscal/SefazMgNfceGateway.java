@@ -919,6 +919,7 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
                 BigDecimal cofins = taxValue(item.getCofinsCstSnapshot(), item.getCofinsRate(), item.getTotal(), item.getCodeSnapshot(), "COFINS");
                 xml.append(pisXml(item, pis));
                 xml.append(cofinsXml(item, cofins));
+                xml.append(ibsCbsXml(item));
                 vPis = vPis.add(pis);
                 vCofins = vCofins.add(cofins);
                 xml.append("</imposto></det>");
@@ -971,6 +972,34 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
                 .append("</infNFeSupl>")
                 .append("</NFe></enviNFe>");
             return xml.toString();
+        }
+
+        static String ibsCbsXml(SaleItem item) {
+            var calculation = item.getIbsCbsCalculation();
+            if (calculation == null) {
+                return "";
+            }
+
+            return "<IBSCBS>"
+                + "<CST>" + esc(calculation.cst()) + "</CST>"
+                + "<cClassTrib>" + esc(calculation.cClassTrib()) + "</cClassTrib>"
+                + "<gIBSCBS>"
+                + "<vBC>" + fmt(calculation.taxBase(), 2) + "</vBC>"
+                + "<gIBSUF>"
+                + "<pIBSUF>" + fmt(calculation.ibsUf().rate(), 4) + "</pIBSUF>"
+                + "<vIBSUF>" + fmt(calculation.ibsUf().amount(), 2) + "</vIBSUF>"
+                + "</gIBSUF>"
+                + "<gIBSMun>"
+                + "<pIBSMun>" + fmt(calculation.ibsMunicipal().rate(), 4) + "</pIBSMun>"
+                + "<vIBSMun>" + fmt(calculation.ibsMunicipal().amount(), 2) + "</vIBSMun>"
+                + "</gIBSMun>"
+                + "<vIBS>" + fmt(calculation.totalIbs(), 2) + "</vIBS>"
+                + "<gCBS>"
+                + "<pCBS>" + fmt(calculation.cbs().rate(), 4) + "</pCBS>"
+                + "<vCBS>" + fmt(calculation.cbs().amount(), 2) + "</vCBS>"
+                + "</gCBS>"
+                + "</gIBSCBS>"
+                + "</IBSCBS>";
         }
 
         private static IcmsTax icms(SaleItem item, net.ddns.lexdev.systempro_api.enums.TaxRegime regime) {
