@@ -862,7 +862,7 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
                 .append("<cPais>1058</cPais><xPais>BRASIL</xPais>")
                 .append("</enderEmit>")
                 .append("<IE>").append(esc(stateRegistration)).append("</IE>")
-                .append("<CRT>").append("SIMPLES_NACIONAL".equals(establishment.getTaxRegime().name()) ? "1" : "3").append("</CRT>")
+                .append("<CRT>").append(establishment.getTaxRegime().sefazCrtCode()).append("</CRT>")
                 .append("</emit>");
 
             String consumerDocument = sale.getConsumerCpfCnpj();
@@ -977,7 +977,7 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
             String code = item.getIcmsCstCsosnSnapshot();
             String origin = esc(item.getOriginSnapshot());
 
-            if (regime == net.ddns.lexdev.systempro_api.enums.TaxRegime.SIMPLES_NACIONAL) {
+            if (regime.usesCsosn()) {
                 return switch (code) {
                     case "102" -> new IcmsTax(
                         BigDecimal.ZERO,

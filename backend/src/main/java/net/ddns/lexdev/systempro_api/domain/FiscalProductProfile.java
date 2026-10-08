@@ -33,7 +33,7 @@ public class FiscalProductProfile extends AuditableEntity {
     private BigDecimal cofinsRate;
     @Column(name = "ibs_cbs_cst", length = 3)
     private String ibsCbsCst;
-    @Column(name = "c_class_trib", length = 10)
+    @Column(name = "c_class_trib", length = 6)
     private String cClassTrib;
     @Column(name = "ibs_rate", precision = 9, scale = 4)
     private BigDecimal ibsRate;

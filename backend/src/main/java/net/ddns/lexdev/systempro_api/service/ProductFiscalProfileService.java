@@ -9,6 +9,7 @@ import net.ddns.lexdev.systempro_api.dto.ProductFiscalProfileRequestDto;
 import net.ddns.lexdev.systempro_api.dto.ProductFiscalProfileResponseDto;
 import net.ddns.lexdev.systempro_api.repository.FiscalProductProfileRepository;
 import net.ddns.lexdev.systempro_api.repository.ProductRepository;
+import net.ddns.lexdev.systempro_api.fiscal.validation.IbsCbsClassificationValidator;
 
 @Service
 public class ProductFiscalProfileService {
@@ -28,6 +29,7 @@ public class ProductFiscalProfileService {
 
     @Transactional
     public ProductFiscalProfileResponseDto save(Long productId, ProductFiscalProfileRequestDto dto) {
+        IbsCbsClassificationValidator.validate(dto.ibsCbsCst(), dto.cClassTrib());
         Product product = productRepository.findById(productId).orElseThrow(() -> new EntityNotFoundException("Produto não encontrado."));
         FiscalProductProfile profile = repository.findByProductId(productId).orElseGet(() -> new FiscalProductProfile(product));
         profile.setCfop(dto.cfop());

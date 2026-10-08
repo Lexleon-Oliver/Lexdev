@@ -14,8 +14,8 @@ public record ProductFiscalProfileRequestDto(
     @DecimalMin("0.0") BigDecimal icmsRate,
     @DecimalMin("0.0") BigDecimal pisRate,
     @DecimalMin("0.0") BigDecimal cofinsRate,
-    @Size(max = 3) String ibsCbsCst,
-    @Size(max = 10) String cClassTrib,
+    @Pattern(regexp = "\\d{3}", message = "CST IBS/CBS deve possuir 3 dígitos") String ibsCbsCst,
+    @Pattern(regexp = "\\d{6}", message = "cClassTrib deve possuir 6 dígitos") String cClassTrib,
     @DecimalMin("0.0") BigDecimal ibsRate,
     @DecimalMin("0.0") BigDecimal cbsRate,
     @Size(max = 5000) String additionalInformation
