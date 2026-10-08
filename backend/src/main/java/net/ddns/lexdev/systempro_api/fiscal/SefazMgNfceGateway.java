@@ -132,8 +132,8 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
             qrCodeGenerator.onlineUrl(accessKey, establishment.getEnvironment()),
             qrCodeGenerator.consultationUrl(establishment.getEnvironment())
         );
-        schemaValidator.validate(xml);
         String signedXml = sign(xml, establishment);
+        schemaValidator.validate(signedXml);
         document.setAccessKey(accessKey);
         document.setXml(signedXml);
 
@@ -656,7 +656,11 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
 
             XMLSignatureFactory factory = XMLSignatureFactory.getInstance("DOM");
             List<Transform> transforms = List.of(
-                factory.newTransform(Transform.ENVELOPED, (TransformParameterSpec) null)
+                factory.newTransform(Transform.ENVELOPED, (TransformParameterSpec) null),
+                factory.newTransform(
+                    javax.xml.crypto.dsig.CanonicalizationMethod.INCLUSIVE,
+                    (TransformParameterSpec) null
+                )
             );
             Reference reference = factory.newReference(
                 "#" + target.getAttribute("Id"),
@@ -826,7 +830,7 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
                 .append("<cNF>").append(cNF).append("</cNF>")
                 .append("<natOp>VENDA</natOp>")
                 .append("<mod>65</mod>")
-                .append("<serie>").append(String.format("%03d", document.getSeries())).append("</serie>")
+                .append("<serie>").append(document.getSeries()).append("</serie>")
                 .append("<nNF>").append(document.getNumber()).append("</nNF>")
                 .append("<dhEmi>").append(emissionDateTime).append("</dhEmi>")
                 .append("<tpNF>1</tpNF>")
@@ -834,6 +838,7 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
                 .append("<cMunFG>").append(esc(establishment.getMunicipalityIbgeCode())).append("</cMunFG>")
                 .append("<tpImp>4</tpImp>")
                 .append("<tpEmis>").append(tpEmis).append("</tpEmis>")
+                .append("<cDV>").append(accessKey.charAt(accessKey.length() - 1)).append("</cDV>")
                 .append("<tpAmb>").append(environmentCode(establishment.getEnvironment())).append("</tpAmb>")
                 .append("<finNFe>1</finNFe>")
                 .append("<indFinal>1</indFinal>")
@@ -898,17 +903,19 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
                 }
                 xml.append("<CFOP>").append(esc(item.getCfopSnapshot())).append("</CFOP>")
                     .append("<uCom>").append(esc(item.getUnitSnapshot())).append("</uCom>")
-                    .append("<qCom>").append(fmt(item.getQuantity(), 6)).append("</qCom>")
+                    .append("<qCom>").append(fmt(item.getQuantity(), 4)).append("</qCom>")
                     .append("<vUnCom>").append(fmt(item.getUnitPrice(), 10)).append("</vUnCom>")
-                    .append("<vProd>").append(fmt(gross, 2)).append("</vProd>");
-                if (item.getDiscount().signum() > 0) {
-                    xml.append("<vDesc>").append(fmt(item.getDiscount(), 2)).append("</vDesc>");
-                }
-                xml.append("<cEANTrib>").append(gtinOrSemGtin(item.getGtinSnapshot())).append("</cEANTrib>")
+                    .append("<vProd>").append(fmt(gross, 2)).append("</vProd>")
+                    .append("<cEANTrib>").append(gtinOrSemGtin(item.getGtinSnapshot())).append("</cEANTrib>")
                     .append("<uTrib>").append(esc(item.getUnitSnapshot())).append("</uTrib>")
-                    .append("<qTrib>").append(fmt(item.getQuantity(), 6)).append("</qTrib>")
-                    .append("<vUnTrib>").append(fmt(item.getUnitPrice(), 10)).append("</vUnTrib>")
-                    .append("<indTot>1</indTot></prod><imposto>");
+                    .append("<qTrib>").append(fmt(item.getQuantity(), 4)).append("</qTrib>")
+                    .append("<vUnTrib>").append(fmt(item.getUnitPrice(), 10)).append("</vUnTrib>");
+
+                    if (item.getDiscount().signum() > 0) {
+                        xml.append("<vDesc>").append(fmt(item.getDiscount(), 2)).append("</vDesc>");
+                    }
+
+                    xml.append("<indTot>1</indTot></prod><imposto>");
 
                 IcmsTax icms = icms(item, establishment.getTaxRegime());
                 xml.append(icms.xml());

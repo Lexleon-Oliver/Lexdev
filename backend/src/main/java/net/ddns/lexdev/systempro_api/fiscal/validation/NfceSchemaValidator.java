@@ -1,10 +1,16 @@
 package net.ddns.lexdev.systempro_api.fiscal.validation;
 
 import java.io.StringReader;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.xml.XMLConstants;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
@@ -13,6 +19,8 @@ import javax.xml.validation.Validator;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 import org.xml.sax.ErrorHandler;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
@@ -21,10 +29,13 @@ import net.ddns.lexdev.systempro_api.config.NfceSchemaProperties;
 import net.ddns.lexdev.systempro_api.exception.FiscalIntegrationException;
 
 /**
- * Valida o XML de autorização da NFC-e contra o schema oficial configurado.
+ * Valida a NFe modelo 65 contida no XML de autorização contra o schema oficial
+ * de documento do pacote PL configurado.
  *
- * O schema principal deve ser enviNFe_v4.00.xsd. Os XSDs incluídos/importados
- * pelo pacote oficial precisam permanecer acessíveis em relação a esse arquivo.
+ * Os pacotes PL incrementais (como o PL_010f) publicam o nfe_v4.00.xsd e suas
+ * dependências de leiaute. O enviNFe é envelope de transporte e não faz parte
+ * desse pacote incremental; por isso a validação fiscal extrai a NFe do envelope
+ * antes de aplicar o schema.
  */
 @Service
 public class NfceSchemaValidator {
@@ -72,7 +83,7 @@ public class NfceSchemaValidator {
             Validator validator = schema.newValidator();
             ValidationErrorHandler errorHandler = new ValidationErrorHandler();
             validator.setErrorHandler(errorHandler);
-            validator.validate(new StreamSource(new StringReader(xml)));
+            validator.validate(new StreamSource(new StringReader(extractNFe(xml))));
 
             if (!errorHandler.errors.isEmpty()) {
                 throw new FiscalIntegrationException(buildValidationMessage(errorHandler.errors));
@@ -90,6 +101,46 @@ public class NfceSchemaValidator {
                 ex
             );
         }
+    }
+
+    private String extractNFe(String xml) throws Exception {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(true);
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+        factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+
+        var document = factory.newDocumentBuilder()
+            .parse(new org.xml.sax.InputSource(new StringReader(xml)));
+
+        Element root = document.getDocumentElement();
+        if ("NFe".equals(root.getLocalName())) {
+            return xml;
+        }
+
+        NodeList nfeNodes = document.getElementsByTagNameNS(
+            "http://www.portalfiscal.inf.br/nfe",
+            "NFe"
+        );
+        if (nfeNodes.getLength() != 1) {
+            throw new FiscalIntegrationException(
+                "O XML fiscal precisa conter exatamente uma NFe para validação XSD."
+            );
+        }
+
+        TransformerFactory transformerFactory = TransformerFactory.newInstance();
+        transformerFactory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+        transformerFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+        transformerFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
+
+        var transformer = transformerFactory.newTransformer();
+        transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+
+        StringWriter writer = new StringWriter();
+        transformer.transform(new DOMSource(nfeNodes.item(0)), new StreamResult(writer));
+        return writer.toString();
     }
 
     private Schema createSchema(Resource resource) throws Exception {
