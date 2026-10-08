@@ -230,34 +230,50 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
         }
 
         SoapResponse soap;
-        if (document.getReceiptNumber() != null && !document.getReceiptNumber().isBlank()) {
-            String body = "<consReciNFe xmlns=\"" + NFE_NS + "\" versao=\"4.00\">"
-                + "<tpAmb>" + environmentCode(establishment.getEnvironment()) + "</tpAmb>"
-                + "<nRec>" + esc(document.getReceiptNumber()) + "</nRec>"
-                + "</consReciNFe>";
-            soap = post(
-                endpoint(establishment, "NFeRetAutorizacao4"),
-                action("NFeRetAutorizacao4", "nfeRetAutorizacaoLote"),
-                wrap("NFeRetAutorizacao4", "nfeDadosMsg", body),
-                establishment
-            );
-        } else {
-            String body = "<consSitNFe xmlns=\"" + NFE_NS + "\" versao=\"4.00\">"
-                + "<tpAmb>" + environmentCode(establishment.getEnvironment()) + "</tpAmb>"
-                + "<xServ>CONSULTAR</xServ>"
-                + "<chNFe>" + esc(document.getAccessKey()) + "</chNFe>"
-                + "</consSitNFe>";
-            soap = post(
-                endpoint(establishment, "NFeConsultaProtocolo4"),
-                action("NFeConsultaProtocolo4", "nfeConsultaNF"),
-                wrap("NFeConsultaProtocolo4", "nfeDadosMsg", body),
-                establishment
-            );
+        try {
+            if (document.getReceiptNumber() != null && !document.getReceiptNumber().isBlank()) {
+                String body = "<consReciNFe xmlns=\"" + NFE_NS + "\" versao=\"4.00\">"
+                    + "<tpAmb>" + environmentCode(establishment.getEnvironment()) + "</tpAmb>"
+                    + "<nRec>" + esc(document.getReceiptNumber()) + "</nRec>"
+                    + "</consReciNFe>";
+                soap = post(
+                    endpoint(establishment, "NFeRetAutorizacao4"),
+                    action("NFeRetAutorizacao4", "nfeRetAutorizacaoLote"),
+                    wrap("NFeRetAutorizacao4", "nfeDadosMsg", body),
+                    establishment
+                );
+            } else {
+                String body = "<consSitNFe xmlns=\"" + NFE_NS + "\" versao=\"4.00\">"
+                    + "<tpAmb>" + environmentCode(establishment.getEnvironment()) + "</tpAmb>"
+                    + "<xServ>CONSULTAR</xServ>"
+                    + "<chNFe>" + esc(document.getAccessKey()) + "</chNFe>"
+                    + "</consSitNFe>";
+                soap = post(
+                    endpoint(establishment, "NFeConsultaProtocolo4"),
+                    action("NFeConsultaProtocolo4", "nfeConsultaNF"),
+                    wrap("NFeConsultaProtocolo4", "nfeDadosMsg", body),
+                    establishment
+                );
+            }
+        } catch (FiscalCommunicationException ex) {
+            return pendingConsultation(document, null, ex.getMessage());
         }
 
-        ProtocolResult protocol = extractProtocol(soap.xml());
-        String statusCode = protocol.code() == null ? firstValue(soap.xml(), "cStat") : protocol.code();
-        String reason = firstNonBlank(protocol.reason(), firstValue(soap.xml(), "xMotivo"));
+        final ProtocolResult protocol;
+        final String statusCode;
+        final String reason;
+        try {
+            protocol = extractProtocol(soap.xml());
+            statusCode = protocol.code() == null ? firstValue(soap.xml(), "cStat") : protocol.code();
+            reason = firstNonBlank(protocol.reason(), firstValue(soap.xml(), "xMotivo"));
+        } catch (RuntimeException ex) {
+            return pendingConsultation(
+                document,
+                soap.xml(),
+                "A SEFAZ/MG respondeu à consulta, mas não foi possível interpretar o retorno com segurança: "
+                    + safeMessage(ex)
+            );
+        }
 
         if ("100".equals(statusCode) || "150".equals(statusCode)) {
             return new NfceIssueResult(
@@ -290,6 +306,23 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
             document.getXml(),
             soap.xml(),
             protocol.protocol(),
+            document.getReceiptNumber(),
+            reason,
+            null
+        );
+    }
+
+    private static NfceIssueResult pendingConsultation(
+        FiscalDocument document,
+        String responseXml,
+        String reason
+    ) {
+        return new NfceIssueResult(
+            FiscalDocumentStatus.PENDENTE_CONSULTA,
+            document.getAccessKey(),
+            document.getXml(),
+            responseXml,
+            null,
             document.getReceiptNumber(),
             reason,
             null

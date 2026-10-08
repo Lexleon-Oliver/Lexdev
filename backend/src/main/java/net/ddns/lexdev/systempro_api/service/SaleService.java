@@ -303,17 +303,10 @@ public class SaleService {
             return response(sale, document);
         }
 
-        try {
-            NfceIssueResult result = gateway.consult(document.getEstablishment(), document);
-            applyResult(document, result);
-            sale.setStatus(saleStatusForFiscalResult(result.status()));
-            return response(sale, document);
-        } catch (RuntimeException ex) {
-            document.setStatus(FiscalDocumentStatus.PENDENTE_CONSULTA);
-            document.setReason(safeMessage(ex));
-            sale.setStatus(SaleStatus.FISCAL_PENDENTE);
-            return response(sale, document);
-        }
+        NfceIssueResult result = gateway.consult(document.getEstablishment(), document);
+        applyResult(document, result);
+        sale.setStatus(saleStatusForFiscalResult(result.status()));
+        return response(sale, document);
     }
 
     @Transactional
