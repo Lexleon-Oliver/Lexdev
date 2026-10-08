@@ -88,8 +88,6 @@ export class FiscalConfigurationComponent implements OnInit {
       Validators.required,
       Validators.min(1),
     ]),
-    cscId: this.fb.control<number | null>(null, [Validators.min(1)]),
-    csc: this.fb.nonNullable.control(''),
     certificatePassword: this.fb.nonNullable.control(''),
   });
 
@@ -249,8 +247,6 @@ export class FiscalConfigurationComponent implements OnInit {
       environment: establishment.environment,
       series: establishment.series,
       nextNumber: establishment.nextNumber,
-      cscId: establishment.cscId ?? null,
-      csc: '',
       certificatePassword: '',
     });
   }
@@ -266,8 +262,6 @@ export class FiscalConfigurationComponent implements OnInit {
       environment: 'HOMOLOGACAO',
       series: 1,
       nextNumber: 1,
-      cscId: null,
-      csc: '',
       certificatePassword: '',
     });
   }
@@ -489,8 +483,6 @@ export class FiscalConfigurationComponent implements OnInit {
       environment: value.environment,
       series: Number(value.series),
       nextNumber: Number(value.nextNumber),
-      cscId: value.cscId == null ? null : Number(value.cscId),
-      csc: String(value.csc ?? '').trim() || null,
       certificatePassword: String(value.certificatePassword ?? '').trim() || null,
     };
 

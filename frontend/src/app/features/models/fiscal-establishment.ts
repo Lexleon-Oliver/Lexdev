@@ -25,8 +25,6 @@ export interface FiscalEstablishmentRequest {
   environment: FiscalEnvironment;
   series: number;
   nextNumber: number;
-  cscId?: number | null;
-  csc?: string | null;
   certificatePassword?: string | null;
 }
 

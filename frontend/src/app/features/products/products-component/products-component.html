@@ -345,6 +345,65 @@
                 }
               </select>
             </div>
+
+            <p class="form-section-title">Perfil fiscal da operação</p>
+            <p class="form-hint">
+              Informe o perfil quando o produto participar de emissão fiscal. As alíquotas IBS/CBS não são digitadas manualmente: o backend resolve a regra pelo CST IBS/CBS e cClassTrib.
+            </p>
+
+            <div class="form-row">
+              <div>
+                <label for="cfop">CFOP</label>
+                <input id="cfop" type="text" maxlength="4" inputmode="numeric" formControlName="cfop" placeholder="5102" />
+              </div>
+              <div>
+                <label for="icmsCstCsosn">CST / CSOSN ICMS</label>
+                <input id="icmsCstCsosn" type="text" maxlength="3" inputmode="numeric" formControlName="icmsCstCsosn" placeholder="00 / 102" />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div>
+                <label for="pisCst">CST PIS</label>
+                <input id="pisCst" type="text" maxlength="2" inputmode="numeric" formControlName="pisCst" placeholder="01" />
+              </div>
+              <div>
+                <label for="cofinsCst">CST COFINS</label>
+                <input id="cofinsCst" type="text" maxlength="2" inputmode="numeric" formControlName="cofinsCst" placeholder="01" />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div>
+                <label for="icmsRate">Alíquota ICMS (%)</label>
+                <input id="icmsRate" type="number" min="0" step="0.0001" formControlName="icmsRate" />
+              </div>
+              <div>
+                <label for="pisRate">Alíquota PIS (%)</label>
+                <input id="pisRate" type="number" min="0" step="0.0001" formControlName="pisRate" />
+              </div>
+              <div>
+                <label for="cofinsRate">Alíquota COFINS (%)</label>
+                <input id="cofinsRate" type="number" min="0" step="0.0001" formControlName="cofinsRate" />
+              </div>
+            </div>
+
+            <p class="form-section-title">IBS / CBS — RTC</p>
+            <div class="form-row">
+              <div>
+                <label for="ibsCbsCst">CST IBS/CBS</label>
+                <input id="ibsCbsCst" type="text" maxlength="3" inputmode="numeric" formControlName="ibsCbsCst" placeholder="000" />
+              </div>
+              <div>
+                <label for="cClassTrib">cClassTrib</label>
+                <input id="cClassTrib" type="text" maxlength="6" inputmode="numeric" formControlName="cClassTrib" placeholder="000001" />
+              </div>
+            </div>
+
+            <div class="form-row full-width">
+              <label for="additionalInformation">Informações fiscais adicionais</label>
+              <textarea id="additionalInformation" rows="3" maxlength="5000" formControlName="additionalInformation"></textarea>
+            </div>
           </div>
 
           <!-- ==================== Aba Dimensões ==================== -->

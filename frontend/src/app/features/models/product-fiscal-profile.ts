@@ -10,8 +10,6 @@ export interface ProductFiscalProfile {
   cofinsRate?: number | null;
   ibsCbsCst?: string | null;
   cClassTrib?: string | null;
-  ibsRate?: number | null;
-  cbsRate?: number | null;
   additionalInformation?: string | null;
   active: boolean;
 }

@@ -441,28 +441,6 @@
             </section>
 
             <section class="section-block sensitive">
-              <h3>CSC</h3>
-              <p>O CSC é armazenado cifrado no backend e nunca é devolvido ao frontend.</p>
-
-              <div class="grid two">
-                <label class="field-label">
-                  ID do CSC
-                  <input type="number" min="1" formControlName="cscId" />
-                </label>
-
-                <label class="field-label">
-                  Novo CSC
-                  <input
-                    type="password"
-                    autocomplete="new-password"
-                    formControlName="csc"
-                    placeholder="Deixe vazio para manter"
-                  />
-                </label>
-              </div>
-            </section>
-
-            <section class="section-block sensitive">
               <h3>Certificado digital A1</h3>
               <p>
                 Envie o arquivo PKCS#12/PFX somente pelo formulário. O arquivo é armazenado pelo backend
@@ -500,15 +478,6 @@
                     [class.fa-circle-xmark]="!selected()?.hasCertificate"
                   ></i>
                   Certificado
-                </span>
-
-                <span [class.ok]="selected()?.hasCsc">
-                  <i
-                    class="fas"
-                    [class.fa-circle-check]="selected()?.hasCsc"
-                    [class.fa-circle-xmark]="!selected()?.hasCsc"
-                  ></i>
-                  CSC
                 </span>
               </div>
             </section>

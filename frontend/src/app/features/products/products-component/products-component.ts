@@ -15,6 +15,9 @@ import { SupplierOption } from '../../models/supplier-option';
 import { ProductImageService } from '../../../core/services/product-image-service';
 import { ProductImageItem } from '../../models/product-image-item';
 import { firstValueFrom } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { ProductFiscalProfileService } from '../../../core/services/product-fiscal-profile-service';
+import { ProductFiscalProfileRequest } from '../../models/product-fiscal-profile';
 
 @Component({
   imports: [CommonModule, ReactiveFormsModule],
@@ -37,6 +40,9 @@ private readonly fb =
 
 private readonly notification =
   inject(NotificationService);
+
+private readonly fiscalProfileService =
+  inject(ProductFiscalProfileService);
 
   /* ---------- Estado ---------- */
   produtos = signal<Product[]>([]);
@@ -181,6 +187,16 @@ private readonly notification =
     ncm: [''],
     cest: [''],
     origin: [''],
+    cfop: ['', [Validators.pattern(/^\d{4}$/)]],
+    icmsCstCsosn: ['', [Validators.pattern(/^\d{2,3}$/)]],
+    pisCst: ['', [Validators.pattern(/^\d{2}$/)]],
+    cofinsCst: ['', [Validators.pattern(/^\d{2}$/)]],
+    icmsRate: [null as number | null, [Validators.min(0)]],
+    pisRate: [null as number | null, [Validators.min(0)]],
+    cofinsRate: [null as number | null, [Validators.min(0)]],
+    ibsCbsCst: ['', [Validators.pattern(/^\d{3}$/)]],
+    cClassTrib: ['', [Validators.pattern(/^\d{6}$/)]],
+    additionalInformation: [''],
 
     // Dimensões
     grossWeight: [null as number | null],
@@ -283,6 +299,16 @@ private readonly notification =
       ncm: '',
       cest: '',
       origin: '',
+      cfop: '',
+      icmsCstCsosn: '',
+      pisCst: '',
+      cofinsCst: '',
+      icmsRate: null,
+      pisRate: null,
+      cofinsRate: null,
+      ibsCbsCst: '',
+      cClassTrib: '',
+      additionalInformation: '',
       grossWeight: null,
       netWeight: null,
       height: null,
@@ -298,6 +324,11 @@ private readonly notification =
     this.editingProduto.set(produto);
     this.suppliers.clear();
     this.clearImageState();
+    this.form.patchValue({
+      cfop: '', icmsCstCsosn: '', pisCst: '', cofinsCst: '',
+      icmsRate: null, pisRate: null, cofinsRate: null,
+      ibsCbsCst: '', cClassTrib: '', additionalInformation: '',
+    });
 
     // Fornecedores
     (produto.suppliers || []).forEach((s) => {
@@ -398,8 +429,34 @@ private readonly notification =
         produto.length ?? null,
     });
 
+    this.loadFiscalProfile(produto.id);
+
     this.activeTab.set('geral');
     this.showFormModal.set(true);
+  }
+
+  private loadFiscalProfile(productId: number | undefined): void {
+    if (!productId) return;
+
+    this.fiscalProfileService.findByProductId(productId).subscribe({
+      next: profile => this.form.patchValue({
+        cfop: profile.cfop ?? '',
+        icmsCstCsosn: profile.icmsCstCsosn ?? '',
+        pisCst: profile.pisCst ?? '',
+        cofinsCst: profile.cofinsCst ?? '',
+        icmsRate: profile.icmsRate ?? null,
+        pisRate: profile.pisRate ?? null,
+        cofinsRate: profile.cofinsRate ?? null,
+        ibsCbsCst: profile.ibsCbsCst ?? '',
+        cClassTrib: profile.cClassTrib ?? '',
+        additionalInformation: profile.additionalInformation ?? '',
+      }),
+      error: (error: HttpErrorResponse) => {
+        if (error.status !== 404) {
+          this.notification.error('Não foi possível carregar o perfil fiscal do produto.');
+        }
+      },
+    });
   }
 
   closeFormModal(): void {
@@ -445,6 +502,8 @@ private readonly notification =
 
             try {
 
+              await this.syncFiscalProfile(editing.id!);
+
               await this.syncImages(
                 editing.id!
               );
@@ -465,7 +524,7 @@ private readonly notification =
               );
 
               this.notification.error(
-                'Produto atualizado, mas houve erro ao processar as imagens.'
+                error instanceof Error ? error.message : 'Produto atualizado, mas houve erro ao salvar os dados complementares.'
               );
 
             } finally {
@@ -500,6 +559,8 @@ private readonly notification =
                 );
               }
 
+              await this.syncFiscalProfile(created.id);
+
               await this.syncImages(
                 created.id
               );
@@ -520,7 +581,7 @@ private readonly notification =
               );
 
               this.notification.error(
-                'Produto criado, mas houve erro ao processar as imagens.'
+                error instanceof Error ? error.message : 'Produto criado, mas houve erro ao salvar os dados complementares.'
               );
 
             } finally {
@@ -583,6 +644,47 @@ private readonly notification =
       length: this.toNumberOrNull(v.length),
 
       suppliers: suppliersRequest,
+    };
+  }
+
+
+  private async syncFiscalProfile(productId: number): Promise<void> {
+    const request = this.buildFiscalProfileRequest();
+    if (!request) return;
+    await firstValueFrom(this.fiscalProfileService.save(productId, request));
+  }
+
+  private buildFiscalProfileRequest(): ProductFiscalProfileRequest | null {
+    const v = this.form.getRawValue();
+    const values = [v.cfop, v.icmsCstCsosn, v.pisCst, v.cofinsCst, v.ibsCbsCst, v.cClassTrib];
+    const hasFiscalProfile = values.some(value => String(value ?? '').trim() !== '')
+      || [v.icmsRate, v.pisRate, v.cofinsRate].some(value => value != null)
+      || String(v.additionalInformation ?? '').trim() !== '';
+
+    if (!hasFiscalProfile) return null;
+
+    const required = [v.cfop, v.icmsCstCsosn, v.pisCst, v.cofinsCst];
+    if (required.some(value => String(value ?? '').trim() === '')) {
+      throw new Error('Perfil fiscal incompleto: informe CFOP, CST/CSOSN, CST PIS e CST COFINS.');
+    }
+
+    const ibsCbsCst = String(v.ibsCbsCst ?? '').trim();
+    const cClassTrib = String(v.cClassTrib ?? '').trim();
+    if ((ibsCbsCst && !cClassTrib) || (!ibsCbsCst && cClassTrib)) {
+      throw new Error('CST IBS/CBS e cClassTrib devem ser informados em conjunto.');
+    }
+
+    return {
+      cfop: String(v.cfop).trim(),
+      icmsCstCsosn: String(v.icmsCstCsosn).trim(),
+      pisCst: String(v.pisCst).trim(),
+      cofinsCst: String(v.cofinsCst).trim(),
+      icmsRate: this.toNumberOrNull(v.icmsRate),
+      pisRate: this.toNumberOrNull(v.pisRate),
+      cofinsRate: this.toNumberOrNull(v.cofinsRate),
+      ibsCbsCst: ibsCbsCst || null,
+      cClassTrib: cClassTrib || null,
+      additionalInformation: String(v.additionalInformation ?? '').trim() || null,
     };
   }
 
