@@ -322,6 +322,74 @@
     </section>
   </div>
 
+  <!-- ===== Pendências fiscais ===== -->
+  <section class="panel history-panel fiscal-pending-panel">
+    <div class="panel-header">
+      <div>
+        <h2>Pendências fiscais</h2>
+        <span>Documentos que ainda exigem uma ação fiscal. As pendências mais antigas aparecem primeiro.</span>
+      </div>
+      <button type="button" class="secondary" (click)="loadFiscalPendingSales()" [disabled]="isLoadingFiscalPending()">
+        <i class="fas fa-rotate" [class.fa-spin]="isLoadingFiscalPending()"></i> Atualizar
+      </button>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="sales-table">
+        <thead>
+          <tr>
+            <th>Venda</th><th>Data</th><th>Total</th><th>Status</th><th>NFC-e</th><th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (sale of fiscalPendingSales(); track sale.id) {
+            <tr>
+              <td data-label="Venda">#{{ sale.id }}</td>
+              <td data-label="Data">{{ sale.saleAt | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td data-label="Total">{{ formatMoney(sale.total) }}</td>
+              <td data-label="Status"><span class="status-pill">{{ statusLabel(sale.status) }}</span></td>
+              <td data-label="NFC-e">
+                {{ sale.fiscalDocument?.number || '—' }}
+                <small>{{ fiscalStatusLabel(sale.fiscalDocument?.status) }}</small>
+              </td>
+              <td data-label="Ações" class="actions">
+                @if (fiscalActions(sale).issueNormal) {
+                  <button type="button" (click)="retryIssue(sale)" title="Tentar emissão normal" [disabled]="fiscalActionSaleId() !== null"><i class="fas fa-paper-plane"></i></button>
+                  <button type="button" (click)="openOfflineContingency(sale)" title="Preparar contingência offline" [disabled]="fiscalActionSaleId() !== null"><i class="fas fa-triangle-exclamation"></i></button>
+                }
+                @if (fiscalActions(sale).transmitOfflineContingency) {
+                  <button type="button" (click)="transmitOfflineContingency(sale)" title="Transmitir contingência" [disabled]="fiscalActionSaleId() !== null"><i class="fas fa-cloud-arrow-up"></i></button>
+                }
+                @if (fiscalActions(sale).consult) {
+                  <button type="button" (click)="consult(sale)" title="Consultar SEFAZ" [disabled]="fiscalActionSaleId() !== null"><i class="fas fa-sync"></i></button>
+                }
+                @if (fiscalActions(sale).downloadDanfe) {
+                  <button type="button" (click)="downloadDanfe(sale)" title="Baixar DANFE"><i class="fas fa-file-pdf"></i></button>
+                }
+                @if (fiscalActions(sale).downloadXml) {
+                  <button type="button" (click)="downloadXml(sale)" title="Baixar XML"><i class="fas fa-file-code"></i></button>
+                }
+                @if (fiscalActions(sale).cancel) {
+                  <button type="button" class="danger-icon" (click)="cancel(sale)" title="Cancelar"><i class="fas fa-ban"></i></button>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="empty-cell">{{ isLoadingFiscalPending() ? 'Carregando pendências fiscais…' : 'Nenhuma pendência fiscal.' }}</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (fiscalPendingTotalPages() > 1) {
+      <div class="fiscal-pending-pagination">
+        <button type="button" class="secondary" (click)="previousFiscalPendingPage()" [disabled]="fiscalPendingPage() === 0 || isLoadingFiscalPending()">Anterior</button>
+        <span>Página {{ fiscalPendingPage() + 1 }} de {{ fiscalPendingTotalPages() }}</span>
+        <button type="button" class="secondary" (click)="nextFiscalPendingPage()" [disabled]="fiscalPendingPage() + 1 >= fiscalPendingTotalPages() || isLoadingFiscalPending()">Próxima</button>
+      </div>
+    }
+  </section>
+
   <!-- ===== Histórico ===== -->
   <section class="panel history-panel">
     <div class="panel-header">
@@ -359,7 +427,7 @@
               <td data-label="Ações" class="actions">
                 @if (fiscalActions(sale).issueNormal) {
                   <button type="button" (click)="retryIssue(sale)" title="Tentar emissão normal" [disabled]="fiscalActionSaleId() !== null"><i class="fas fa-paper-plane"></i></button>
-                  <button type="button" (click)="openOfflineContingency(sale)" title="Preparar contingência offline" [disabled]="fiscalActionSaleId() !== null"><i class="fas fa-exclamation-triangle"></i></button>
+                  <button type="button" (click)="openOfflineContingency(sale)" title="Preparar contingência offline" [disabled]="fiscalActionSaleId() !== null"><i class="fas fa-triangle-exclamation"></i></button>
                 }
                 @if (fiscalActions(sale).transmitOfflineContingency) {
                   <button type="button" (click)="transmitOfflineContingency(sale)" title="Transmitir contingência" [disabled]="fiscalActionSaleId() !== null"><i class="fas fa-cloud-arrow-up"></i></button>

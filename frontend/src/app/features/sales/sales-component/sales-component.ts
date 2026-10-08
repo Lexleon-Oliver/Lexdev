@@ -46,6 +46,10 @@ export class SalesComponent implements OnInit {
   establishments = signal<FiscalEstablishment[]>([]);
   products = signal<Product[]>([]);
   recentSales = signal<Sale[]>([]);
+  fiscalPendingSales = signal<Sale[]>([]);
+  fiscalPendingPage = signal(0);
+  fiscalPendingTotalPages = signal(0);
+  isLoadingFiscalPending = signal(false);
   selectedEstablishmentId = signal<number | null>(null);
   cart = signal<CartItem[]>([]);
   payments = signal<PaymentLine[]>([
@@ -78,6 +82,7 @@ export class SalesComponent implements OnInit {
     this.loadFiscalEstablishments();
     this.loadInitialProducts();
     this.loadRecentSales();
+    this.loadFiscalPendingSales();
   }
 
   loadInitialProducts(): void {
@@ -361,6 +366,7 @@ export class SalesComponent implements OnInit {
           const sale = result.sale;
           this.selectedSale.set(sale);
           this.loadRecentSales();
+          this.loadFiscalPendingSales();
           this.clearSale();
 
           if (result.fiscalError) {
@@ -406,6 +412,42 @@ export class SalesComponent implements OnInit {
       next: page => this.recentSales.set(page.content ?? []),
       error: () => this.recentSales.set([]),
     });
+  }
+
+  loadFiscalPendingSales(page = this.fiscalPendingPage()): void {
+    if (page < 0) return;
+
+    this.isLoadingFiscalPending.set(true);
+    this.saleService.findFiscalPending(page, 20)
+      .pipe(finalize(() => this.isLoadingFiscalPending.set(false)))
+      .subscribe({
+        next: result => {
+          const totalPages = result.totalPages ?? 0;
+          if (totalPages > 0 && page >= totalPages) {
+            this.loadFiscalPendingSales(totalPages - 1);
+            return;
+          }
+          this.fiscalPendingSales.set(result.content ?? []);
+          this.fiscalPendingPage.set(result.number ?? page);
+          this.fiscalPendingTotalPages.set(totalPages);
+        },
+        error: () => {
+          this.fiscalPendingSales.set([]);
+          this.notification.error('Não foi possível carregar as pendências fiscais.');
+        },
+      });
+  }
+
+  previousFiscalPendingPage(): void {
+    if (this.fiscalPendingPage() > 0 && !this.isLoadingFiscalPending()) {
+      this.loadFiscalPendingSales(this.fiscalPendingPage() - 1);
+    }
+  }
+
+  nextFiscalPendingPage(): void {
+    if (this.fiscalPendingPage() + 1 < this.fiscalPendingTotalPages() && !this.isLoadingFiscalPending()) {
+      this.loadFiscalPendingSales(this.fiscalPendingPage() + 1);
+    }
   }
 
   fiscalActions(sale: Sale): FiscalActions {
@@ -478,6 +520,7 @@ export class SalesComponent implements OnInit {
       next: updated => {
         this.selectedSale.set(updated);
         this.loadRecentSales();
+        this.loadFiscalPendingSales();
         this.notification.success('Solicitação de cancelamento processada.');
       },
       error: error => this.notification.error(error?.error?.message ?? 'Não foi possível cancelar a NFC-e.'),
@@ -506,6 +549,7 @@ export class SalesComponent implements OnInit {
   private applyUpdatedSale(updated: Sale): void {
     this.selectedSale.set(updated);
     this.recentSales.update(items => items.map(item => item.id === updated.id ? updated : item));
+    this.loadFiscalPendingSales();
   }
 
   private downloadBlob(blob: Blob, fileName: string): void {

@@ -28,6 +28,11 @@ export class SaleService {
     return this.http.get<SpringPage<Sale>>(this.apiUrl, { params });
   }
 
+  findFiscalPending(page = 0, size = 20): Observable<SpringPage<Sale>> {
+    const params = new HttpParams().set('page', page.toString()).set('size', size.toString());
+    return this.http.get<SpringPage<Sale>>(`${this.apiUrl}/fiscal-pending`, { params });
+  }
+
   prepareOfflineContingency(id: number, justification: string): Observable<Sale> {
     const context = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
     const params = new HttpParams().set('justification', justification);

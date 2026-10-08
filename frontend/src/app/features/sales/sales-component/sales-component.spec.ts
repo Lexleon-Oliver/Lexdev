@@ -291,4 +291,48 @@ describe('SalesComponent', () => {
     expect(component.selectedSale()).toEqual(authorized);
   });
 
+  it('should load the fiscal pending queue from the dedicated paginated endpoint', () => {
+    const pending = fiscalSale('FISCAL_PENDENTE', 'PENDENTE_CONSULTA', 'NORMAL', 'KEY-PENDING');
+    const saleService = (component as any).saleService;
+    const pendingSpy = vi.spyOn(saleService, 'findFiscalPending').mockReturnValue(of({
+      content: [pending],
+      totalElements: 21,
+      totalPages: 2,
+      size: 20,
+      number: 0,
+    }));
+
+    component.loadFiscalPendingSales(0);
+
+    expect(pendingSpy).toHaveBeenCalledWith(0, 20);
+    expect(component.fiscalPendingSales()).toEqual([pending]);
+    expect(component.fiscalPendingPage()).toBe(0);
+    expect(component.fiscalPendingTotalPages()).toBe(2);
+    expect(component.isLoadingFiscalPending()).toBe(false);
+  });
+
+  it('should page through fiscal pending sales without changing the recent-sales list', () => {
+    const recent = fiscalSale('FISCALIZADA', 'AUTORIZADA', 'NORMAL', 'KEY-AUTH');
+    const pending = fiscalSale('FISCAL_PENDENTE', 'CONTINGENCIA', 'CONTINGENCIA_OFFLINE', 'KEY-OFFLINE');
+    const saleService = (component as any).saleService;
+    const pendingSpy = vi.spyOn(saleService, 'findFiscalPending').mockReturnValue(of({
+      content: [pending],
+      totalElements: 21,
+      totalPages: 2,
+      size: 20,
+      number: 1,
+    }));
+    component.recentSales.set([recent]);
+    component.fiscalPendingPage.set(0);
+    component.fiscalPendingTotalPages.set(2);
+
+    component.nextFiscalPendingPage();
+
+    expect(pendingSpy).toHaveBeenCalledWith(1, 20);
+    expect(component.fiscalPendingSales()).toEqual([pending]);
+    expect(component.fiscalPendingPage()).toBe(1);
+    expect(component.recentSales()).toEqual([recent]);
+  });
+
+
 });

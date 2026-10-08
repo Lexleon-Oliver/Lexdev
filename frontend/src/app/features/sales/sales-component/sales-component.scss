@@ -842,6 +842,29 @@
 }
 
 /* ============================================================
+   Pendências fiscais — paginação
+   ============================================================ */
+.fiscal-pending-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  min-width: 0;
+}
+
+.fiscal-pending-pagination > span {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  padding: 0 0.25rem;
+  min-width: 0;
+}
+
+/* ============================================================
    Responsividade
    ============================================================ */
 
@@ -1013,4 +1036,18 @@
     grid-template-columns: none !important;
   }
   .empty-cell::before { display: none !important; }
+
+    /* Paginação de pendências — span em linha própria, botões dividem a linha abaixo */
+  .fiscal-pending-pagination {
+    gap: 0.5rem;
+  }
+  .fiscal-pending-pagination > span {
+    flex: 1 1 100%;
+    text-align: center;
+  }
+  .fiscal-pending-pagination .secondary {
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: center;
+  }
 }
