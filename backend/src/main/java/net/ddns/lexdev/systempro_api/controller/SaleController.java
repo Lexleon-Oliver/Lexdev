@@ -22,12 +22,17 @@ import jakarta.validation.Valid;
 import net.ddns.lexdev.systempro_api.dto.SaleCreateRequestDto;
 import net.ddns.lexdev.systempro_api.dto.SaleResponseDto;
 import net.ddns.lexdev.systempro_api.service.SaleService;
+import net.ddns.lexdev.systempro_api.fiscal.danfe.NfceDanfeService;
 
 @RestController
 @RequestMapping("/sales")
 public class SaleController {
     private final SaleService service;
-    public SaleController(SaleService service) { this.service = service; }
+    private final NfceDanfeService danfeService;
+    public SaleController(SaleService service, NfceDanfeService danfeService) {
+        this.service = service;
+        this.danfeService = danfeService;
+    }
 
     @PostMapping
     public ResponseEntity<SaleResponseDto> create(@Valid @RequestBody SaleCreateRequestDto dto) {
@@ -53,6 +58,18 @@ public class SaleController {
     @PostMapping("/{id}/cancel")
     public ResponseEntity<SaleResponseDto> cancel(@PathVariable Long id, @RequestParam String justification) {
         return ResponseEntity.ok(service.cancel(id, justification));
+    }
+
+    @GetMapping("/{id}/fiscal/danfe")
+    public ResponseEntity<byte[]> downloadDanfe(@PathVariable Long id) {
+        byte[] body = danfeService.generate(id);
+        String filename = "danfe-nfce-venda-%d.pdf".formatted(id);
+        return ResponseEntity.ok()
+            .contentType(MediaType.APPLICATION_PDF)
+            .contentLength(body.length)
+            .header(HttpHeaders.CONTENT_DISPOSITION,
+                ContentDisposition.attachment().filename(filename, StandardCharsets.UTF_8).build().toString())
+            .body(body);
     }
 
     @GetMapping("/{id}/fiscal/xml")
