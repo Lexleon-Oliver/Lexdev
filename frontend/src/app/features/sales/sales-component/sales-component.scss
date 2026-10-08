@@ -8,12 +8,23 @@
   background-color: #080710;
   font-family: 'Poppins', sans-serif;
   color: #ffffff;
+
+  /* FIX: contém overflow acidental no Chromium mobile sem quebrar
+     position: sticky / scroll interno (clip > hidden para esse fim) */
+  overflow-x: clip;
+  max-width: 100vw;
+
+  /* FIX: neutraliza o Text Autosizing do Chromium mobile, que infla
+     fontes em blocos de texto e altera todas as medições do layout */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 .sales-page {
   padding: 1.5rem;
   max-width: 1400px;
   margin: 0 auto;
+  min-width: 0;
 }
 
 /* ===== Cabeçalho ===== */
@@ -24,11 +35,13 @@
   align-items: flex-start;
   gap: 1rem;
   margin-bottom: 1.5rem;
+  min-width: 0;                   /* FIX: permite encolher */
 }
 .page-header-title {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
+  min-width: 0;
 }
 .page-header h2 {
   font-size: 1.8rem;
@@ -55,7 +68,13 @@
   background: rgba(255, 67, 54, 0.15);
   border: 1px solid rgba(255, 67, 54, 0.4);
   color: #ff6b5e;
-  white-space: nowrap;
+
+  /* FIX: antes era nowrap e travava o min-content do header inteiro no Chromium.
+     Agora pode quebrar linha e encolher até caber na tela. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  max-width: 100%;
 }
 .header-state.ok {
   background: rgba(76, 175, 80, 0.15);
@@ -74,14 +93,19 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* ===== Layout ===== */
 .sales-layout {
   display: grid;
-  grid-template-columns: 1.4fr 1fr;
+  /* FIX: minmax(0, …) evita que 1fr herde o min-content dos filhos,
+     que é calculado maior pelo Chromium. Era a causa raiz do vazamento. */
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
   gap: 1.5rem;
   align-items: start;
+  min-width: 0;
 }
 
 /* ===== Panels ===== */
@@ -92,6 +116,8 @@
   border: 2px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 0 30px rgba(8, 7, 16, 0.4);
   padding: 1.25rem;
+  min-width: 0;                   /* FIX: pode encolher dentro do grid */
+  max-width: 100%;
 }
 .panel-header {
   display: flex;
@@ -100,6 +126,7 @@
   gap: 1rem;
   flex-wrap: wrap;
   margin-bottom: 1rem;
+  min-width: 0;
 }
 .panel-header h2 {
   font-size: 1.15rem;
@@ -120,17 +147,22 @@
   gap: 0.5rem;
   align-items: center;
   margin-bottom: 1rem;
+  min-width: 0;                   /* FIX */
 }
 .search-bar i {
   position: absolute;
   left: 12px;
-  top: 20px;                     /* FIX #5: ancora ao centro do input (40px) e não do container */
+  top: 20px;                      /* ancora ao centro do input (40px), não do container */
   transform: translateY(-50%);
   color: rgba(255, 255, 255, 0.6);
   pointer-events: none;
 }
 .search-bar input {
-  flex: 1 1 100%;
+  /* FIX: antes 'flex: 1 1 100%' sem min-width:0 → o placeholder definia
+     a largura mínima do input e vazava no Chromium. */
+  flex: 1 1 0;
+  min-width: 0;
+  width: 100%;
   height: 40px;
   padding: 0 12px 0 35px;
   background-color: rgba(255, 255, 255, 0.1);
@@ -226,6 +258,7 @@
   text-align: left;
   cursor: pointer;
   transition: all 0.2s;
+  min-width: 0;
 }
 .product-result:hover {
   background-color: rgba(35, 162, 246, 0.12);
@@ -296,6 +329,7 @@
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+  min-width: 0;
 }
 .cart-controls label {
   display: flex;
@@ -358,6 +392,7 @@
   font-weight: 500;
   color: rgba(255, 255, 255, 0.85);
   margin-bottom: 0.85rem;
+  min-width: 0;
 }
 .field-label input,
 .field-label select,
@@ -373,6 +408,7 @@
   font-family: 'Poppins', sans-serif;
   font-size: 0.9rem;
   box-sizing: border-box;
+  min-width: 0;
 }
 .field-label input,
 .field-label select { height: 40px; }
@@ -389,9 +425,10 @@
 /* ===== Consumidor ===== */
 .consumer-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.75rem;
   align-items: end;
+  min-width: 0;
 }
 .client-found {
   display: flex;
@@ -407,6 +444,7 @@
   min-height: 40px;
   justify-content: center;
   min-width: 140px;
+  max-width: 100%;
 }
 .client-found.visible { opacity: 1; transform: translateY(0); }
 .client-found small {
@@ -415,7 +453,12 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
-.client-found strong { font-size: 0.85rem; color: #81c784; font-weight: 500; }
+.client-found strong {
+  font-size: 0.85rem;
+  color: #81c784;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
 
 /* ===== Pagamentos ===== */
 .payment-header {
@@ -425,6 +468,7 @@
   gap: 0.75rem;
   flex-wrap: wrap;
   margin: 1rem 0 0.75rem;
+  min-width: 0;
 }
 .payment-header h3 { font-size: 0.95rem; font-weight: 500; margin: 0 0 0.15rem; }
 .payment-header span { font-size: 0.75rem; color: rgba(255, 255, 255, 0.6); }
@@ -443,6 +487,8 @@
   font-size: 0.8rem;
   cursor: pointer;
   transition: all 0.2s;
+  min-width: 0;
+  max-width: 100%;
 }
 .secondary:hover { background-color: rgba(35, 162, 246, 0.3); color: #ffffff; }
 .secondary:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -451,9 +497,10 @@
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  min-width: 0;
 }
 
-/* FIX #1: flex-wrap com min-widths confortáveis em vez de grid fixo de 3 colunas.
+/* Pagamentos: flex-wrap com min-widths confortáveis em vez de grid fixo.
    Assim os 5 campos (forma, valor, bandeira, autorização, remover) ficam legíveis. */
 .payment-row {
   display: flex;
@@ -464,9 +511,10 @@
   background-color: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
+  min-width: 0;
 }
-.payment-row > select { flex: 1 1 160px; min-width: 150px; }
-.payment-row > input { flex: 1 1 110px; min-width: 100px; }
+.payment-row > select { flex: 1 1 160px; min-width: 0; }
+.payment-row > input { flex: 1 1 110px; min-width: 0; }
 .payment-row > button.icon-button { flex: 0 0 auto; }
 .payment-row input,
 .payment-row select {
@@ -480,6 +528,7 @@
   font-size: 0.85rem;
   width: 100%;
   box-sizing: border-box;
+  min-width: 0;
 }
 .payment-row input::placeholder { color: rgba(255, 255, 255, 0.4); font-size: 0.78rem; }
 .payment-row input:focus,
@@ -500,6 +549,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
+  min-width: 0;
 }
 .summary > div {
   display: flex;
@@ -508,6 +558,7 @@
   gap: 0.75rem;
   font-size: 0.875rem;
   color: rgba(255, 255, 255, 0.75);
+  min-width: 0;
 }
 .summary > div strong { color: #ffffff; font-weight: 500; }
 .summary label {
@@ -515,6 +566,7 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
+  min-width: 0;
 }
 .summary label input {
   width: 100px;
@@ -568,8 +620,6 @@
 .finish-button:not(:disabled):hover { background-color: #e0e0e0; transform: translateY(-1px); }
 
 /* ===== Última operação ===== */
-/* FIX #2: flex-wrap no container + filhos de texto ocupando linha inteira.
-   Os botões fiscais (que agora podem ser 6+) se agrupam em linhas, sem empilhar 1 por linha. */
 .last-result {
   margin-top: 1rem;
   padding: 1rem;
@@ -580,11 +630,13 @@
   flex-wrap: wrap;
   gap: 0.55rem;
   align-items: center;
+  min-width: 0;
 }
 .last-result > .result-title,
 .last-result > p,
 .last-result > .status-pill {
   flex: 1 1 100%;
+  min-width: 0;
 }
 .last-result > .secondary { flex: 0 0 auto; }
 
@@ -593,6 +645,7 @@
   justify-content: space-between;
   align-items: center;
   font-size: 0.85rem;
+  min-width: 0;
 }
 .result-title span { color: rgba(255, 255, 255, 0.6); }
 .result-title strong { color: #ffffff; }
@@ -600,8 +653,10 @@
   margin: 0;
   font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.8);
-  word-break: break-all;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   line-height: 1.4;
+  min-width: 0;
 }
 .last-result .key {
   font-family: 'Courier New', monospace;
@@ -620,7 +675,10 @@
   background: rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.75);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* ===== Histórico ===== */
@@ -661,14 +719,11 @@
   margin-top: 2px;
 }
 
-/* FIX #3: permite que os vários botões de ação quebrem linha em vez de estourar a célula */
-/* Container: linha única estável, botões quadrados */
+/* Container de ações: continua table-cell → vertical-align: middle funciona.
+   Botões inline-flex com tamanho fixo → alinhados mesmo se um ícone faltar. */
 .sales-table .actions {
-  /* Continua table-cell → vertical-align: middle funciona */
   white-space: nowrap;
-  /* Não usa display: flex */
 }
-
 .sales-table .actions button {
   display: inline-flex;
   align-items: center;
@@ -687,9 +742,7 @@
   font-size: 0.85rem;
   line-height: 1;
 }
-
 .sales-table .actions button:last-child { margin-right: 0; }
-
 .sales-table .actions button:hover:not(:disabled) {
   background: rgba(35, 162, 246, 0.2);
   border-color: rgba(35, 162, 246, 0.4);
@@ -704,9 +757,14 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+.empty-cell {
+  text-align: center;
+  padding: 2rem 1rem !important;
+  color: rgba(255, 255, 255, 0.5);
+}
 
 /* ============================================================
-   FIX #4: Modal de contingência (novo)
+   Modal de contingência
    ============================================================ */
 .contingency-backdrop {
   position: fixed;
@@ -739,6 +797,7 @@
   flex-direction: column;
   gap: 0.75rem;
   box-sizing: border-box;
+  min-width: 0;
 }
 .contingency-dialog h2 {
   font-size: 1.15rem;
@@ -754,6 +813,7 @@
   font-size: 0.85rem;
   line-height: 1.5;
   color: rgba(255, 255, 255, 0.75);
+  overflow-wrap: anywhere;
 }
 .contingency-dialog > small {
   font-size: 0.72rem;
@@ -762,13 +822,13 @@
 }
 .contingency-dialog .field-label { margin-bottom: 0; }
 
-/* FIX #6: botões lado a lado no rodapé do modal, com o "Confirmar" sem width:100% */
 .contingency-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.5rem;
   margin-top: 0.25rem;
+  min-width: 0;
 }
 .contingency-actions .finish-button {
   width: auto;
@@ -787,7 +847,8 @@
 
 /* Tablet / telas médias */
 @media (min-width: 769px) and (max-width: 1024px) {
-  .sales-layout { grid-template-columns: 1fr; }
+  /* FIX: minmax(0, 1fr) em vez de 1fr */
+  .sales-layout { grid-template-columns: minmax(0, 1fr); }
   .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .sales-table { min-width: 680px; }
 }
@@ -808,14 +869,14 @@
   .header-state { align-self: flex-start; }
 
   .sales-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
   }
 
   .panel { padding: 1rem; }
 
-  /* Busca */
-  .search-bar input { flex: 1 1 100%; }
+  /* Busca — input full-width + min-width:0 (evita que placeholder trave a largura) */
+  .search-bar input { flex: 1 1 100%; min-width: 0; }
   .search-bar button { width: 100%; }
 
   /* Carrinho */
@@ -841,7 +902,7 @@
     box-sizing: border-box;
   }
 
-  /* Pagamento — cada campo ocupa linha própria para não sobrar espaço morto */
+  /* Pagamento — cada campo ocupa linha própria */
   .payment-row {
     flex-direction: column;
     align-items: stretch;
@@ -859,7 +920,7 @@
   .summary > div { font-size: 0.82rem; }
   .summary label { flex-wrap: wrap; }
 
-  /* Última operação — botões em largura natural, empilhados se preciso */
+  /* Última operação — botões em largura natural */
   .last-result > .secondary {
     flex: 1 1 auto;
     justify-content: center;
@@ -939,12 +1000,13 @@
     padding-top: 0.75rem;
   }
   .sales-table td.actions::before { display: none; }
-    .sales-table .actions button {
+  .sales-table .actions button {
     width: 40px;
     height: 40px;
     font-size: 1rem;
     background-color: rgba(255, 255, 255, 0.08);
     border-color: transparent;
+    margin-right: 0;              /* gap do container cuida do espaçamento */
   }
   .empty-cell {
     display: block !important;

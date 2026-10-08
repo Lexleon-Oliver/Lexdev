@@ -67,6 +67,13 @@ public class SaleController {
         return service.findAll(pageable);
     }
 
+    @GetMapping("/fiscal-pending")
+    public Page<SaleResponseDto> findFiscalPending(
+        @PageableDefault(size = 20, sort = "saleAt", direction = Sort.Direction.ASC) Pageable pageable
+    ) {
+        return service.findFiscalPending(pageable);
+    }
+
     @PostMapping("/{id}/consult")
     public ResponseEntity<SaleResponseDto> consult(@PathVariable Long id) {
         return ResponseEntity.ok(service.consult(id));

@@ -10,3 +10,8 @@
 body{
     background-color: black;
 }
+
+html, body {
+  overflow-x: hidden;   /* ← não tem no seu global */
+  max-width: 100%;
+}

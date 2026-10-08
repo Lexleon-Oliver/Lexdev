@@ -1,6 +1,7 @@
 package net.ddns.lexdev.systempro_api.repository;
 
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -9,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import net.ddns.lexdev.systempro_api.domain.Sale;
+import net.ddns.lexdev.systempro_api.enums.FiscalDocumentStatus;
 
 public interface SaleRepository extends JpaRepository<Sale, Long> {
 
@@ -38,6 +40,25 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
 
     Page<Sale> findByFiscalEstablishmentId(
         Long establishmentId,
+        Pageable pageable
+    );
+
+    @Query(
+        value = """
+            SELECT s
+            FROM Sale s
+            JOIN FiscalDocument d ON d.sale = s
+            WHERE d.status IN :statuses
+            """,
+        countQuery = """
+            SELECT COUNT(s)
+            FROM Sale s
+            JOIN FiscalDocument d ON d.sale = s
+            WHERE d.status IN :statuses
+            """
+    )
+    Page<Sale> findByFiscalDocumentStatusIn(
+        @Param("statuses") Set<FiscalDocumentStatus> statuses,
         Pageable pageable
     );
 }

@@ -8,6 +8,7 @@ import java.time.ZoneId;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -367,6 +368,23 @@ public class SaleService {
             .map(sale -> response(
                 sale,
                 fiscalDocumentRepository.findBySaleId(sale.getId()).orElse(null)
+            ));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<SaleResponseDto> findFiscalPending(Pageable pageable) {
+        Set<FiscalDocumentStatus> pendingStatuses = Set.of(
+            FiscalDocumentStatus.AGUARDANDO_AUTORIZACAO,
+            FiscalDocumentStatus.PENDENTE_CONSULTA,
+            FiscalDocumentStatus.CONTINGENCIA,
+            FiscalDocumentStatus.CANCELAMENTO_PENDENTE
+        );
+
+        return saleRepository.findByFiscalDocumentStatusIn(pendingStatuses, pageable)
+            .map(sale -> response(
+                sale,
+                fiscalDocumentRepository.findBySaleId(sale.getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Documento fiscal da venda não encontrado."))
             ));
     }
 
