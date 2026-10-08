@@ -1,8 +1,9 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { inject, Injectable} from '@angular/core';
 import { Sale, SaleCreateRequest } from '../../features/models/sale';
 import { Observable } from 'rxjs';
 import { SpringPage } from '../../features/models/spring-page';
+import { SKIP_ERROR_NOTIFICATION } from '../interceptors/error.interceptor';
 
 @Injectable({ providedIn: 'root' })
 export class SaleService {
@@ -11,6 +12,11 @@ export class SaleService {
 
   create(request: SaleCreateRequest): Observable<Sale> {
     return this.http.post<Sale>(this.apiUrl, request);
+  }
+
+  issue(id: number): Observable<Sale> {
+    const context = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
+    return this.http.post<Sale>(`${this.apiUrl}/${id}/issue`, {}, { context });
   }
 
   findById(id: number): Observable<Sale> {

@@ -27,6 +27,7 @@ services:
       - JWT_AUDIENCE=${JWT_AUDIENCE}
       - JWT_EXPIRATION=${JWT_EXPIRATION}
       - JWT_REFRESH_EXPIRATION=${JWT_REFRESH_EXPIRATION}
+      - FISCAL_ENABLED=true
 
     depends_on:
       db:

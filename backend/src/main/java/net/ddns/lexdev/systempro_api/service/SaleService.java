@@ -98,14 +98,8 @@ public class SaleService {
 
     @Transactional
     public SaleResponseDto create(SaleCreateRequestDto dto) {
-        if (!fiscalProperties.enabled()) {
-            throw new FiscalConfigurationException("A emissão fiscal está desabilitada no backend.");
-        }
-
         FiscalEstablishment establishment = establishmentRepository.findByIdForUpdate(dto.fiscalEstablishmentId())
             .orElseThrow(() -> new EntityNotFoundException("Estabelecimento fiscal não encontrado."));
-        fiscalEstablishmentService.assertReadyForEmission(establishment);
-
         Client client = dto.clientId() == null
             ? null
             : clientRepository.findByIdWithPerson(dto.clientId())
@@ -256,6 +250,10 @@ public class SaleService {
 
     @Transactional
     public SaleResponseDto issue(Long saleId) {
+        if (!fiscalProperties.enabled()) {
+            throw new FiscalConfigurationException("A emissão fiscal está desabilitada no backend.");
+        }
+
         Sale sale = saleRepository.findForFiscal(saleId)
             .orElseThrow(() -> new EntityNotFoundException("Venda não encontrada."));
         FiscalDocument document = fiscalDocumentRepository.findBySaleId(saleId)

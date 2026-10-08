@@ -2,7 +2,6 @@ package net.ddns.lexdev.systempro_api.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -86,7 +85,6 @@ class SaleServiceNumberingTest {
         User user = new User("tester", "Tester", "tester@example.com", "secret", "ROLE_USER");
 
         when(establishmentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(establishment));
-        doNothing().when(fiscalEstablishmentService).assertReadyForEmission(establishment);
         when(productRepository.findById(10L)).thenReturn(Optional.of(product));
         when(profileRepository.findByProductId(product.getId())).thenReturn(Optional.of(profile));
         when(currentUserProvider.requireUser()).thenReturn(user);

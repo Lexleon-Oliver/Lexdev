@@ -264,7 +264,7 @@
         (click)="finishSale()"
         [disabled]="!canFinishSale()"
       >
-        @if (isSaving) {
+        @if (isSaving()) {
           <i class="fas fa-spinner fa-spin"></i> Emitindo…
         } @else {
           <i class="fas fa-check"></i> Finalizar venda e emitir NFC-e

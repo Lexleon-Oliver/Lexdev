@@ -8,7 +8,7 @@ import { FiscalEstablishmentService } from '../../../core/services/fiscal-establ
 import { ClientService } from '../../../core/services/client-service';
 import { NotificationService } from '../../../core/services/notification-service';
 import { FiscalEstablishment } from '../../models/fiscal-establishment';
-import { catchError, debounceTime, distinctUntilChanged, EMPTY, finalize, Subject, switchMap } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, EMPTY, finalize, map, of, Subject, switchMap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SaleService } from '../../../core/services/sale-service';
 
@@ -58,7 +58,7 @@ export class SalesComponent implements OnInit {
   saleDiscount = 0;
   note = '';
   isLoadingProducts = false;
-  isSaving = false;
+  isSaving = signal(false);
   selectedSale = signal<Sale | null>(null);
   errorMessage = signal<string | null>(null);
 
@@ -278,7 +278,7 @@ export class SalesComponent implements OnInit {
   }
 
   canFinishSale(): boolean {
-    return !this.isSaving
+    return !this.isSaving()
       && this.selectedEstablishmentId() !== null
       && this.cart().length > 0
       && this.total() > 0
@@ -344,23 +344,45 @@ export class SalesComponent implements OnInit {
       note: this.note.trim() || null,
     };
 
-    this.isSaving = true;
+    this.isSaving.set(true);
     this.saleService.create(payload)
-      .pipe(finalize(() => this.isSaving = false))
+      .pipe(
+        switchMap(draft => this.saleService.issue(draft.id).pipe(
+          map(sale => ({ sale, fiscalError: null as unknown })),
+          catchError(error => of({ sale: draft, fiscalError: error })),
+        )),
+        finalize(() => this.isSaving.set(false)),
+      )
       .subscribe({
-        next: sale => {
+        next: result => {
+          const sale = result.sale;
           this.selectedSale.set(sale);
           this.loadRecentSales();
           this.clearSale();
+
+          if (result.fiscalError) {
+            const message = (result.fiscalError as any)?.error?.message ?? 'Não foi possível emitir a NFC-e.';
+            this.notification.show(
+              `Venda #${sale.id} registrada. NFC-e não emitida: ${message}`,
+              'warning',
+              8000,
+            );
+            return;
+          }
+
           if (sale.status === 'FISCALIZADA') {
             this.notification.success(`Venda #${sale.id} autorizada pela SEFAZ/MG.`);
           } else {
-            this.notification.show(`Venda #${sale.id} registrada, mas a situação fiscal é ${this.statusLabel(sale.status)}.`, 'warning', 6000);
+            this.notification.show(
+              `Venda #${sale.id} registrada, mas a situação fiscal é ${this.statusLabel(sale.status)}.`,
+              'warning',
+              6000,
+            );
           }
         },
         error: error => {
+          // Erro na criação comercial da venda: o interceptor global exibe uma única mensagem.
           console.error(error);
-          this.notification.error(error?.error?.message ?? 'Não foi possível concluir a venda.');
         },
       });
   }

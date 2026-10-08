@@ -23,6 +23,7 @@ import net.ddns.lexdev.systempro_api.domain.Sale;
 import net.ddns.lexdev.systempro_api.domain.User;
 import net.ddns.lexdev.systempro_api.enums.FiscalDocumentStatus;
 import net.ddns.lexdev.systempro_api.enums.SaleStatus;
+import net.ddns.lexdev.systempro_api.exception.FiscalConfigurationException;
 import net.ddns.lexdev.systempro_api.exception.FiscalIntegrationException;
 import net.ddns.lexdev.systempro_api.fiscal.NfceIssueResult;
 import net.ddns.lexdev.systempro_api.fiscal.SefazNfceGateway;
@@ -55,6 +56,7 @@ class SaleServiceFiscalFailureTest {
 
     @BeforeEach
     void setUp() {
+        when(fiscalProperties.enabled()).thenReturn(true);
         service = new SaleService(
             saleRepository,
             productRepository,
@@ -69,6 +71,17 @@ class SaleServiceFiscalFailureTest {
             fiscalProperties,
             rtcSnapshotService
         );
+    }
+
+    @Test
+    void deveBloquearSomenteAEmissaoQuandoFiscalEstiverDesabilitado() {
+        when(fiscalProperties.enabled()).thenReturn(false);
+
+        assertThatThrownBy(() -> service.issue(99L))
+            .isInstanceOf(FiscalConfigurationException.class)
+            .hasMessageContaining("emissão fiscal está desabilitada");
+
+        verify(saleRepository, never()).findForFiscal(99L);
     }
 
     @Test

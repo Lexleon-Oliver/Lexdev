@@ -1,8 +1,10 @@
-import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
+import { HttpContextToken, HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { catchError, throwError } from 'rxjs';
 import { inject } from '@angular/core';
 import { ApiErrorResponse } from '../../features/models/api-error';
 import { NotificationService } from '../services/notification-service';
+
+export const SKIP_ERROR_NOTIFICATION = new HttpContextToken<boolean>(() => false);
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const notificationService = inject(NotificationService);
@@ -20,7 +22,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
       // 401 é responsabilidade exclusiva do authInterceptor.
       // 403 também é tratado pelo authInterceptor.
-      if (error.status !== 401 && error.status !== 403) {
+      if (!req.context.get(SKIP_ERROR_NOTIFICATION) && error.status !== 401 && error.status !== 403) {
         notificationService.error(errorMessage);
       }
 

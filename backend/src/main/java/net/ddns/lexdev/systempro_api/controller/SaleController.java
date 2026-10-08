@@ -36,8 +36,12 @@ public class SaleController {
 
     @PostMapping
     public ResponseEntity<SaleResponseDto> create(@Valid @RequestBody SaleCreateRequestDto dto) {
-        SaleResponseDto draft = service.create(dto);
-        return ResponseEntity.status(201).body(service.issue(draft.id()));
+        return ResponseEntity.status(201).body(service.create(dto));
+    }
+
+    @PostMapping("/{id}/issue")
+    public ResponseEntity<SaleResponseDto> issue(@PathVariable Long id) {
+        return ResponseEntity.ok(service.issue(id));
     }
 
     @GetMapping("/{id}")
