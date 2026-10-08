@@ -197,6 +197,49 @@ export class SalesComponent implements OnInit {
     this.recalculateSuggestedPayment();
   }
 
+  quantityStep(unitOfMeasure: string): number {
+    return unitOfMeasure.trim().toUpperCase() === 'UN' ? 1 : 0.001;
+  }
+
+  formatMoney(value: number | null | undefined): string {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(value ?? 0));
+  }
+
+  formatMoneyInput(value: number | null | undefined): string {
+    return new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(value ?? 0));
+  }
+
+  updateMoneyCartItem(index: number, field: 'unitPrice' | 'discount', value: string): void {
+    this.updateCartItem(index, field, this.parseBrazilianDecimal(value));
+  }
+
+  updatePaymentAmount(index: number, value: string): void {
+    this.setPayment(index, { amount: this.parseBrazilianDecimal(value) });
+  }
+
+  updateSaleDiscount(value: string): void {
+    this.onSaleDiscountChange(this.parseBrazilianDecimal(value));
+  }
+
+  private parseBrazilianDecimal(value: string): number {
+    const normalized = value
+      .trim()
+      .replace(/\s/g, '')
+      .replace(/^R\$/i, '')
+      .replace(/\./g, '')
+      .replace(',', '.');
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+  }
+
   itemTotal(item: CartItem): number {
     return Math.max(0, item.quantity * item.unitPrice - Math.min(item.discount, item.quantity * item.unitPrice));
   }

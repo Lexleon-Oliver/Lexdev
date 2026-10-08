@@ -56,7 +56,7 @@
                   @if (product.gtin) { <span>· {{ product.gtin }}</span> }
                 </small>
               </span>
-              <b>{{ (product.salePrice ?? 0) | currency:'BRL' }}</b>
+              <b>{{ formatMoney(product.salePrice) }}</b>
             </button>
           }
         </div>
@@ -89,8 +89,8 @@
                   Qtd.
                   <input
                     type="number"
-                    min="0.000001"
-                    step="0.001"
+                    [min]="quantityStep(item.product.unitOfMeasure)"
+                    [step]="quantityStep(item.product.unitOfMeasure)"
                     [ngModel]="item.quantity"
                     (ngModelChange)="updateCartItem(i, 'quantity', $event)"
                   />
@@ -98,26 +98,24 @@
                 <label>
                   Preço
                   <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    [ngModel]="item.unitPrice"
-                    (ngModelChange)="updateCartItem(i, 'unitPrice', $event)"
+                    type="text"
+                    inputmode="decimal"
+                    [value]="formatMoneyInput(item.unitPrice)"
+                    (change)="updateMoneyCartItem(i, 'unitPrice', $any($event.target).value)"
                   />
                 </label>
                 <label>
                   Desc.
                   <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    [ngModel]="item.discount"
-                    (ngModelChange)="updateCartItem(i, 'discount', $event)"
+                    type="text"
+                    inputmode="decimal"
+                    [value]="formatMoneyInput(item.discount)"
+                    (change)="updateMoneyCartItem(i, 'discount', $any($event.target).value)"
                   />
                 </label>
               </div>
               <div class="item-total">
-                {{ itemTotal(item) | currency:'BRL' }}
+                {{ formatMoney(itemTotal(item)) }}
                 <button type="button" class="icon-button danger" (click)="removeCartItem(i)">
                   <i class="fas fa-trash"></i>
                 </button>
@@ -171,7 +169,7 @@
       <div class="payment-header">
         <div>
           <h3>Pagamentos</h3>
-          <span>Total recebido: {{ totalPaid() | currency:'BRL' }}</span>
+          <span>Total recebido: {{ formatMoney(totalPaid()) }}</span>
         </div>
         <button type="button" class="secondary" (click)="addPayment()">
           <i class="fas fa-plus"></i> Forma
@@ -190,11 +188,10 @@
               }
             </select>
             <input
-              type="number"
-              min="0"
-              step="0.01"
-              [ngModel]="payment.amount"
-              (ngModelChange)="setPayment(i, { amount: +$event })"
+              type="text"
+              inputmode="decimal"
+              [value]="formatMoneyInput(payment.amount)"
+              (change)="updatePaymentAmount(i, $any($event.target).value)"
               placeholder="Valor"
             />
             @if (payment.paymentMethod === 'CREDITO' || payment.paymentMethod === 'DEBITO') {
@@ -224,36 +221,35 @@
       <div class="summary">
         <div>
           <span>Subtotal</span>
-          <strong>{{ subtotal() | currency:'BRL' }}</strong>
+          <strong>{{ formatMoney(subtotal()) }}</strong>
         </div>
         <div>
           <span>Descontos nos itens</span>
-          <strong>- {{ itemDiscounts() | currency:'BRL' }}</strong>
+          <strong>- {{ formatMoney(itemDiscounts()) }}</strong>
         </div>
         <div>
           <label>
             Desconto da venda
             <input
-              type="number"
-              min="0"
-              step="0.01"
-              [ngModel]="saleDiscount"
-              (ngModelChange)="onSaleDiscountChange($event)"
+              type="text"
+              inputmode="decimal"
+              [value]="formatMoneyInput(saleDiscount)"
+              (change)="updateSaleDiscount($any($event.target).value)"
             />
           </label>
-          <strong>- {{ (saleDiscount || 0) | currency:'BRL' }}</strong>
+          <strong>- {{ formatMoney(saleDiscount || 0) }}</strong>
         </div>
         <div class="total-line">
           <span>Total</span>
-          <strong>{{ total() | currency:'BRL' }}</strong>
+          <strong>{{ formatMoney(total()) }}</strong>
         </div>
         <div>
           <span>Falta receber</span>
-          <strong>{{ remaining() | currency:'BRL' }}</strong>
+          <strong>{{ formatMoney(remaining()) }}</strong>
         </div>
         <div class="change-line">
           <span>Troco</span>
-          <strong>{{ change() | currency:'BRL' }}</strong>
+          <strong>{{ formatMoney(change()) }}</strong>
         </div>
       </div>
 
@@ -327,7 +323,7 @@
             <tr>
               <td data-label="Venda">#{{ sale.id }}</td>
               <td data-label="Data">{{ sale.saleAt | date:'dd/MM/yyyy HH:mm' }}</td>
-              <td data-label="Total">{{ sale.total | currency:'BRL' }}</td>
+              <td data-label="Total">{{ formatMoney(sale.total) }}</td>
               <td data-label="Status">
                 <span class="status-pill">{{ statusLabel(sale.status) }}</span>
               </td>

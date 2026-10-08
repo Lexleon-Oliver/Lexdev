@@ -69,4 +69,39 @@ describe('SalesComponent', () => {
     expect(component.total()).toBe(85);
     expect(component.payments()[0].amount).toBe(85);
   });
+
+  it('should use integer increments for unit products', () => {
+    expect(component.quantityStep('UN')).toBe(1);
+  });
+
+  it('should format monetary values using pt-BR conventions', () => {
+    expect(component.formatMoney(3499.9)).toContain('3.499,90');
+    expect(component.formatMoneyInput(3499.9)).toBe('3.499,90');
+  });
+
+  it('should parse pt-BR monetary input without changing the numeric value', () => {
+    component.cart.set([{
+      product: {
+        id: 1,
+        code: 'P001',
+        name: 'Produto teste',
+        status: 'ATIVO',
+        unitOfMeasure: 'UN',
+        controlsStock: true,
+        salePrice: 3499.9,
+        suppliers: [],
+        images: [],
+        active: true,
+      },
+      quantity: 1,
+      unitPrice: 3499.9,
+      discount: 0,
+    }]);
+
+    component.updateMoneyCartItem(0, 'unitPrice', '3.499,90');
+
+    expect(component.cart()[0].unitPrice).toBe(3499.9);
+    expect(component.total()).toBe(3499.9);
+  });
+
 });
