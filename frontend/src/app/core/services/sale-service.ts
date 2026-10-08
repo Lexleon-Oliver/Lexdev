@@ -28,6 +28,17 @@ export class SaleService {
     return this.http.get<SpringPage<Sale>>(this.apiUrl, { params });
   }
 
+  prepareOfflineContingency(id: number, justification: string): Observable<Sale> {
+    const context = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
+    const params = new HttpParams().set('justification', justification);
+    return this.http.post<Sale>(`${this.apiUrl}/${id}/contingency/offline`, {}, { params, context });
+  }
+
+  transmitOfflineContingency(id: number): Observable<Sale> {
+    const context = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
+    return this.http.post<Sale>(`${this.apiUrl}/${id}/contingency/transmit`, {}, { context });
+  }
+
   consult(id: number): Observable<Sale> {
     return this.http.post<Sale>(`${this.apiUrl}/${id}/consult`, {});
   }
@@ -35,6 +46,10 @@ export class SaleService {
   cancel(id: number, justification: string): Observable<Sale> {
     const params = new HttpParams().set('justification', justification);
     return this.http.post<Sale>(`${this.apiUrl}/${id}/cancel`, {}, { params });
+  }
+
+  downloadDanfe(id: number): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/${id}/fiscal/danfe`, { responseType: 'blob' });
   }
 
   downloadXml(id: number): Observable<Blob> {

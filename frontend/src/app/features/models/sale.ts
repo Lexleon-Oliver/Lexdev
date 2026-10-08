@@ -41,6 +41,8 @@ export interface FiscalDocument {
   issuedAt?: string | null;
   canceledAt?: string | null;
   cancellationProtocol?: string | null;
+  contingencyAt?: string | null;
+  contingencyJustification?: string | null;
 }
 
 export interface SaleItem {
@@ -80,4 +82,54 @@ export interface Sale {
   payments: SalePayment[];
   fiscalDocument?: FiscalDocument | null;
   note?: string | null;
+}
+
+export interface FiscalActions {
+  issueNormal: boolean;
+  prepareOfflineContingency: boolean;
+  transmitOfflineContingency: boolean;
+  consult: boolean;
+  downloadDanfe: boolean;
+  downloadXml: boolean;
+  cancel: boolean;
+}
+
+export function fiscalActionsFor(sale: Sale): FiscalActions {
+  const document = sale.fiscalDocument;
+  if (!document) {
+    return noFiscalActions();
+  }
+
+  const normalAwaitingAuthorization =
+    document.status === 'AGUARDANDO_AUTORIZACAO'
+    && document.emissionType === 'NORMAL';
+
+  const offlineContingency =
+    document.status === 'CONTINGENCIA'
+    && document.emissionType === 'CONTINGENCIA_OFFLINE';
+
+  const authorized = document.status === 'AUTORIZADA';
+  const pendingConsultation = document.status === 'PENDENTE_CONSULTA';
+
+  return {
+    issueNormal: normalAwaitingAuthorization,
+    prepareOfflineContingency: normalAwaitingAuthorization,
+    transmitOfflineContingency: offlineContingency,
+    consult: pendingConsultation,
+    downloadDanfe: authorized || offlineContingency,
+    downloadXml: Boolean(document.accessKey) && (authorized || offlineContingency || pendingConsultation),
+    cancel: authorized && sale.status === 'FISCALIZADA',
+  };
+}
+
+function noFiscalActions(): FiscalActions {
+  return {
+    issueNormal: false,
+    prepareOfflineContingency: false,
+    transmitOfflineContingency: false,
+    consult: false,
+    downloadDanfe: false,
+    downloadXml: false,
+    cancel: false,
+  };
 }
