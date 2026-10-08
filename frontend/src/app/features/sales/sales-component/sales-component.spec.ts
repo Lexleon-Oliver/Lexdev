@@ -104,4 +104,64 @@ describe('SalesComponent', () => {
     expect(component.total()).toBe(3499.9);
   });
 
+
+  it('should keep automatic payment synchronized after changing the single payment method', () => {
+    component.cart.set([{
+      product: {
+        id: 1, code: 'P001', name: 'Produto teste', status: 'ATIVO',
+        unitOfMeasure: 'UN', controlsStock: true, salePrice: 100,
+        suppliers: [], images: [], active: true,
+      },
+      quantity: 1, unitPrice: 100, discount: 0,
+    }]);
+
+    component.updateCartItem(0, 'quantity', 1);
+    component.setPayment(0, { paymentMethod: 'PIX' });
+    component.updateCartItem(0, 'quantity', 2);
+
+    expect(component.payments()[0].paymentMethod).toBe('PIX');
+    expect(component.payments()[0].amount).toBe(200);
+    expect(component.remaining()).toBe(0);
+  });
+
+  it('should preserve a manually entered payment when the cart total changes', () => {
+    component.cart.set([{
+      product: {
+        id: 1, code: 'P001', name: 'Produto teste', status: 'ATIVO',
+        unitOfMeasure: 'UN', controlsStock: true, salePrice: 100,
+        suppliers: [], images: [], active: true,
+      },
+      quantity: 1, unitPrice: 100, discount: 0,
+    }]);
+
+    component.updateCartItem(0, 'quantity', 1);
+    component.updatePaymentAmount(0, '150,00');
+    component.updateCartItem(0, 'quantity', 2);
+
+    expect(component.payments()[0].amount).toBe(150);
+    expect(component.remaining()).toBe(50);
+  });
+
+  it('should only allow finishing with establishment, items, positive total and sufficient payment', () => {
+    component.cart.set([{
+      product: {
+        id: 1, code: 'P001', name: 'Produto teste', status: 'ATIVO',
+        unitOfMeasure: 'UN', controlsStock: true, salePrice: 100,
+        suppliers: [], images: [], active: true,
+      },
+      quantity: 1, unitPrice: 100, discount: 0,
+    }]);
+
+    component.updateCartItem(0, 'quantity', 1);
+
+    component.selectedEstablishmentId.set(null);
+    expect(component.canFinishSale()).toBe(false);
+
+    component.selectedEstablishmentId.set(1);
+    expect(component.canFinishSale()).toBe(true);
+
+    component.updatePaymentAmount(0, '50,00');
+    expect(component.canFinishSale()).toBe(false);
+  });
+
 });

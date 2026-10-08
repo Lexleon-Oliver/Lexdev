@@ -188,8 +188,13 @@ export class SalesComponent implements OnInit {
   }
 
   setPayment(index: number, patch: Partial<PaymentLine>): void {
-    this.autoSuggestedPayment = false;
-    this.payments.update(items => items.map((item, i) => i === index ? { ...item, ...patch } : item));
+    this.payments.update(items =>
+      items.map((item, i) => i === index ? { ...item, ...patch } : item)
+    );
+
+    if (this.autoSuggestedPayment && this.payments().length === 1) {
+      this.recalculateSuggestedPayment();
+    }
   }
 
   onSaleDiscountChange(value: number): void {
@@ -222,7 +227,11 @@ export class SalesComponent implements OnInit {
   }
 
   updatePaymentAmount(index: number, value: string): void {
-    this.setPayment(index, { amount: this.parseBrazilianDecimal(value) });
+    this.autoSuggestedPayment = false;
+    const amount = this.parseBrazilianDecimal(value);
+    this.payments.update(items =>
+      items.map((item, i) => i === index ? { ...item, amount } : item)
+    );
   }
 
   updateSaleDiscount(value: string): void {
@@ -266,6 +275,14 @@ export class SalesComponent implements OnInit {
 
   remaining(): number {
     return Math.max(0, this.total() - this.totalPaid());
+  }
+
+  canFinishSale(): boolean {
+    return !this.isSaving
+      && this.selectedEstablishmentId() !== null
+      && this.cart().length > 0
+      && this.total() > 0
+      && this.remaining() <= 0.0001;
   }
 
   findClient(): void {
@@ -433,8 +450,10 @@ export class SalesComponent implements OnInit {
   }
 
   private recalculateSuggestedPayment(): void {
-    if (this.autoSuggestedPayment && this.payments().length === 1 && this.payments()[0].paymentMethod === 'DINHEIRO') {
-      this.payments.update(items => items.map((item, index) => index === 0 ? { ...item, amount: this.total() } : item));
+    if (this.autoSuggestedPayment && this.payments().length === 1) {
+      this.payments.update(items =>
+        items.map((item, index) => index === 0 ? { ...item, amount: this.total() } : item)
+      );
     }
   }
 }
