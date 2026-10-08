@@ -294,7 +294,7 @@
           }
           @if (fiscalActions(selectedSale()!).prepareOfflineContingency) {
             <button type="button" class="secondary" (click)="openOfflineContingency(selectedSale()!)" [disabled]="fiscalActionSaleId() !== null">
-              <i class="fas fa-triangle-exclamation"></i> Emitir em contingência
+              <i class="fas fa-exclamation-triangle"></i> Emitir em contingência
             </button>
           }
           @if (fiscalActions(selectedSale()!).transmitOfflineContingency) {
@@ -360,7 +360,7 @@
               <td data-label="Ações" class="actions">
                 @if (fiscalActions(sale).issueNormal) {
                   <button type="button" (click)="retryIssue(sale)" title="Tentar emissão normal" [disabled]="fiscalActionSaleId() !== null"><i class="fas fa-paper-plane"></i></button>
-                  <button type="button" (click)="openOfflineContingency(sale)" title="Preparar contingência offline" [disabled]="fiscalActionSaleId() !== null"><i class="fas fa-triangle-exclamation"></i></button>
+                  <button type="button" (click)="openOfflineContingency(sale)" title="Preparar contingência offline" [disabled]="fiscalActionSaleId() !== null"><i class="fas fa-exclamation-triangle"></i></button>
                 }
                 @if (fiscalActions(sale).transmitOfflineContingency) {
                   <button type="button" (click)="transmitOfflineContingency(sale)" title="Transmitir contingência" [disabled]="fiscalActionSaleId() !== null"><i class="fas fa-cloud-arrow-up"></i></button>
@@ -435,7 +435,7 @@
               <td data-label="Ações" class="actions">
                 @if (fiscalActions(sale).issueNormal) {
                   <button type="button" (click)="retryIssue(sale)" title="Tentar emissão normal" [disabled]="fiscalActionSaleId() !== null"><i class="fas fa-paper-plane"></i></button>
-                  <button type="button" (click)="openOfflineContingency(sale)" title="Preparar contingência offline" [disabled]="fiscalActionSaleId() !== null"><i class="fas fa-triangle-exclamation"></i></button>
+                  <button type="button" (click)="openOfflineContingency(sale)" title="Preparar contingência offline" [disabled]="fiscalActionSaleId() !== null"><i class="fas fa-exclamation-triangle"></i></button>
                 }
                 @if (fiscalActions(sale).transmitOfflineContingency) {
                   <button type="button" (click)="transmitOfflineContingency(sale)" title="Transmitir contingência" [disabled]="fiscalActionSaleId() !== null"><i class="fas fa-cloud-arrow-up"></i></button>
