@@ -1,5 +1,40 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SalesComponent } from './sales-component';
+import { of, throwError } from 'rxjs';
+import { vi } from 'vitest';
+import { Sale } from '../../models/sale';
+
+
+function fiscalSale(
+  saleStatus: Sale['status'],
+  fiscalStatus: NonNullable<Sale['fiscalDocument']>['status'],
+  emissionType: NonNullable<Sale['fiscalDocument']>['emissionType'],
+  accessKey: string | null = null,
+): Sale {
+  return {
+    id: 99,
+    fiscalEstablishmentId: 1,
+    userId: 1,
+    status: saleStatus,
+    saleAt: '2026-10-08T15:00:00',
+    subtotal: 10,
+    discount: 0,
+    total: 10,
+    totalPaid: 10,
+    change: 0,
+    items: [],
+    payments: [],
+    fiscalDocument: {
+      id: 99,
+      model: '65',
+      series: 1,
+      number: 1,
+      status: fiscalStatus,
+      emissionType,
+      accessKey,
+    },
+  };
+}
 
 describe('SalesComponent', () => {
   let component: SalesComponent;
@@ -162,6 +197,98 @@ describe('SalesComponent', () => {
 
     component.updatePaymentAmount(0, '50,00');
     expect(component.canFinishSale()).toBe(false);
+  });
+
+
+  it('should never start offline contingency automatically when normal issue fails', () => {
+    const draft = fiscalSale('AGUARDANDO_FISCAL', 'AGUARDANDO_AUTORIZACAO', 'NORMAL');
+    const saleService = (component as any).saleService;
+    const createSpy = vi.spyOn(saleService, 'create').mockReturnValue(of(draft));
+    const issueSpy = vi.spyOn(saleService, 'issue').mockReturnValue(
+      throwError(() => ({ error: { message: 'O certificado A1 ainda não foi configurado.' } })),
+    );
+    const contingencySpy = vi.spyOn(saleService, 'prepareOfflineContingency');
+    vi.spyOn(component, 'loadRecentSales').mockImplementation(() => undefined);
+
+    component.selectedEstablishmentId.set(1);
+    component.cart.set([{
+      product: {
+        id: 1, code: 'P001', name: 'Produto teste', status: 'ATIVO',
+        unitOfMeasure: 'UN', controlsStock: true, salePrice: 10,
+        suppliers: [], images: [], active: true,
+      },
+      quantity: 1, unitPrice: 10, discount: 0,
+    }]);
+    component.payments.set([{
+      paymentMethod: 'DINHEIRO', amount: 10, cardBrand: '', authorizationCode: '',
+    }]);
+
+    component.finishSale();
+
+    expect(createSpy).toHaveBeenCalledOnce();
+    expect(issueSpy).toHaveBeenCalledWith(draft.id);
+    expect(contingencySpy).not.toHaveBeenCalled();
+    expect(component.selectedSale()).toEqual(draft);
+    expect(component.isSaving()).toBe(false);
+  });
+
+  it('should refuse invalid offline justification without calling the backend', () => {
+    const sale = fiscalSale('AGUARDANDO_FISCAL', 'AGUARDANDO_AUTORIZACAO', 'NORMAL');
+    const saleService = (component as any).saleService;
+    const contingencySpy = vi.spyOn(saleService, 'prepareOfflineContingency');
+
+    component.openOfflineContingency(sale);
+    component.contingencyJustification = 'curta';
+    component.confirmOfflineContingency();
+
+    expect(contingencySpy).not.toHaveBeenCalled();
+    expect(component.contingencySale()).toEqual(sale);
+  });
+
+  it('should prepare offline contingency only after explicit confirmation and apply returned state', () => {
+    const sale = fiscalSale('AGUARDANDO_FISCAL', 'AGUARDANDO_AUTORIZACAO', 'NORMAL');
+    const prepared = fiscalSale('FISCAL_PENDENTE', 'CONTINGENCIA', 'CONTINGENCIA_OFFLINE', 'KEY-OFFLINE');
+    const saleService = (component as any).saleService;
+    const contingencySpy = vi.spyOn(saleService, 'prepareOfflineContingency').mockReturnValue(of(prepared));
+    component.recentSales.set([sale]);
+
+    component.openOfflineContingency(sale);
+    component.contingencyJustification = 'Indisponibilidade conhecida da SEFAZ';
+    component.confirmOfflineContingency();
+
+    expect(contingencySpy).toHaveBeenCalledWith(sale.id, 'Indisponibilidade conhecida da SEFAZ');
+    expect(component.selectedSale()).toEqual(prepared);
+    expect(component.recentSales()[0]).toEqual(prepared);
+    expect(component.contingencySale()).toBeNull();
+    expect(component.fiscalActionSaleId()).toBeNull();
+  });
+
+  it('should transmit prepared contingency but never retransmit a pending-consultation document', () => {
+    const prepared = fiscalSale('FISCAL_PENDENTE', 'CONTINGENCIA', 'CONTINGENCIA_OFFLINE', 'KEY-OFFLINE');
+    const pending = fiscalSale('FISCAL_PENDENTE', 'PENDENTE_CONSULTA', 'CONTINGENCIA_OFFLINE', 'KEY-OFFLINE');
+    const saleService = (component as any).saleService;
+    const transmitSpy = vi.spyOn(saleService, 'transmitOfflineContingency').mockReturnValue(of(pending));
+
+    component.transmitOfflineContingency(prepared);
+    expect(transmitSpy).toHaveBeenCalledOnce();
+    expect(component.selectedSale()).toEqual(pending);
+
+    component.transmitOfflineContingency(pending);
+    expect(transmitSpy).toHaveBeenCalledOnce();
+  });
+
+  it('should consult uncertain offline transmission instead of retransmitting it', () => {
+    const pending = fiscalSale('FISCAL_PENDENTE', 'PENDENTE_CONSULTA', 'CONTINGENCIA_OFFLINE', 'KEY-OFFLINE');
+    const authorized = fiscalSale('FISCALIZADA', 'AUTORIZADA', 'CONTINGENCIA_OFFLINE', 'KEY-OFFLINE');
+    const saleService = (component as any).saleService;
+    const transmitSpy = vi.spyOn(saleService, 'transmitOfflineContingency');
+    const consultSpy = vi.spyOn(saleService, 'consult').mockReturnValue(of(authorized));
+
+    component.consult(pending);
+
+    expect(consultSpy).toHaveBeenCalledWith(pending.id);
+    expect(transmitSpy).not.toHaveBeenCalled();
+    expect(component.selectedSale()).toEqual(authorized);
   });
 
 });

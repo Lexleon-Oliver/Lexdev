@@ -30,7 +30,6 @@
   flex-direction: column;
   gap: 0.15rem;
 }
-
 .page-header h2 {
   font-size: 1.8rem;
   font-weight: 500;
@@ -85,7 +84,7 @@
   align-items: start;
 }
 
-/* ===== Panels (mesma linguagem do .table-wrapper / .modal-content) ===== */
+/* ===== Panels ===== */
 .panel {
   background-color: rgba(255, 255, 255, 0.07);
   border-radius: 10px;
@@ -117,6 +116,7 @@
 .search-bar {
   position: relative;
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
   margin-bottom: 1rem;
@@ -124,13 +124,13 @@
 .search-bar i {
   position: absolute;
   left: 12px;
-  top: 20px;                    /* metade da altura do input (40px / 2) */
+  top: 20px;                     /* FIX #5: ancora ao centro do input (40px) e não do container */
   transform: translateY(-50%);
   color: rgba(255, 255, 255, 0.6);
   pointer-events: none;
 }
 .search-bar input {
-  flex: 1;
+  flex: 1 1 100%;
   height: 40px;
   padding: 0 12px 0 35px;
   background-color: rgba(255, 255, 255, 0.1);
@@ -158,6 +158,7 @@
   font-size: 0.85rem;
   cursor: pointer;
   transition: all 0.2s;
+  flex: 0 0 auto;
 }
 .search-bar button:hover {
   background-color: #e0e0e0;
@@ -193,10 +194,7 @@
   margin-bottom: 0.5rem;
   color: rgba(255, 255, 255, 0.4);
 }
-.empty.cart-empty p {
-  margin: 0;
-  font-size: 0.85rem;
-}
+.empty.cart-empty p { margin: 0; font-size: 0.85rem; }
 
 /* ===== Resultados de produto ===== */
 .product-results {
@@ -262,15 +260,8 @@
   padding-top: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
-.cart-header h2 {
-  font-size: 1rem;
-  font-weight: 500;
-  margin: 0 0 0.15rem;
-}
-.cart-header span {
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.6);
-}
+.cart-header h2 { font-size: 1rem; font-weight: 500; margin: 0 0 0.15rem; }
+.cart-header span { font-size: 0.8rem; color: rgba(255, 255, 255, 0.6); }
 .cart-list {
   display: flex;
   flex-direction: column;
@@ -290,10 +281,7 @@
   border-radius: 8px;
   align-items: center;
 }
-.cart-item-main {
-  grid-area: main;
-  min-width: 0;
-}
+.cart-item-main { grid-area: main; min-width: 0; }
 .cart-item-main strong {
   display: block;
   font-size: 0.9rem;
@@ -302,10 +290,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.cart-item-main small {
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.6);
-}
+.cart-item-main small { font-size: 0.75rem; color: rgba(255, 255, 255, 0.6); }
 .cart-controls {
   grid-area: controls;
   display: flex;
@@ -349,7 +334,7 @@
   white-space: nowrap;
 }
 
-/* ===== Ícones (botões de ação) ===== */
+/* ===== Ícones ===== */
 .icon-button {
   background: none;
   border: none;
@@ -363,14 +348,8 @@
   align-items: center;
   justify-content: center;
 }
-.icon-button.danger:hover {
-  background: rgba(255, 67, 54, 0.2);
-  color: #ff4336;
-}
-.icon-button:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
+.icon-button.danger:hover { background: rgba(255, 67, 54, 0.2); color: #ff4336; }
+.icon-button:disabled { opacity: 0.35; cursor: not-allowed; }
 
 /* ===== Formulário genérico ===== */
 .field-label {
@@ -397,16 +376,8 @@
 }
 .field-label input,
 .field-label select { height: 40px; }
-.field-label select option {
-  background-color: #080710;
-  color: #ffffff;
-}
-.field-label textarea {
-  padding: 10px 12px;
-  resize: vertical;
-  min-height: 60px;
-  line-height: 1.4;
-}
+.field-label select option { background-color: #080710; color: #ffffff; }
+.field-label textarea { padding: 10px 12px; resize: vertical; min-height: 60px; line-height: 1.4; }
 .field-label input:focus,
 .field-label select:focus,
 .field-label textarea:focus {
@@ -437,21 +408,14 @@
   justify-content: center;
   min-width: 140px;
 }
-.client-found.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
+.client-found.visible { opacity: 1; transform: translateY(0); }
 .client-found small {
   font-size: 0.65rem;
   color: rgba(129, 199, 132, 0.9);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
-.client-found strong {
-  font-size: 0.85rem;
-  color: #81c784;
-  font-weight: 500;
-}
+.client-found strong { font-size: 0.85rem; color: #81c784; font-weight: 500; }
 
 /* ===== Pagamentos ===== */
 .payment-header {
@@ -462,15 +426,8 @@
   flex-wrap: wrap;
   margin: 1rem 0 0.75rem;
 }
-.payment-header h3 {
-  font-size: 0.95rem;
-  font-weight: 500;
-  margin: 0 0 0.15rem;
-}
-.payment-header span {
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.6);
-}
+.payment-header h3 { font-size: 0.95rem; font-weight: 500; margin: 0 0 0.15rem; }
+.payment-header span { font-size: 0.75rem; color: rgba(255, 255, 255, 0.6); }
 
 .secondary {
   display: inline-flex;
@@ -487,25 +444,33 @@
   cursor: pointer;
   transition: all 0.2s;
 }
-.secondary:hover {
-  background-color: rgba(35, 162, 246, 0.3);
-  color: #ffffff;
-}
+.secondary:hover { background-color: rgba(35, 162, 246, 0.3); color: #ffffff; }
+.secondary:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .payments {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
+
+/* FIX #1: flex-wrap com min-widths confortáveis em vez de grid fixo de 3 colunas.
+   Assim os 5 campos (forma, valor, bandeira, autorização, remover) ficam legíveis. */
 .payment-row {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr auto;
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
+  padding: 0.65rem;
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
 }
+.payment-row > select { flex: 1 1 160px; min-width: 150px; }
+.payment-row > input { flex: 1 1 110px; min-width: 100px; }
+.payment-row > button.icon-button { flex: 0 0 auto; }
 .payment-row input,
 .payment-row select {
-  height: 36px;
+  height: 38px;
   padding: 0 10px;
   background-color: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -516,16 +481,14 @@
   width: 100%;
   box-sizing: border-box;
 }
+.payment-row input::placeholder { color: rgba(255, 255, 255, 0.4); font-size: 0.78rem; }
 .payment-row input:focus,
 .payment-row select:focus {
   outline: none;
   border-color: #23a2f6;
   background-color: rgba(255, 255, 255, 0.15);
 }
-.payment-row select option {
-  background-color: #080710;
-  color: #ffffff;
-}
+.payment-row select option { background-color: #080710; color: #ffffff; }
 
 /* ===== Resumo ===== */
 .summary {
@@ -546,10 +509,7 @@
   font-size: 0.875rem;
   color: rgba(255, 255, 255, 0.75);
 }
-.summary > div strong {
-  color: #ffffff;
-  font-weight: 500;
-}
+.summary > div strong { color: #ffffff; font-weight: 500; }
 .summary label {
   display: flex;
   align-items: center;
@@ -559,7 +519,7 @@
 .summary label input {
   width: 100px;
   height: 30px;
-  padding: 0 24px 0 10px;
+  padding: 0 10px;
   background-color: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 4px;
@@ -568,38 +528,22 @@
   font-size: 0.8rem;
   text-align: right;
 }
-.summary label input:focus {
-  outline: none;
-  border-color: #23a2f6;
-}
-
+.summary label input:focus { outline: none; border-color: #23a2f6; }
 .summary label input[type="number"]::-webkit-outer-spin-button,
 .summary label input[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
-.summary label input[type="number"] {
-  -moz-appearance: textfield;   /* Firefox */
-  appearance: textfield;
-}
+.summary label input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .summary .total-line {
   padding-top: 0.55rem;
   margin-top: 0.15rem;
   border-top: 1px solid rgba(255, 255, 255, 0.15);
   font-size: 1rem;
 }
-.summary .total-line span {
-  color: #ffffff;
-  font-weight: 500;
-}
-.summary .total-line strong {
-  color: #23a2f6;
-  font-size: 1.15rem;
-  font-weight: 600;
-}
-.summary .change-line strong {
-  color: #81c784;
-}
+.summary .total-line span { color: #ffffff; font-weight: 500; }
+.summary .total-line strong { color: #23a2f6; font-size: 1.15rem; font-weight: 600; }
+.summary .change-line strong { color: #81c784; }
 
 /* ===== Botão finalizar ===== */
 .finish-button {
@@ -620,16 +564,12 @@
   justify-content: center;
   gap: 0.5rem;
 }
-.finish-button:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
-}
-.finish-button:not(:disabled):hover {
-  background-color: #e0e0e0;
-  transform: translateY(-1px);
-}
+.finish-button:disabled { background-color: #cccccc; cursor: not-allowed; }
+.finish-button:not(:disabled):hover { background-color: #e0e0e0; transform: translateY(-1px); }
 
 /* ===== Última operação ===== */
+/* FIX #2: flex-wrap no container + filhos de texto ocupando linha inteira.
+   Os botões fiscais (que agora podem ser 6+) se agrupam em linhas, sem empilhar 1 por linha. */
 .last-result {
   margin-top: 1rem;
   padding: 1rem;
@@ -637,21 +577,25 @@
   background-color: rgba(35, 162, 246, 0.08);
   border: 1px solid rgba(35, 162, 246, 0.3);
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 0.55rem;
+  align-items: center;
 }
+.last-result > .result-title,
+.last-result > p,
+.last-result > .status-pill {
+  flex: 1 1 100%;
+}
+.last-result > .secondary { flex: 0 0 auto; }
+
 .result-title {
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-size: 0.85rem;
 }
-.result-title span {
-  color: rgba(255, 255, 255, 0.6);
-}
-.result-title strong {
-  color: #ffffff;
-}
+.result-title span { color: rgba(255, 255, 255, 0.6); }
+.result-title strong { color: #ffffff; }
 .last-result p {
   margin: 0;
   font-size: 0.8rem;
@@ -664,12 +608,7 @@
   font-size: 0.7rem;
   color: rgba(255, 255, 255, 0.6);
 }
-.last-result .reason {
-  color: #ff6b5e;
-}
-.last-result .secondary {
-  align-self: flex-start;
-}
+.last-result .reason { color: #ff6b5e; }
 
 /* ===== Status pill ===== */
 .status-pill {
@@ -685,9 +624,7 @@
 }
 
 /* ===== Histórico ===== */
-.history-panel {
-  margin-top: 1.5rem;
-}
+.history-panel { margin-top: 1.5rem; }
 .table-wrapper {
   background-color: transparent;
   border-radius: 8px;
@@ -716,42 +653,132 @@
   color: rgba(255, 255, 255, 0.85);
   text-transform: uppercase;
 }
-.sales-table tbody tr:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-}
+.sales-table tbody tr:hover { background-color: rgba(255, 255, 255, 0.05); }
 .sales-table td small {
   display: block;
   font-size: 0.7rem;
   color: rgba(255, 255, 255, 0.5);
   margin-top: 2px;
 }
+
+/* FIX #3: permite que os vários botões de ação quebrem linha em vez de estourar a célula */
+/* Container: linha única estável, botões quadrados */
 .sales-table .actions {
-  display: flex;
-  gap: 0.4rem;
+  /* Continua table-cell → vertical-align: middle funciona */
   white-space: nowrap;
+  /* Não usa display: flex */
 }
+
 .sales-table .actions button {
-  background: none;
-  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin-right: 0.4rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
   color: rgba(255, 255, 255, 0.75);
   cursor: pointer;
-  padding: 0.4rem;
-  border-radius: 4px;
-  transition: all 0.2s;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
   font-size: 0.85rem;
+  line-height: 1;
 }
-.sales-table .actions button:hover {
+
+.sales-table .actions button:last-child { margin-right: 0; }
+
+.sales-table .actions button:hover:not(:disabled) {
   background: rgba(35, 162, 246, 0.2);
+  border-color: rgba(35, 162, 246, 0.4);
   color: #23a2f6;
 }
-.sales-table .actions button.danger-icon:hover {
+.sales-table .actions button.danger-icon:hover:not(:disabled) {
   background: rgba(255, 67, 54, 0.2);
+  border-color: rgba(255, 67, 54, 0.4);
   color: #ff4336;
 }
-.empty-cell {
-  text-align: center;
-  padding: 2rem 1rem !important;
+.sales-table .actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   FIX #4: Modal de contingência (novo)
+   ============================================================ */
+.contingency-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 7, 16, 0.75);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 1000;
+  animation: contingency-fade 0.15s ease-out;
+}
+@keyframes contingency-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.contingency-dialog {
+  width: 100%;
+  max-width: 520px;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  padding: 1.5rem;
+  background-color: rgba(20, 20, 30, 0.98);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-sizing: border-box;
+}
+.contingency-dialog h2 {
+  font-size: 1.15rem;
+  font-weight: 500;
+  margin: 0;
+  background: linear-gradient(to right, #1845ad, #23a2f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.contingency-dialog p {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.75);
+}
+.contingency-dialog > small {
+  font-size: 0.72rem;
   color: rgba(255, 255, 255, 0.5);
+  text-align: right;
+}
+.contingency-dialog .field-label { margin-bottom: 0; }
+
+/* FIX #6: botões lado a lado no rodapé do modal, com o "Confirmar" sem width:100% */
+.contingency-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+.contingency-actions .finish-button {
+  width: auto;
+  margin-top: 0;
+  padding: 10px 18px;
+  font-size: 0.85rem;
+}
+.contingency-actions .secondary {
+  padding: 10px 18px;
+  font-size: 0.85rem;
 }
 
 /* ============================================================
@@ -760,16 +787,9 @@
 
 /* Tablet / telas médias */
 @media (min-width: 769px) and (max-width: 1024px) {
-  .sales-layout {
-    grid-template-columns: 1fr;
-  }
-  .table-wrapper {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  .sales-table {
-    min-width: 680px;
-  }
+  .sales-layout { grid-template-columns: 1fr; }
+  .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .sales-table { min-width: 680px; }
 }
 
 /* Mobile */
@@ -795,7 +815,6 @@
   .panel { padding: 1rem; }
 
   /* Busca */
-  .search-bar { flex-wrap: wrap; }
   .search-bar input { flex: 1 1 100%; }
   .search-bar button { width: 100%; }
 
@@ -814,9 +833,7 @@
   .cart-controls label { min-width: 0; }
 
   /* Consumidor */
-  .consumer-row {
-    grid-template-columns: 1fr;
-  }
+  .consumer-row { grid-template-columns: 1fr; }
   .client-found {
     opacity: 1;
     transform: none;
@@ -824,17 +841,39 @@
     box-sizing: border-box;
   }
 
-  /* Pagamento */
+  /* Pagamento — cada campo ocupa linha própria para não sobrar espaço morto */
   .payment-row {
-    grid-template-columns: 1fr 1fr auto;
+    flex-direction: column;
+    align-items: stretch;
   }
-  .payment-row input[placeholder="Bandeira (código SEFAZ)"],
-  .payment-row input[placeholder="Autorização"] {
-    grid-column: 1 / -1;
+  .payment-row > select,
+  .payment-row > input {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+  }
+  .payment-row > button.icon-button {
+    align-self: flex-end;
   }
 
   .summary > div { font-size: 0.82rem; }
   .summary label { flex-wrap: wrap; }
+
+  /* Última operação — botões em largura natural, empilhados se preciso */
+  .last-result > .secondary {
+    flex: 1 1 auto;
+    justify-content: center;
+    width: 100%;
+  }
+
+  /* Modal de contingência no mobile */
+  .contingency-dialog { padding: 1.15rem; }
+  .contingency-actions { flex-direction: column-reverse; }
+  .contingency-actions .finish-button,
+  .contingency-actions .secondary {
+    width: 100%;
+    justify-content: center;
+  }
 
   /* ==================== Tabela → Cards ==================== */
   .table-wrapper {
@@ -891,22 +930,21 @@
     min-width: 0;
   }
   .sales-table td.actions {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-wrap: wrap;
     justify-content: flex-end;
+    gap: 0.5rem;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     margin-top: 0.5rem;
     padding-top: 0.75rem;
-    gap: 0.5rem;
-    display: flex;
   }
-  .sales-table td.actions::before {
-    display: none;
-  }
-  .sales-table .actions button {
-    padding: 0.6rem 0.9rem;
+  .sales-table td.actions::before { display: none; }
+    .sales-table .actions button {
+    width: 40px;
+    height: 40px;
     font-size: 1rem;
     background-color: rgba(255, 255, 255, 0.08);
-    border-radius: 6px;
+    border-color: transparent;
   }
   .empty-cell {
     display: block !important;
@@ -914,27 +952,3 @@
   }
   .empty-cell::before { display: none !important; }
 }
-
-.contingency-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  background: rgba(0, 0, 0, 0.45);
-}
-
-.contingency-dialog {
-  width: min(34rem, 100%);
-  max-height: calc(100vh - 2rem);
-  overflow: auto;
-  padding: 1.25rem;
-  border-radius: 0.75rem;
-  background: var(--surface, #fff);
-  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.25);
-}
-
-.contingency-dialog h2 { margin-top: 0; }
-.contingency-dialog textarea { width: 100%; resize: vertical; }
-.contingency-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem; }
