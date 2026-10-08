@@ -287,7 +287,32 @@
           @if (selectedSale()?.fiscalDocument?.reason) {
             <p class="reason">{{ selectedSale()?.fiscalDocument?.reason }}</p>
           }
-          @if (selectedSale()?.fiscalDocument?.accessKey) {
+          @if (fiscalActions(selectedSale()!).issueNormal) {
+            <button type="button" class="secondary" (click)="retryIssue(selectedSale()!)" [disabled]="fiscalActionSaleId() !== null">
+              <i class="fas fa-paper-plane"></i> Tentar emissão normal
+            </button>
+          }
+          @if (fiscalActions(selectedSale()!).prepareOfflineContingency) {
+            <button type="button" class="secondary" (click)="openOfflineContingency(selectedSale()!)" [disabled]="fiscalActionSaleId() !== null">
+              <i class="fas fa-triangle-exclamation"></i> Emitir em contingência
+            </button>
+          }
+          @if (fiscalActions(selectedSale()!).transmitOfflineContingency) {
+            <button type="button" class="secondary" (click)="transmitOfflineContingency(selectedSale()!)" [disabled]="fiscalActionSaleId() !== null">
+              <i class="fas fa-cloud-arrow-up"></i> Transmitir contingência
+            </button>
+          }
+          @if (fiscalActions(selectedSale()!).consult) {
+            <button type="button" class="secondary" (click)="consult(selectedSale()!)" [disabled]="fiscalActionSaleId() !== null">
+              <i class="fas fa-sync"></i> Consultar SEFAZ
+            </button>
+          }
+          @if (fiscalActions(selectedSale()!).downloadDanfe) {
+            <button type="button" class="secondary" (click)="downloadDanfe(selectedSale()!)">
+              <i class="fas fa-file-pdf"></i> DANFE
+            </button>
+          }
+          @if (fiscalActions(selectedSale()!).downloadXml) {
             <button type="button" class="secondary" (click)="downloadXml(selectedSale()!)">
               <i class="fas fa-file-code"></i> Baixar XML
             </button>
@@ -332,18 +357,24 @@
                 <small>{{ fiscalStatusLabel(sale.fiscalDocument?.status) }}</small>
               </td>
               <td data-label="Ações" class="actions">
-                <button type="button" (click)="consult(sale)" title="Consultar">
-                  <i class="fas fa-sync"></i>
-                </button>
-                @if (sale.fiscalDocument?.accessKey) {
-                  <button type="button" (click)="downloadXml(sale)" title="Baixar XML">
-                    <i class="fas fa-file-code"></i>
-                  </button>
+                @if (fiscalActions(sale).issueNormal) {
+                  <button type="button" (click)="retryIssue(sale)" title="Tentar emissão normal" [disabled]="fiscalActionSaleId() !== null"><i class="fas fa-paper-plane"></i></button>
+                  <button type="button" (click)="openOfflineContingency(sale)" title="Preparar contingência offline" [disabled]="fiscalActionSaleId() !== null"><i class="fas fa-triangle-exclamation"></i></button>
                 }
-                @if (sale.status === 'FISCALIZADA') {
-                  <button type="button" class="danger-icon" (click)="cancel(sale)" title="Cancelar">
-                    <i class="fas fa-ban"></i>
-                  </button>
+                @if (fiscalActions(sale).transmitOfflineContingency) {
+                  <button type="button" (click)="transmitOfflineContingency(sale)" title="Transmitir contingência" [disabled]="fiscalActionSaleId() !== null"><i class="fas fa-cloud-arrow-up"></i></button>
+                }
+                @if (fiscalActions(sale).consult) {
+                  <button type="button" (click)="consult(sale)" title="Consultar SEFAZ" [disabled]="fiscalActionSaleId() !== null"><i class="fas fa-sync"></i></button>
+                }
+                @if (fiscalActions(sale).downloadDanfe) {
+                  <button type="button" (click)="downloadDanfe(sale)" title="Baixar DANFE"><i class="fas fa-file-pdf"></i></button>
+                }
+                @if (fiscalActions(sale).downloadXml) {
+                  <button type="button" (click)="downloadXml(sale)" title="Baixar XML"><i class="fas fa-file-code"></i></button>
+                }
+                @if (fiscalActions(sale).cancel) {
+                  <button type="button" class="danger-icon" (click)="cancel(sale)" title="Cancelar"><i class="fas fa-ban"></i></button>
                 }
               </td>
             </tr>
@@ -357,3 +388,23 @@
     </div>
   </section>
 </div>
+
+@if (contingencySale()) {
+  <div class="contingency-backdrop" (click)="closeOfflineContingency()">
+    <section class="contingency-dialog" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="contingency-title">
+      <h2 id="contingency-title">Emitir NFC-e em contingência offline</h2>
+      <p>A venda #{{ contingencySale()?.id }} já está registrada. Use contingência somente quando a emissão normal não tiver sido transmitida e houver indisponibilidade que justifique a emissão offline.</p>
+      <label class="field-label">
+        Justificativa da contingência
+        <textarea [(ngModel)]="contingencyJustification" minlength="15" maxlength="256" rows="4" placeholder="Informe o motivo da entrada em contingência"></textarea>
+      </label>
+      <small>{{ contingencyJustification.trim().length }}/256 caracteres · mínimo 15</small>
+      <div class="contingency-actions">
+        <button type="button" class="secondary" (click)="closeOfflineContingency()" [disabled]="fiscalActionSaleId() !== null">Cancelar</button>
+        <button type="button" class="finish-button" (click)="confirmOfflineContingency()" [disabled]="contingencyJustification.trim().length < 15 || contingencyJustification.trim().length > 256 || fiscalActionSaleId() !== null">
+          @if (fiscalActionSaleId() !== null) { <i class="fas fa-spinner fa-spin"></i> Preparando… } @else { Confirmar contingência }
+        </button>
+      </div>
+    </section>
+  </div>
+}

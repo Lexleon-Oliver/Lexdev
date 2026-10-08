@@ -1,6 +1,6 @@
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { Product } from '../../models/product';
-import { PaymentMethod, Sale, SaleCreateRequest } from '../../models/sale';
+import { fiscalActionsFor, FiscalActions, PaymentMethod, Sale, SaleCreateRequest } from '../../models/sale';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProductService } from '../../../core/services/product-service';
@@ -8,7 +8,7 @@ import { FiscalEstablishmentService } from '../../../core/services/fiscal-establ
 import { ClientService } from '../../../core/services/client-service';
 import { NotificationService } from '../../../core/services/notification-service';
 import { FiscalEstablishment } from '../../models/fiscal-establishment';
-import { catchError, debounceTime, distinctUntilChanged, EMPTY, finalize, map, of, Subject, switchMap } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, EMPTY, finalize, map, Observable, of, Subject, switchMap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SaleService } from '../../../core/services/sale-service';
 
@@ -61,6 +61,9 @@ export class SalesComponent implements OnInit {
   isSaving = signal(false);
   selectedSale = signal<Sale | null>(null);
   errorMessage = signal<string | null>(null);
+  fiscalActionSaleId = signal<number | null>(null);
+  contingencySale = signal<Sale | null>(null);
+  contingencyJustification = '';
 
   readonly paymentMethods: { value: PaymentMethod; label: string }[] = [
     { value: 'DINHEIRO', label: 'Dinheiro' },
@@ -405,18 +408,70 @@ export class SalesComponent implements OnInit {
     });
   }
 
-  consult(sale: Sale): void {
-    this.saleService.consult(sale.id).subscribe({
-      next: updated => {
-        this.selectedSale.set(updated);
-        this.loadRecentSales();
-      },
-      error: () => this.notification.error('Não foi possível consultar a situação fiscal.'),
+  fiscalActions(sale: Sale): FiscalActions {
+    return fiscalActionsFor(sale);
+  }
+
+  retryIssue(sale: Sale): void {
+    if (!this.fiscalActions(sale).issueNormal || this.fiscalActionSaleId() !== null) return;
+    this.runFiscalAction(sale, this.saleService.issue(sale.id), 'NFC-e processada.');
+  }
+
+  openOfflineContingency(sale: Sale): void {
+    if (!this.fiscalActions(sale).prepareOfflineContingency || this.fiscalActionSaleId() !== null) return;
+    this.contingencySale.set(sale);
+    this.contingencyJustification = '';
+  }
+
+  closeOfflineContingency(): void {
+    if (this.fiscalActionSaleId() !== null) return;
+    this.contingencySale.set(null);
+    this.contingencyJustification = '';
+  }
+
+  confirmOfflineContingency(): void {
+    const sale = this.contingencySale();
+    const justification = this.contingencyJustification.trim();
+    if (!sale || !this.fiscalActions(sale).prepareOfflineContingency) return;
+    if (justification.length < 15 || justification.length > 256) {
+      this.notification.show('A justificativa da contingência deve ter entre 15 e 256 caracteres.', 'warning', 6000);
+      return;
+    }
+
+    this.fiscalActionSaleId.set(sale.id);
+    this.saleService.prepareOfflineContingency(sale.id, justification)
+      .pipe(finalize(() => this.fiscalActionSaleId.set(null)))
+      .subscribe({
+        next: updated => {
+          this.applyUpdatedSale(updated);
+          this.contingencySale.set(null);
+          this.contingencyJustification = '';
+          this.notification.show(`NFC-e da venda #${updated.id} preparada em contingência offline. Imprima o DANFE antes de prosseguir.`, 'warning', 8000);
+        },
+        error: error => this.notification.error(error?.error?.message ?? 'Não foi possível preparar a contingência offline.'),
+      });
+  }
+
+  transmitOfflineContingency(sale: Sale): void {
+    if (!this.fiscalActions(sale).transmitOfflineContingency || this.fiscalActionSaleId() !== null) return;
+    this.runFiscalAction(sale, this.saleService.transmitOfflineContingency(sale.id), 'Transmissão da NFC-e em contingência processada.');
+  }
+
+  downloadDanfe(sale: Sale): void {
+    if (!this.fiscalActions(sale).downloadDanfe) return;
+    this.saleService.downloadDanfe(sale.id).subscribe({
+      next: blob => this.downloadBlob(blob, `danfe-nfce-venda-${sale.id}.pdf`),
+      error: error => this.notification.error(error?.error?.message ?? 'DANFE fiscal indisponível.'),
     });
   }
 
+  consult(sale: Sale): void {
+    if (!this.fiscalActions(sale).consult || this.fiscalActionSaleId() !== null) return;
+    this.runFiscalAction(sale, this.saleService.consult(sale.id), 'Situação fiscal atualizada.');
+  }
+
   cancel(sale: Sale): void {
-    if (sale.status !== 'FISCALIZADA' || !sale.fiscalDocument?.accessKey) return;
+    if (!this.fiscalActions(sale).cancel) return;
     const justification = window.prompt('Justificativa do cancelamento (mínimo de 15 caracteres):', 'Cancelamento solicitado pelo estabelecimento');
     if (!justification) return;
     this.saleService.cancel(sale.id, justification).subscribe({
@@ -430,18 +485,36 @@ export class SalesComponent implements OnInit {
   }
 
   downloadXml(sale: Sale): void {
-    if (!sale.fiscalDocument?.accessKey) return;
+    if (!this.fiscalActions(sale).downloadXml) return;
     this.saleService.downloadXml(sale.id).subscribe({
-      next: blob => {
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-        anchor.href = url;
-        anchor.download = `nfce-venda-${sale.id}.xml`;
-        anchor.click();
-        URL.revokeObjectURL(url);
-      },
+      next: blob => this.downloadBlob(blob, `nfce-venda-${sale.id}.xml`),
       error: () => this.notification.error('XML fiscal indisponível.'),
     });
+  }
+
+  private runFiscalAction(sale: Sale, request: Observable<Sale>, successMessage: string): void {
+    this.fiscalActionSaleId.set(sale.id);
+    request.pipe(finalize(() => this.fiscalActionSaleId.set(null))).subscribe({
+      next: updated => {
+        this.applyUpdatedSale(updated);
+        this.notification.success(successMessage);
+      },
+      error: error => this.notification.error(error?.error?.message ?? 'Não foi possível processar a operação fiscal.'),
+    });
+  }
+
+  private applyUpdatedSale(updated: Sale): void {
+    this.selectedSale.set(updated);
+    this.recentSales.update(items => items.map(item => item.id === updated.id ? updated : item));
+  }
+
+  private downloadBlob(blob: Blob, fileName: string): void {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.click();
+    URL.revokeObjectURL(url);
   }
 
   statusLabel(status: string | undefined): string {
