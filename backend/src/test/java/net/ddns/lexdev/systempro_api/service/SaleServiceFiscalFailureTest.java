@@ -162,21 +162,35 @@ class SaleServiceFiscalFailureTest {
         long saleId = 3L;
         Sale sale = mock(Sale.class);
         FiscalDocument document = mock(FiscalDocument.class);
-        FiscalEstablishment establishmentRef = mock(FiscalEstablishment.class);
-        FiscalEstablishment establishment = mock(FiscalEstablishment.class);
-
-        when(establishmentRef.getId()).thenReturn(30L);
-        when(document.getEstablishment()).thenReturn(establishmentRef);
         when(document.getStatus()).thenReturn(FiscalDocumentStatus.CONTINGENCIA);
         when(saleRepository.findForFiscal(saleId)).thenReturn(Optional.of(sale));
         when(fiscalDocumentRepository.findBySaleId(saleId)).thenReturn(Optional.of(document));
-        when(fiscalEstablishmentService.requireDetailed(30L)).thenReturn(establishment);
 
         assertThatThrownBy(() -> service.issue(saleId))
             .isInstanceOf(net.ddns.lexdev.systempro_api.exception.BusinessException.class)
             .hasMessageContaining("transmissão da contingência");
 
-        verify(gateway, never()).authorize(establishment, sale, document);
+        verify(fiscalEstablishmentService, never()).requireDetailed(org.mockito.ArgumentMatchers.anyLong());
+        verify(fiscalEstablishmentService, never()).assertReadyForEmission(org.mockito.ArgumentMatchers.any());
+        verify(gateway, never()).authorize(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void naoDeveReemitirDocumentoRejeitado() {
+        long saleId = 7L;
+        Sale sale = mock(Sale.class);
+        FiscalDocument document = mock(FiscalDocument.class);
+
+        when(document.getStatus()).thenReturn(FiscalDocumentStatus.REJEITADA);
+        when(saleRepository.findForFiscal(saleId)).thenReturn(Optional.of(sale));
+        when(fiscalDocumentRepository.findBySaleId(saleId)).thenReturn(Optional.of(document));
+
+        assertThatThrownBy(() -> service.issue(saleId))
+            .isInstanceOf(net.ddns.lexdev.systempro_api.exception.BusinessException.class)
+            .hasMessageContaining("rejeitada");
+
+        verify(fiscalEstablishmentService, never()).assertReadyForEmission(org.mockito.ArgumentMatchers.any());
+        verify(gateway, never()).authorize(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 
     @Test

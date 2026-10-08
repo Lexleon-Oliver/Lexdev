@@ -263,9 +263,6 @@ public class SaleService {
             .orElseThrow(() -> new EntityNotFoundException("Venda não encontrada."));
         FiscalDocument document = fiscalDocumentRepository.findBySaleId(saleId)
             .orElseThrow(() -> new EntityNotFoundException("Documento fiscal da venda não encontrado."));
-        FiscalEstablishment establishment = fiscalEstablishmentService.requireDetailed(document.getEstablishment().getId());
-
-        fiscalEstablishmentService.assertReadyForEmission(establishment);
 
         if (document.getStatus() == FiscalDocumentStatus.AUTORIZADA) {
             return response(sale, document);
@@ -277,12 +274,18 @@ public class SaleService {
         if (document.getStatus() == FiscalDocumentStatus.PENDENTE_CONSULTA) {
             throw new BusinessException("A NFC-e está aguardando retorno da SEFAZ/MG. Consulte o documento antes de realizar nova tentativa.");
         }
+        if (document.getStatus() == FiscalDocumentStatus.REJEITADA) {
+            throw new BusinessException("A NFC-e desta venda foi rejeitada e este documento fiscal não pode ser emitido novamente.");
+        }
         if (document.getStatus() == FiscalDocumentStatus.CONTINGENCIA
             || document.getEmissionType() == FiscalEmissionType.CONTINGENCIA_OFFLINE) {
             throw new BusinessException(
                 "A NFC-e foi emitida em contingência offline. Utilize a transmissão da contingência; não gere uma nova emissão normal."
             );
         }
+
+        FiscalEstablishment establishment = fiscalEstablishmentService.requireDetailed(document.getEstablishment().getId());
+        fiscalEstablishmentService.assertReadyForEmission(establishment);
 
         NfceIssueResult result = gateway.authorize(establishment, sale, document);
         applyResult(document, result);
@@ -395,8 +398,8 @@ public class SaleService {
         FiscalDocument document = fiscalDocumentRepository.findBySaleId(saleId)
             .orElseThrow(() -> new EntityNotFoundException("Documento fiscal não encontrado."));
 
-        if (document.getStatus() == FiscalDocumentStatus.CANCELADA) {
-            return response(sale, document);
+        if (document.getStatus() != FiscalDocumentStatus.PENDENTE_CONSULTA) {
+            throw new BusinessException("Somente uma NFC-e pendente de consulta pode ser consultada por este fluxo.");
         }
 
         NfceIssueResult result = gateway.consult(document.getEstablishment(), document);

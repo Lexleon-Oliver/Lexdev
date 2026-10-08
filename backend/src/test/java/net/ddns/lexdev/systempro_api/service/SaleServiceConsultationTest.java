@@ -165,6 +165,19 @@ class SaleServiceConsultationTest {
         verify(fixture.sale(), never()).setStatus(SaleStatus.FISCAL_PENDENTE);
     }
 
+    @Test
+    void naoDeveConsultarDocumentoForaDoEstadoPendenteConsulta() {
+        Fixture fixture = fixture(5L);
+        when(fixture.document().getStatus()).thenReturn(FiscalDocumentStatus.CANCELAMENTO_PENDENTE);
+
+        assertThatThrownBy(() -> service.consult(fixture.saleId()))
+            .isInstanceOf(net.ddns.lexdev.systempro_api.exception.BusinessException.class)
+            .hasMessageContaining("pendente de consulta");
+
+        verify(gateway, never()).consult(fixture.establishment(), fixture.document());
+        verify(gateway, never()).consultCancellation(fixture.establishment(), fixture.document());
+    }
+
     private Fixture fixture(long saleId) {
         Sale sale = mock(Sale.class);
         FiscalDocument document = mock(FiscalDocument.class);
@@ -173,7 +186,8 @@ class SaleServiceConsultationTest {
 
         when(saleRepository.findForFiscal(saleId)).thenReturn(Optional.of(sale));
         when(fiscalDocumentRepository.findBySaleId(saleId)).thenReturn(Optional.of(document));
-        when(document.getEstablishment()).thenReturn(establishment);
+        when(document.getStatus()).thenReturn(FiscalDocumentStatus.PENDENTE_CONSULTA);
+        lenient().when(document.getEstablishment()).thenReturn(establishment);
         lenient().when(sale.getFiscalEstablishment()).thenReturn(establishment);
         lenient().when(sale.getUser()).thenReturn(user);
         lenient().when(sale.getItems()).thenReturn(List.of());
