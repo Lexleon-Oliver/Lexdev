@@ -10,6 +10,7 @@ interface DeletedRecord {
   subtitle: string | null;
   lastModifiedAt: string | null;
 }
+
 type DeletedRecordType = 'CLIENT' | 'SUPPLIER' | 'PRODUCT' | 'SUPPLIER_DOCUMENT' | 'USER';
 
 @Component({
@@ -20,31 +21,112 @@ type DeletedRecordType = 'CLIENT' | 'SUPPLIER' | 'PRODUCT' | 'SUPPLIER_DOCUMENT'
 })
 export class DeletedRecordsComponent implements OnInit {
   private readonly http = inject(HttpClient);
+
   readonly types: { value: DeletedRecordType; label: string }[] = [
-    { value: 'CLIENT', label: 'Clientes' }, { value: 'SUPPLIER', label: 'Fornecedores' },
-    { value: 'PRODUCT', label: 'Produtos' }, { value: 'SUPPLIER_DOCUMENT', label: 'Documentos de fornecedores' },
+    { value: 'CLIENT', label: 'Clientes' },
+    { value: 'SUPPLIER', label: 'Fornecedores' },
+    { value: 'PRODUCT', label: 'Produtos' },
+    { value: 'SUPPLIER_DOCUMENT', label: 'Documentos de fornecedores' },
     { value: 'USER', label: 'Usuários' }
   ];
-  selectedType: DeletedRecordType = 'CLIENT'; search = ''; records: DeletedRecord[] = [];
-  loading = false; restoringId: number | null = null; error = ''; success = '';
 
-  ngOnInit(): void { this.load(); }
+  selectedType: DeletedRecordType = 'CLIENT';
+  search = '';
+  records: DeletedRecord[] = [];
+  loading = false;
+  restoringId: number | null = null;
+  error = '';
+  success = '';
+
+  showRestoreModal = false;
+  restoringRecord: DeletedRecord | null = null;
+
+  ngOnInit(): void {
+    this.load();
+  }
+
   load(): void {
-    this.loading = true; this.error = '';
-    const params = new HttpParams().set('type', this.selectedType).set('search', this.search.trim());
+    this.loading = true;
+    this.error = '';
+
+    const params = new HttpParams()
+      .set('type', this.selectedType)
+      .set('search', this.search.trim());
+
     this.http.get<DeletedRecord[]>('/api/support/deleted-records', { params }).subscribe({
-      next: r => { this.records = r; this.loading = false; },
-      error: e => { this.error = e?.error?.message || 'Não foi possível carregar os registros excluídos.'; this.loading = false; }
+      next: records => {
+        this.records = records;
+        this.loading = false;
+      },
+      error: error => {
+        this.error = error?.error?.message || 'Não foi possível carregar os registros excluídos.';
+        this.loading = false;
+      }
     });
   }
-  changeType(type: DeletedRecordType): void { this.success = ''; this.selectedType = type; this.search = ''; this.load(); }
-  restore(record: DeletedRecord): void {
-    if (!confirm(`Recuperar "${record.title}"?`)) return;
-    this.restoringId = record.id; this.error = ''; this.success = '';
+
+  changeType(type: DeletedRecordType): void {
+    this.closeRestoreModal();
+    this.success = '';
+    this.selectedType = type;
+    this.search = '';
+    this.load();
+  }
+
+  confirmRestore(record: DeletedRecord): void {
+    if (this.restoringId !== null) {
+      return;
+    }
+
+    this.error = '';
+    this.success = '';
+    this.restoringRecord = record;
+    this.showRestoreModal = true;
+  }
+
+  closeRestoreModal(): void {
+    if (this.restoringId !== null) {
+      return;
+    }
+
+    this.showRestoreModal = false;
+    this.restoringRecord = null;
+  }
+
+  restore(): void {
+    const record = this.restoringRecord;
+
+    if (!record || this.restoringId !== null) {
+      return;
+    }
+
+    this.restoringId = record.id;
+    this.error = '';
+    this.success = '';
+
     this.http.patch<void>(`/api/support/deleted-records/${record.type}/${record.id}/restore`, {}).subscribe({
-      next: () => { this.success = 'Registro recuperado com sucesso.'; this.restoringId = null; this.load(); },
-      error: e => { this.error = e?.error?.message || 'Não foi possível recuperar o registro.'; this.restoringId = null; }
+      next: () => {
+        /*
+         * A restauração já foi confirmada pelo backend. Removemos o item da
+         * coleção local em vez de disparar um segundo GET imediatamente.
+         * Isso evita colocar a tela inteira novamente em estado de loading e
+         * mantém a UI coerente: um registro restaurado não pertence mais à
+         * listagem de excluídos.
+         */
+        this.records = this.records.filter(item => !(item.id === record.id && item.type === record.type));
+        this.restoringId = null;
+        this.showRestoreModal = false;
+        this.restoringRecord = null;
+        this.success = 'Registro recuperado com sucesso.';
+      },
+      error: error => {
+        this.error = error?.error?.message || 'Não foi possível recuperar o registro.';
+        this.restoringId = null;
+      }
     });
   }
-  typeLabel(type: DeletedRecordType): string { return this.types.find(t => t.value === type)?.label ?? type; }
+
+  typeLabel(type: DeletedRecordType): string {
+    return this.types.find(item => item.value === type)?.label ?? type;
+  }
 }

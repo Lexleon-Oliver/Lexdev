@@ -308,6 +308,169 @@
   }
 }
 
+/* ===== Modal de confirmação ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-content {
+  background: rgba(8, 7, 16, 0.95);
+  backdrop-filter: blur(15px);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+  width: 100%;
+  max-width: 460px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 1.5rem;
+  animation: modalFadeIn 0.15s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+
+  h3 {
+    font-size: 1.25rem;
+    font-weight: 500;
+    margin: 0;
+    background: linear-gradient(to right, #1845ad, #23a2f6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.15s;
+
+  &:hover:not(:disabled) {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.08);
+  }
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
+}
+
+.modal-body {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.modal-icon {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 0.85rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(76, 175, 80, 0.15);
+  color: #81c784;
+  font-size: 1.5rem;
+  border: 2px solid rgba(76, 175, 80, 0.35);
+}
+
+.modal-text {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0 0 1rem;
+}
+
+.modal-record {
+  text-align: left;
+  padding: 0.85rem 1rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.modal-record-title {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #ffffff;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.modal-record-subtitle {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.6);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.btn-cancel,
+.btn-confirm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 5px;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.btn-cancel {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+
+  &:hover:not(:disabled) {
+    background-color: rgba(255, 255, 255, 0.25);
+  }
+}
+
+.btn-confirm {
+  background-color: #81c784;
+  color: #080710;
+
+  &:hover:not(:disabled) {
+    background-color: #66bb6a;
+  }
+}
+
+
+
 /* ===== Responsividade ===== */
 @media (max-width: 768px) {
   .records-page {
@@ -381,5 +544,19 @@
 @media (min-width: 769px) and (max-width: 1024px) {
   .records-page {
     padding: 1.25rem;
+  }
+}
+
+/* ===== Responsividade do modal ===== */
+@media (max-width: 768px) {
+  .modal-content {
+    padding: 1.25rem;
+    max-width: 100%;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+
+    button { width: 100%; justify-content: center; }
   }
 }

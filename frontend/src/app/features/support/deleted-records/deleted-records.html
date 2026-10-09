@@ -72,7 +72,7 @@
       @for (r of records; track r.id) {
         <div class="record-card">
           <div class="record-icon">
-            <i class="fas fa-trash-can-arrow-up"></i>
+            <i class="fas fa-trash-restore"></i>
           </div>
 
           <div class="record-body">
@@ -103,21 +103,75 @@
             <button
               type="button"
               class="btn-restore"
-              (click)="restore(r)"
-              [disabled]="restoringId === r.id"
+              (click)="confirmRestore(r)"
               title="Recuperar registro"
             >
-              @if (restoringId === r.id) {
-                <i class="fas fa-spinner fa-spin"></i>
-                Recuperando...
-              } @else {
-                <i class="fas fa-rotate-left"></i>
-                Recuperar
-              }
+              <i class="fas fa-rotate-left"></i>
+              Recuperar
             </button>
           </div>
         </div>
       }
+    </div>
+  }
+    <!-- ===================== Modal de confirmação ===================== -->
+  @if (showRestoreModal && restoringRecord; as record) {
+    <div class="modal-overlay" (click)="closeRestoreModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Confirmar Recuperação</h3>
+          <button
+            type="button"
+            class="close-btn"
+            (click)="closeRestoreModal()"
+            [disabled]="restoringId !== null"
+            title="Fechar"
+          >
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <div class="modal-icon">
+            <i class="fas fa-undo"></i>
+          </div>
+
+          <p class="modal-text">
+            Deseja recuperar o registro abaixo?
+          </p>
+
+          <div class="modal-record">
+            <span class="badge-type">{{ typeLabel(record.type) }}</span>
+            <div class="modal-record-title">{{ record.title }}</div>
+            @if (record.subtitle) {
+              <div class="modal-record-subtitle">{{ record.subtitle }}</div>
+            }
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button
+            type="button"
+            class="btn-cancel"
+            (click)="closeRestoreModal()"
+            [disabled]="restoringId !== null"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="btn-confirm"
+            (click)="restore()"
+            [disabled]="restoringId !== null"
+          >
+            @if (restoringId !== null) {
+              <i class="fas fa-spinner fa-spin"></i> Recuperando...
+            } @else {
+              <i class="fas fa-check"></i> Confirmar
+            }
+          </button>
+        </div>
+      </div>
     </div>
   }
 </div>
