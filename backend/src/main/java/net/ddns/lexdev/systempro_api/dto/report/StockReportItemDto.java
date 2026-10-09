@@ -8,10 +8,16 @@ public record StockReportItemDto(
     String name,
     String unitOfMeasure,
     boolean controlsStock,
+    boolean initialized,
+    BigDecimal currentBalance,
+    StockLevelStatus stockStatus,
+    boolean replenishmentNeeded,
     BigDecimal minimumStock,
     BigDecimal maximumStock,
     BigDecimal reorderPoint,
     BigDecimal salePrice,
+    BigDecimal stockEntries,
+    BigDecimal stockOutputs,
     BigDecimal quantitySold,
     BigDecimal salesValue
 ) {}

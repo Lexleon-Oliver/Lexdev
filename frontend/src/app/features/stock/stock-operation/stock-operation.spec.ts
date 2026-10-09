@@ -50,4 +50,10 @@ describe('StockOperationComponent', () => {
     const request = stock.initializeBalance.mock.calls[0][1];
     expect(request.operationReference).toMatch(/^stock-ui:/);
   });
+  it('presents outgoing movements with a negative sign without changing the persisted quantity', () => {
+    const movement = { id: 1, productId: 1, movementType: 'SALE_OUT' as const, origin: 'SALE' as const, sourceReference: 'SALE_ITEM:1', quantity: 2, previousBalance: 10, resultingBalance: 8, saleId: 1, saleItemId: 1, reason: null, createdBy: 'user', createdAt: '2026-10-09T10:00:00' };
+    expect(component.movementIsEntry(movement.movementType)).toBe(false);
+    expect(component.movementSignedQuantity(movement)).toBe(-2);
+  });
+
 });

@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import net.ddns.lexdev.systempro_api.dto.report.FinancialDailyDto;
 import net.ddns.lexdev.systempro_api.dto.report.FinancialPaymentDto;
 import net.ddns.lexdev.systempro_api.dto.report.FinancialReportResponseDto;
+import net.ddns.lexdev.systempro_api.dto.report.StockLevelStatus;
 import net.ddns.lexdev.systempro_api.dto.report.StockReportItemDto;
 import net.ddns.lexdev.systempro_api.dto.report.StockReportResponseDto;
 import net.ddns.lexdev.systempro_api.enums.PaymentMethod;
@@ -20,6 +21,7 @@ import net.ddns.lexdev.systempro_api.exception.BusinessException;
 import net.ddns.lexdev.systempro_api.repository.ProductRepository;
 import net.ddns.lexdev.systempro_api.repository.SaleRepository;
 import net.ddns.lexdev.systempro_api.repository.projection.FinancialSummaryProjection;
+import net.ddns.lexdev.systempro_api.repository.projection.StockReportProjection;
 
 @Service
 public class ReportService {
@@ -38,16 +40,62 @@ public class ReportService {
     public StockReportResponseDto stock(LocalDate startDate, LocalDate endDate) {
         Period period = period(startDate, endDate);
         List<StockReportItemDto> items = productRepository.stockReport(period.start(), period.endExclusive()).stream()
-            .map(row -> new StockReportItemDto(
-                number(row[0]).longValue(), (String) row[1], (String) row[2], (String) row[3],
-                (Boolean) row[4], decimal(row[5]), decimal(row[6]), decimal(row[7]), decimal(row[8]),
-                decimal(row[9]), decimal(row[10])
-            )).toList();
+            .map(this::stockItem)
+            .toList();
 
         long controlled = items.stream().filter(StockReportItemDto::controlsStock).count();
+        long initialized = items.stream().filter(item -> item.controlsStock() && item.initialized()).count();
+        long replenishmentNeeded = items.stream().filter(StockReportItemDto::replenishmentNeeded).count();
+        BigDecimal currentBalance = items.stream()
+            .filter(StockReportItemDto::initialized)
+            .map(StockReportItemDto::currentBalance)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal entries = items.stream().map(StockReportItemDto::stockEntries).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal outputs = items.stream().map(StockReportItemDto::stockOutputs).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal quantity = items.stream().map(StockReportItemDto::quantitySold).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal value = items.stream().map(StockReportItemDto::salesValue).reduce(BigDecimal.ZERO, BigDecimal::add);
-        return new StockReportResponseDto(startDate, endDate, items.size(), controlled, quantity, value, items);
+        return new StockReportResponseDto(startDate, endDate, items.size(), controlled, initialized,
+            replenishmentNeeded, currentBalance, entries, outputs, quantity, value, items);
+    }
+
+    private StockReportItemDto stockItem(StockReportProjection row) {
+        boolean controlsStock = Boolean.TRUE.equals(row.getControlsStock());
+        boolean initialized = controlsStock && row.getCurrentBalance() != null;
+        BigDecimal balance = initialized ? row.getCurrentBalance() : null;
+        StockLevelStatus status = stockStatus(controlsStock, initialized, balance,
+            row.getMinimumStock(), row.getMaximumStock(), row.getReorderPoint());
+        boolean replenishmentNeeded = initialized && needsReplenishment(balance, row.getMinimumStock(), row.getReorderPoint());
+
+        return new StockReportItemDto(
+            row.getProductId(), row.getCode(), row.getName(), row.getUnitOfMeasure(), controlsStock,
+            initialized, balance, status, replenishmentNeeded,
+            row.getMinimumStock(), row.getMaximumStock(), row.getReorderPoint(), zeroIfNull(row.getSalePrice()),
+            zeroIfNull(row.getStockEntries()), zeroIfNull(row.getStockOutputs()),
+            zeroIfNull(row.getQuantitySold()), zeroIfNull(row.getSalesValue())
+        );
+    }
+
+    private static StockLevelStatus stockStatus(
+        boolean controlsStock,
+        boolean initialized,
+        BigDecimal balance,
+        BigDecimal minimum,
+        BigDecimal maximum,
+        BigDecimal reorderPoint
+    ) {
+        if (!controlsStock) return StockLevelStatus.NOT_CONTROLLED;
+        if (!initialized) return StockLevelStatus.NOT_INITIALIZED;
+        if (balance.signum() == 0) return StockLevelStatus.OUT_OF_STOCK;
+        if (minimum != null && balance.compareTo(minimum) < 0) return StockLevelStatus.BELOW_MINIMUM;
+        if (reorderPoint != null && balance.compareTo(reorderPoint) <= 0) return StockLevelStatus.REORDER;
+        if (maximum != null && balance.compareTo(maximum) > 0) return StockLevelStatus.ABOVE_MAXIMUM;
+        return StockLevelStatus.NORMAL;
+    }
+
+    private static boolean needsReplenishment(BigDecimal balance, BigDecimal minimum, BigDecimal reorderPoint) {
+        if (balance.signum() == 0) return true;
+        if (minimum != null && balance.compareTo(minimum) < 0) return true;
+        return reorderPoint != null && balance.compareTo(reorderPoint) <= 0;
     }
 
     @Transactional(readOnly = true)
@@ -78,8 +126,6 @@ public class ReportService {
         return new Period(startDate.atStartOfDay(BUSINESS_ZONE).toInstant(), endDate.plusDays(1).atStartOfDay(BUSINESS_ZONE).toInstant());
     }
 
-    private static BigDecimal decimal(Object value) { return value == null ? BigDecimal.ZERO : (BigDecimal) value; }
-    private static Number number(Object value) { return value == null ? 0L : (Number) value; }
     private static BigDecimal zeroIfNull(BigDecimal value) { return value == null ? BigDecimal.ZERO : value; }
     private record Period(Instant start, Instant endExclusive) {}
 }

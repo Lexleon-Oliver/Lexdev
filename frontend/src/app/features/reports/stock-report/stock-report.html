@@ -1,159 +1,61 @@
-<!-- ============================================================
-     stock-report.component.html
-     ============================================================ -->
 <div class="report-page">
-  <!-- Cabeçalho -->
   <div class="page-header">
     <h2>Relatório de Estoque</h2>
-
     <div class="header-actions">
-      <div class="search-box">
-        <i class="fas fa-search"></i>
-        <input
-          type="text"
-          placeholder="Buscar por código ou nome..."
-          [value]="search()"
-          (input)="setSearch($any($event.target).value)"
-        />
-      </div>
-
+      <div class="search-box"><i class="fas fa-search"></i><input type="text" placeholder="Buscar por código ou nome..." [value]="search()" (input)="setSearch($any($event.target).value)" /></div>
       <div class="date-range">
-        <label>
-          <span>De</span>
-          <input
-            type="date"
-            [value]="startDate"
-            (input)="startDate = $any($event.target).value"
-          />
-        </label>
-        <label>
-          <span>Até</span>
-          <input
-            type="date"
-            [value]="endDate"
-            (input)="endDate = $any($event.target).value"
-          />
-        </label>
-        <button class="btn-primary" (click)="load()" [disabled]="loading()">
-          @if (loading()) {
-            <i class="fas fa-spinner fa-spin"></i>
-          } @else {
-            <i class="fas fa-filter"></i>
-          }
-          Aplicar
-        </button>
+        <label><span>De</span><input type="date" [value]="startDate" (input)="startDate = $any($event.target).value" /></label>
+        <label><span>Até</span><input type="date" [value]="endDate" (input)="endDate = $any($event.target).value" /></label>
+        <button class="btn-primary" (click)="load()" [disabled]="loading()">@if (loading()) { <i class="fas fa-spinner fa-spin"></i> } @else { <i class="fas fa-filter"></i> } Aplicar</button>
       </div>
     </div>
   </div>
 
-  <!-- Loading -->
   @if (loading()) {
     <div class="loading"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>
   } @else if (report(); as r) {
+    <div class="period-info">Período: {{ r.startDate | date:'dd/MM/yyyy':'UTC' }} a {{ r.endDate | date:'dd/MM/yyyy':'UTC' }}</div>
 
-    <!-- ===================== KPIs ===================== -->
     <div class="kpi-grid">
-      <div class="kpi-card">
-        <div class="kpi-icon blue"><i class="fas fa-boxes"></i></div>
-        <div class="kpi-info">
-          <span class="kpi-label">Produtos</span>
-          <span class="kpi-value">{{ r.products }}</span>
-        </div>
-      </div>
-
-      <div class="kpi-card">
-        <div class="kpi-icon purple"><i class="fas fa-warehouse"></i></div>
-        <div class="kpi-info">
-          <span class="kpi-label">Com Controle de Estoque</span>
-          <span class="kpi-value">{{ r.stockControlledProducts }}</span>
-        </div>
-      </div>
-
-      <div class="kpi-card">
-        <div class="kpi-icon green"><i class="fas fa-sort-amount-up"></i></div>
-        <div class="kpi-info">
-          <span class="kpi-label">Qtd. Vendida</span>
-          <span class="kpi-value">{{ r.quantitySold }}</span>
-        </div>
-      </div>
-
-      <div class="kpi-card highlight">
-        <div class="kpi-icon blue"><i class="fas fa-dollar-sign"></i></div>
-        <div class="kpi-info">
-          <span class="kpi-label">Valor de Vendas</span>
-          <span class="kpi-value">{{ r.salesValue | currency:'BRL' }}</span>
-        </div>
-      </div>
+      <div class="kpi-card"><div class="kpi-icon blue"><i class="fas fa-boxes"></i></div><div class="kpi-info"><span class="kpi-label">Produtos</span><span class="kpi-value">{{ r.products }}</span></div></div>
+      <div class="kpi-card"><div class="kpi-icon purple"><i class="fas fa-warehouse"></i></div><div class="kpi-info"><span class="kpi-label">Com controle</span><span class="kpi-value">{{ r.stockControlledProducts }}</span></div></div>
+      <div class="kpi-card"><div class="kpi-icon green"><i class="fas fa-check-circle"></i></div><div class="kpi-info"><span class="kpi-label">Inicializados</span><span class="kpi-value">{{ r.initializedStockProducts }}</span></div></div>
+      <div class="kpi-card highlight"><div class="kpi-icon purple"><i class="fas fa-exclamation-triangle"></i></div><div class="kpi-info"><span class="kpi-label">Precisam reposição</span><span class="kpi-value">{{ r.replenishmentNeededProducts }}</span></div></div>
+      <div class="kpi-card"><div class="kpi-icon blue"><i class="fas fa-layer-group"></i></div><div class="kpi-info"><span class="kpi-label">Saldo atual</span><span class="kpi-value">{{ r.currentBalance | number:'1.0-6' }}</span></div></div>
+      <div class="kpi-card"><div class="kpi-icon green"><i class="fas fa-arrow-down"></i></div><div class="kpi-info"><span class="kpi-label">Entradas no período</span><span class="kpi-value">{{ r.stockEntries | number:'1.0-6' }}</span></div></div>
+      <div class="kpi-card"><div class="kpi-icon purple"><i class="fas fa-arrow-up"></i></div><div class="kpi-info"><span class="kpi-label">Saídas no período</span><span class="kpi-value">{{ r.stockOutputs | number:'1.0-6' }}</span></div></div>
+      <div class="kpi-card"><div class="kpi-icon green"><i class="fas fa-shopping-cart"></i></div><div class="kpi-info"><span class="kpi-label">Qtd. vendida</span><span class="kpi-value">{{ r.quantitySold | number:'1.0-6' }}</span></div></div>
+      <div class="kpi-card highlight"><div class="kpi-icon blue"><i class="fas fa-dollar-sign"></i></div><div class="kpi-info"><span class="kpi-label">Valor de vendas</span><span class="kpi-value">{{ r.salesValue | currency:'BRL' }}</span></div></div>
     </div>
 
-    <!-- ===================== Tabela ===================== -->
     @if (items().length === 0) {
-      <div class="empty-state">
-        <i class="fas fa-box-open"></i>
-        <p>Nenhum item encontrado para o período/filtro.</p>
-      </div>
+      <div class="empty-state"><i class="fas fa-box-open"></i><p>Nenhum item encontrado para o período/filtro.</p></div>
     } @else {
       <div class="table-wrapper">
         <table class="stock-table">
-          <thead>
-            <tr>
-              <th>Código</th>
-              <th>Produto</th>
-              <th>Un.</th>
-              <th>Qtd. Vendida</th>
-              <th>Valor de Vendas</th>
-              <th>Est. Mín.</th>
-              <th>Est. Máx.</th>
-              <th>Ponto Repos.</th>
-              <th>Preço Venda</th>
-            </tr>
-          </thead>
+          <thead><tr><th>Código</th><th>Produto</th><th>Situação</th><th>Saldo</th><th>Entradas</th><th>Saídas</th><th>Qtd. vendida</th><th>Vendas</th><th>Mín.</th><th>Máx.</th><th>Repos.</th><th>Preço</th></tr></thead>
           <tbody>
             @for (item of items(); track item.productId) {
-              <tr>
-                <td data-label="Código">
-                  <span class="code-chip">{{ item.code }}</span>
-                </td>
-                <td data-label="Produto">
-                  <div class="product-cell">
-                    <span class="product-name">{{ item.name }}</span>
-                    @if (item.controlsStock) {
-                      <span class="badge-stock" title="Controla estoque">
-                        <i class="fas fa-check"></i> controlado
-                      </span>
-                    }
-                  </div>
-                </td>
-                <td data-label="Un.">{{ item.unitOfMeasure }}</td>
-                <td data-label="Qtd. Vendida">
-                  <strong>{{ item.quantitySold }}</strong>
-                </td>
-                <td data-label="Valor de Vendas">
-                  {{ item.salesValue | currency:'BRL' }}
-                </td>
-                <td data-label="Est. Mín.">
-                  {{ item.minimumStock !== null ? item.minimumStock : '—' }}
-                </td>
-                <td data-label="Est. Máx.">
-                  {{ item.maximumStock !== null ? item.maximumStock : '—' }}
-                </td>
-                <td data-label="Ponto Repos.">
-                  {{ item.reorderPoint !== null ? item.reorderPoint : '—' }}
-                </td>
-                <td data-label="Preço Venda">
-                  {{ item.salePrice !== null ? (item.salePrice | currency:'BRL') : '—' }}
-                </td>
+              <tr [class.replenishment-row]="item.replenishmentNeeded">
+                <td data-label="Código"><span class="code-chip">{{ item.code }}</span></td>
+                <td data-label="Produto"><div class="product-cell"><span class="product-name">{{ item.name }}</span><small>{{ item.unitOfMeasure }}</small></div></td>
+                <td data-label="Situação"><span class="stock-status" [class]="'stock-status ' + stockStatusClass(item.stockStatus)">{{ stockStatusLabel(item.stockStatus) }}</span></td>
+                <td data-label="Saldo">{{ item.initialized && item.currentBalance !== null ? (item.currentBalance | number:'1.0-6') : '—' }}</td>
+                <td data-label="Entradas">{{ item.stockEntries | number:'1.0-6' }}</td>
+                <td data-label="Saídas">{{ item.stockOutputs | number:'1.0-6' }}</td>
+                <td data-label="Qtd. vendida">{{ item.quantitySold | number:'1.0-6' }}</td>
+                <td data-label="Vendas">{{ item.salesValue | currency:'BRL' }}</td>
+                <td data-label="Mín.">{{ item.minimumStock !== null ? (item.minimumStock | number:'1.0-6') : '—' }}</td>
+                <td data-label="Máx.">{{ item.maximumStock !== null ? (item.maximumStock | number:'1.0-6') : '—' }}</td>
+                <td data-label="Repos.">{{ item.reorderPoint !== null ? (item.reorderPoint | number:'1.0-6') : '—' }}</td>
+                <td data-label="Preço">{{ item.salePrice !== null ? (item.salePrice | currency:'BRL') : '—' }}</td>
               </tr>
             }
           </tbody>
         </table>
       </div>
     }
-
   } @else {
-    <div class="empty-state">
-      <i class="fas fa-boxes"></i>
-      <p>Selecione um período e clique em Aplicar.</p>
-    </div>
+    <div class="empty-state"><i class="fas fa-boxes"></i><p>Selecione um período e clique em Aplicar.</p></div>
   }
 </div>

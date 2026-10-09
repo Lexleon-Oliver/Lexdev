@@ -160,6 +160,17 @@ export class StockOperationComponent implements OnInit {
     return labels[type];
   }
 
+  movementIsEntry(type: StockMovementType): boolean {
+    return type === 'INITIAL_BALANCE'
+      || type === 'PURCHASE_ENTRY'
+      || type === 'SALE_CANCELLATION_RETURN'
+      || type === 'POSITIVE_ADJUSTMENT';
+  }
+
+  movementSignedQuantity(movement: StockMovement): number {
+    return this.movementIsEntry(movement.movementType) ? movement.quantity : -movement.quantity;
+  }
+
   operationTitle(): string {
     switch (this.operation()) {
       case 'INITIAL': return 'Informar saldo inicial';

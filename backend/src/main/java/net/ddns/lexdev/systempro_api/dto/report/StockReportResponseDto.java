@@ -9,6 +9,11 @@ public record StockReportResponseDto(
     LocalDate endDate,
     long products,
     long stockControlledProducts,
+    long initializedStockProducts,
+    long replenishmentNeededProducts,
+    BigDecimal currentBalance,
+    BigDecimal stockEntries,
+    BigDecimal stockOutputs,
     BigDecimal quantitySold,
     BigDecimal salesValue,
     List<StockReportItemDto> items
