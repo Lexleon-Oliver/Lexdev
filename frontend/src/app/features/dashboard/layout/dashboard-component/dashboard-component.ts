@@ -52,7 +52,7 @@ export class DashboardComponent implements OnInit {
       {
         key: 'estoque-operacao',
         label: 'Estoque',
-        icon: 'fas fa-boxes-stacked',
+        icon: 'fas fa-boxes',
         route: ['/estoque/operacao']
       },
 
