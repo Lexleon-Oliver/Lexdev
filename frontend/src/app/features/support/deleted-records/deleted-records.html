@@ -1,0 +1,123 @@
+<!-- ============================================================
+     deleted-records.html
+     ============================================================ -->
+<div class="records-page">
+  <!-- Cabeçalho -->
+  <div class="page-header">
+    <h2>Recuperação de Registros</h2>
+    <p class="page-subtitle">
+      Restaure itens excluídos do sistema. Selecione o tipo e localize o registro desejado.
+    </p>
+  </div>
+
+  <!-- ===================== Abas de tipo ===================== -->
+  <div class="tabs">
+    @for (t of types; track t.value) {
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="selectedType === t.value"
+        (click)="changeType(t.value)"
+      >
+        {{ t.label }}
+      </button>
+    }
+  </div>
+
+  <!-- ===================== Busca ===================== -->
+  <div class="toolbar">
+    <div class="search-box">
+      <i class="fas fa-search"></i>
+      <input
+        type="text"
+        placeholder="Buscar por título ou descrição..."
+        [(ngModel)]="search"
+        (keyup.enter)="load()"
+      />
+    </div>
+    <button class="btn-primary" (click)="load()" [disabled]="loading">
+      @if (loading) {
+        <i class="fas fa-spinner fa-spin"></i>
+      } @else {
+        <i class="fas fa-filter"></i>
+      }
+      Buscar
+    </button>
+  </div>
+
+  <!-- ===================== Alertas ===================== -->
+  @if (error) {
+    <div class="alert-error">
+      <i class="fas fa-exclamation-circle"></i>
+      {{ error }}
+    </div>
+  }
+  @if (success) {
+    <div class="alert-success">
+      <i class="fas fa-check-circle"></i>
+      {{ success }}
+    </div>
+  }
+
+  <!-- ===================== Lista ===================== -->
+  @if (loading) {
+    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>
+  } @else if (records.length === 0) {
+    <div class="empty-state">
+      <i class="fas fa-inbox"></i>
+      <p>Nenhum registro excluído encontrado.</p>
+    </div>
+  } @else {
+    <div class="records-list">
+      @for (r of records; track r.id) {
+        <div class="record-card">
+          <div class="record-icon">
+            <i class="fas fa-trash-can-arrow-up"></i>
+          </div>
+
+          <div class="record-body">
+            <div class="record-title">{{ r.title }}</div>
+
+            @if (r.subtitle) {
+              <div class="record-subtitle">{{ r.subtitle }}</div>
+            }
+
+            <div class="record-meta">
+              <span class="badge-type">{{ typeLabel(r.type) }}</span>
+
+              @if (r.lastModifiedAt) {
+                <span class="meta-date">
+                  <i class="fas fa-clock"></i>
+                  {{ r.lastModifiedAt | date:'dd/MM/yyyy HH:mm' }}
+                </span>
+              } @else {
+                <span class="meta-date muted">
+                  <i class="fas fa-clock"></i>
+                  sem data
+                </span>
+              }
+            </div>
+          </div>
+
+          <div class="record-actions">
+            <button
+              type="button"
+              class="btn-restore"
+              (click)="restore(r)"
+              [disabled]="restoringId === r.id"
+              title="Recuperar registro"
+            >
+              @if (restoringId === r.id) {
+                <i class="fas fa-spinner fa-spin"></i>
+                Recuperando...
+              } @else {
+                <i class="fas fa-rotate-left"></i>
+                Recuperar
+              }
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

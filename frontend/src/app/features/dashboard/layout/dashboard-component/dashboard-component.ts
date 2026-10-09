@@ -119,6 +119,13 @@ export class DashboardComponent implements OnInit {
         ]
       }
     ];
+    if (this.authService.isSupport()) {
+      this.menus.push({
+        key: 'suporte', label: 'Suporte', icon: 'fas fa-tools', open: false,
+        submenu: [{ key: 'recovery', label: 'Recuperação de dados', icon: '', route: ['/suporte/recuperacao'] }]
+      });
+    }
+
     if (this.authService.hasRole(['ROLE_ADMIN', 'ROLE_SUPPORT'])) {
       this.menus.push({
         key: 'admin',

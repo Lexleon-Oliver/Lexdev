@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { ErrorPageComponent } from './core/pages/error-page-component/error-page-component';
 import { ChangePasswordComponent } from './core/pages/change-password-component/change-password-component';
+import { supportGuard } from './core/guards/support.guard';
 
 
 export const routes: Routes = [
@@ -36,6 +37,11 @@ export const routes: Routes = [
             .then(m => m.HomeComponent)
       },
       { path: 'alterar-senha', component: ChangePasswordComponent },
+      {
+        path: 'suporte/recuperacao',
+        canActivate: [supportGuard],
+        loadComponent: () => import('./features/support/deleted-records/deleted-records').then(m => m.DeletedRecordsComponent)
+      },
       { path: 'usuarios', loadComponent: () =>
           import('./features/users/users-component/users-component')
             .then(m => m.UsersComponent)
