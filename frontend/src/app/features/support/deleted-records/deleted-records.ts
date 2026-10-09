@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { finalize } from 'rxjs';
 
 interface DeletedRecord {
   id: number;
@@ -21,6 +22,7 @@ type DeletedRecordType = 'CLIENT' | 'SUPPLIER' | 'PRODUCT' | 'SUPPLIER_DOCUMENT'
 })
 export class DeletedRecordsComponent implements OnInit {
   private readonly http = inject(HttpClient);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   readonly types: { value: DeletedRecordType; label: string }[] = [
     { value: 'CLIENT', label: 'Clientes' },
@@ -104,26 +106,33 @@ export class DeletedRecordsComponent implements OnInit {
     this.error = '';
     this.success = '';
 
-    this.http.patch<void>(`/api/support/deleted-records/${record.type}/${record.id}/restore`, {}).subscribe({
-      next: () => {
-        /*
-         * A restauração já foi confirmada pelo backend. Removemos o item da
-         * coleção local em vez de disparar um segundo GET imediatamente.
-         * Isso evita colocar a tela inteira novamente em estado de loading e
-         * mantém a UI coerente: um registro restaurado não pertence mais à
-         * listagem de excluídos.
-         */
-        this.records = this.records.filter(item => !(item.id === record.id && item.type === record.type));
-        this.restoringId = null;
-        this.showRestoreModal = false;
-        this.restoringRecord = null;
-        this.success = 'Registro recuperado com sucesso.';
-      },
-      error: error => {
-        this.error = error?.error?.message || 'Não foi possível recuperar o registro.';
-        this.restoringId = null;
-      }
-    });
+    this.http
+      .patch<void>(`/api/support/deleted-records/${record.type}/${record.id}/restore`, {})
+      .pipe(
+        finalize(() => {
+          /*
+           * O estado transitório pertence ao ciclo de vida da requisição,
+           * portanto deve ser encerrado independentemente de sucesso ou erro.
+           * O detectChanges explícito garante que o modal não permaneça
+           * visualmente em "Recuperando..." depois que o HTTP já terminou.
+           */
+          this.restoringId = null;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: () => {
+          this.records = this.records.filter(
+            item => !(item.id === record.id && item.type === record.type)
+          );
+          this.showRestoreModal = false;
+          this.restoringRecord = null;
+          this.success = 'Registro recuperado com sucesso.';
+        },
+        error: error => {
+          this.error = error?.error?.message || 'Não foi possível recuperar o registro.';
+        }
+      });
   }
 
   typeLabel(type: DeletedRecordType): string {
