@@ -122,7 +122,7 @@
     <div class="report-card">
       <div class="card-header">
         <h3><i class="fas fa-chart-bar"></i> Vendas por Dia</h3>
-        <span class="card-hint">{{ r.startDate }} → {{ r.endDate }}</span>
+        <span class="card-hint">{{ r.startDate | date:'dd/MM/yyyy':'UTC' }} → {{ r.endDate | date:'dd/MM/yyyy':'UTC' }}</span>
       </div>
 
       @if (r.daily.length === 0) {
@@ -134,7 +134,7 @@
         <ul class="daily-list">
           @for (d of r.daily; track d.date) {
             <li class="daily-item">
-              <span class="daily-date">{{ d.date }}</span>
+              <span class="daily-date">{{ d.date | date:'dd/MM/yyyy':'UTC' }}</span>
               <div class="bar-track">
                 <div
                   class="bar-fill"

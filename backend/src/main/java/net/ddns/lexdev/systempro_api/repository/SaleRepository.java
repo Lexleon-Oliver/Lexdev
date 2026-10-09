@@ -14,6 +14,7 @@ import net.ddns.lexdev.systempro_api.enums.FiscalDocumentStatus;
 import net.ddns.lexdev.systempro_api.repository.projection.FinancialDailyProjection;
 import net.ddns.lexdev.systempro_api.repository.projection.FinancialPaymentProjection;
 import net.ddns.lexdev.systempro_api.repository.projection.FinancialSummaryProjection;
+import net.ddns.lexdev.systempro_api.repository.projection.DashboardRecentSaleProjection;
 
 public interface SaleRepository extends JpaRepository<Sale, Long> {
 
@@ -64,6 +65,18 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
         @Param("statuses") Set<FiscalDocumentStatus> statuses,
         Pageable pageable
     );
+
+    @Query("""
+        SELECT s.id AS id,
+               s.saleAt AS saleAt,
+               s.status AS status,
+               s.total AS total,
+               d.status AS fiscalStatus
+        FROM Sale s
+        LEFT JOIN FiscalDocument d ON d.sale = s
+        ORDER BY s.saleAt DESC, s.id DESC
+        """)
+    java.util.List<DashboardRecentSaleProjection> dashboardRecentSales(Pageable pageable);
 
     @Query("""
         SELECT COUNT(s) AS sales,

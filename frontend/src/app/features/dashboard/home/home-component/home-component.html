@@ -1,20 +1,220 @@
-<div class="welcome-card">
-  <h2>Olá, {{ authService.currentUser()?.username || 'Usuário' }}! 👋</h2>
-  <p>Bem-vindo ao painel do **SystemPro**. Selecione uma opção no menu lateral para começar.</p>
+<!-- ============================================================
+     home.component.html
+     ============================================================ -->
+<div class="dashboard-page">
+  <!-- Cabeçalho -->
+  <div class="page-header">
+    <h2>Dashboard</h2>
 
-  <div class="user-details-badge">
-    <span>Performa/Role: <strong>{{ authService.currentUser()?.role }}</strong></span>
+    <div class="header-actions">
+      @if (dashboard(); as d) {
+        <span class="date-chip">
+          <i class="fas fa-calendar-day"></i>
+          {{ d.date | date:'dd/MM/yyyy':'UTC' }}
+        </span>
+      }
+
+      <button class="btn-primary" (click)="refresh()" [disabled]="loading()">
+        @if (loading()) {
+          <i class="fas fa-spinner fa-spin"></i>
+        } @else {
+          <i class="fas fa-rotate"></i>
+        }
+        Atualizar
+      </button>
+    </div>
   </div>
-</div>
 
-<div class="test-buttons" style="display: flex; gap: 12px; margin-top: 20px;">
-  <button (click)="testSuccess()" style="background: #198754; color: white; padding: 10px; border: none; border-radius: 6px; cursor: pointer;">
-    Testar Sucesso
-  </button>
-  <button (click)="testError()" style="background: #dc3545; color: white; padding: 10px; border: none; border-radius: 6px; cursor: pointer;">
-    Testar Erro
-  </button>
-  <button (click)="testWarning()" style="background: #ffc107; color: black; padding: 10px; border: none; border-radius: 6px; cursor: pointer;">
-    Testar Alerta
-  </button>
+  <!-- Erro -->
+  @if (error(); as err) {
+    <div class="alert-error">
+      <i class="fas fa-exclamation-circle"></i>
+      {{ err }}
+    </div>
+  }
+
+  <!-- Loading / Conteúdo -->
+  @if (loading() && !dashboard()) {
+    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>
+  } @else if (dashboard(); as d) {
+
+    <!-- ===================== KPIs ===================== -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-icon blue"><i class="fas fa-shopping-cart"></i></div>
+        <div class="kpi-info">
+          <span class="kpi-label">Vendas</span>
+          <span class="kpi-value">{{ d.sales.count }}</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon red"><i class="fas fa-ban"></i></div>
+        <div class="kpi-info">
+          <span class="kpi-label">Canceladas</span>
+          <span class="kpi-value">{{ d.sales.cancelledSales }}</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon green"><i class="fas fa-dollar-sign"></i></div>
+        <div class="kpi-info">
+          <span class="kpi-label">Vendas Brutas</span>
+          <span class="kpi-value">{{ d.sales.grossSales | currency:'BRL' }}</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon orange"><i class="fas fa-percent"></i></div>
+        <div class="kpi-info">
+          <span class="kpi-label">Descontos</span>
+          <span class="kpi-value">{{ d.sales.discounts | currency:'BRL' }}</span>
+        </div>
+      </div>
+
+      <div class="kpi-card highlight">
+        <div class="kpi-icon blue"><i class="fas fa-wallet"></i></div>
+        <div class="kpi-info">
+          <span class="kpi-label">Vendas Líquidas</span>
+          <span class="kpi-value">{{ d.sales.netSales | currency:'BRL' }}</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon purple"><i class="fas fa-receipt"></i></div>
+        <div class="kpi-info">
+          <span class="kpi-label">Ticket Médio</span>
+          <span class="kpi-value">{{ d.sales.averageTicket | currency:'BRL' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== Pendências Fiscais ===================== -->
+    @if (hasFiscalPending()) {
+      <div class="report-card fiscal-card">
+        <div class="card-header">
+          <h3><i class="fas fa-triangle-exclamation"></i> Pendências Fiscais</h3>
+          <span class="badge-count">{{ d.fiscal.pending }}</span>
+        </div>
+
+        <ul class="fiscal-list">
+          <li>
+            <span class="fiscal-label">Aguardando autorização</span>
+            <strong>{{ d.fiscal.awaitingAuthorization }}</strong>
+          </li>
+          <li>
+            <span class="fiscal-label">Consulta pendente</span>
+            <strong>{{ d.fiscal.pendingConsultation }}</strong>
+          </li>
+          <li>
+            <span class="fiscal-label">Contingência offline</span>
+            <strong>{{ d.fiscal.offlineContingency }}</strong>
+          </li>
+          <li>
+            <span class="fiscal-label">Cancelamento pendente</span>
+            <strong>{{ d.fiscal.pendingCancellation }}</strong>
+          </li>
+        </ul>
+      </div>
+    }
+
+    <!-- ===================== Recebimentos ===================== -->
+    @if (hasPayments()) {
+      <div class="report-card">
+        <div class="card-header">
+          <h3><i class="fas fa-credit-card"></i> Recebimentos</h3>
+        </div>
+
+        <ul class="payment-list">
+          @for (p of d.payments; track p.paymentMethod) {
+            <li class="payment-item">
+              <span class="payment-label">
+                <i class="fas fa-circle"></i>
+                {{ paymentLabel(p.paymentMethod) }}
+              </span>
+              <span class="payment-amount">{{ p.amount | currency:'BRL' }}</span>
+            </li>
+          }
+        </ul>
+      </div>
+    }
+
+    <!-- ===================== Desempenho Diário ===================== -->
+    <div class="report-card">
+      <div class="card-header">
+        <h3><i class="fas fa-chart-bar"></i> Desempenho Diário</h3>
+      </div>
+
+      @if (d.dailyPerformance.length === 0) {
+        <div class="empty-state small">
+          <i class="fas fa-chart-bar"></i>
+          <p>Sem movimentação no período.</p>
+        </div>
+      } @else {
+        <ul class="daily-list">
+          @for (day of d.dailyPerformance; track day.date) {
+            <li class="daily-item">
+              <span class="daily-date">{{ day.date | date:'dd/MM/yyyy':'UTC' }}</span>
+              <div class="bar-track">
+                <div
+                  class="bar-fill"
+                  [style.width.%]="barWidth(day.total, maxDailyTotal(d.dailyPerformance))"
+                ></div>
+              </div>
+              <span class="daily-values">
+                <strong>{{ day.total | currency:'BRL' }}</strong>
+                <small>{{ day.sales }} venda(s)</small>
+              </span>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+
+    <!-- ===================== Vendas Recentes ===================== -->
+    @if (hasRecentSales()) {
+      <div class="report-card">
+        <div class="card-header">
+          <h3><i class="fas fa-list"></i> Vendas Recentes</h3>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="recent-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Data</th>
+                <th>Status</th>
+                <th>Fiscal</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (sale of d.recentSales; track sale.id) {
+                <tr>
+                  <td data-label="#">
+                    <span class="id-chip">#{{ sale.id }}</span>
+                  </td>
+                  <td data-label="Data">{{ sale.saleAt | date:'dd/MM/yyyy HH:mm' }}</td>
+                  <td data-label="Status">
+                    <span class="status-badge">{{ saleStatusLabel(sale.status) }}</span>
+                  </td>
+                  <td data-label="Fiscal">{{ fiscalStatusLabel(sale.fiscalStatus) }}</td>
+                  <td data-label="Total">
+                    <strong>{{ sale.total | currency:'BRL' }}</strong>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+
+  } @else {
+    <div class="empty-state">
+      <i class="fas fa-chart-line"></i>
+      <p>Nenhum dado disponível.</p>
+    </div>
+  }
 </div>
