@@ -1,0 +1,160 @@
+<!-- ============================================================
+     financial-report.component.html
+     ============================================================ -->
+<div class="report-page">
+  <!-- Cabeçalho -->
+  <div class="page-header">
+    <h2>Relatório Financeiro</h2>
+
+    <div class="header-actions">
+      <div class="date-range">
+        <label>
+          <span>De</span>
+          <input
+            type="date"
+            [value]="startDate"
+            (input)="startDate = $any($event.target).value"
+          />
+        </label>
+        <label>
+          <span>Até</span>
+          <input
+            type="date"
+            [value]="endDate"
+            (input)="endDate = $any($event.target).value"
+          />
+        </label>
+        <button class="btn-primary" (click)="load()" [disabled]="loading()">
+          @if (loading()) {
+            <i class="fas fa-spinner fa-spin"></i>
+          } @else {
+            <i class="fas fa-filter"></i>
+          }
+          Aplicar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>
+  } @else if (report(); as r) {
+
+    <!-- ===================== KPIs ===================== -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-icon blue"><i class="fas fa-shopping-cart"></i></div>
+        <div class="kpi-info">
+          <span class="kpi-label">Vendas</span>
+          <span class="kpi-value">{{ r.sales }}</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon red"><i class="fas fa-ban"></i></div>
+        <div class="kpi-info">
+          <span class="kpi-label">Canceladas</span>
+          <span class="kpi-value">{{ r.cancelledSales }}</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon green"><i class="fas fa-dollar-sign"></i></div>
+        <div class="kpi-info">
+          <span class="kpi-label">Vendas Brutas</span>
+          <span class="kpi-value">{{ r.grossSales | currency:'BRL' }}</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon orange"><i class="fas fa-percent"></i></div>
+        <div class="kpi-info">
+          <span class="kpi-label">Descontos</span>
+          <span class="kpi-value">{{ r.discounts | currency:'BRL' }}</span>
+        </div>
+      </div>
+
+      <div class="kpi-card highlight">
+        <div class="kpi-icon blue"><i class="fas fa-wallet"></i></div>
+        <div class="kpi-info">
+          <span class="kpi-label">Vendas Líquidas</span>
+          <span class="kpi-value">{{ r.netSales | currency:'BRL' }}</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon purple"><i class="fas fa-receipt"></i></div>
+        <div class="kpi-info">
+          <span class="kpi-label">Ticket Médio</span>
+          <span class="kpi-value">{{ r.averageTicket | currency:'BRL' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== Formas de Pagamento ===================== -->
+    <div class="report-card">
+      <div class="card-header">
+        <h3><i class="fas fa-credit-card"></i> Formas de Pagamento</h3>
+      </div>
+
+      @if (r.payments.length === 0) {
+        <div class="empty-state small">
+          <i class="fas fa-credit-card"></i>
+          <p>Nenhum pagamento no período.</p>
+        </div>
+      } @else {
+        <ul class="payment-list">
+          @for (p of r.payments; track p.paymentMethod) {
+            <li class="payment-item">
+              <span class="payment-label">
+                <i class="fas fa-circle"></i>
+                {{ paymentLabel(p.paymentMethod) }}
+              </span>
+              <span class="payment-amount">{{ p.amount | currency:'BRL' }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+
+    <!-- ===================== Vendas diárias ===================== -->
+    <div class="report-card">
+      <div class="card-header">
+        <h3><i class="fas fa-chart-bar"></i> Vendas por Dia</h3>
+        <span class="card-hint">{{ r.startDate }} → {{ r.endDate }}</span>
+      </div>
+
+      @if (r.daily.length === 0) {
+        <div class="empty-state small">
+          <i class="fas fa-chart-bar"></i>
+          <p>Sem movimentação no período.</p>
+        </div>
+      } @else {
+        <ul class="daily-list">
+          @for (d of r.daily; track d.date) {
+            <li class="daily-item">
+              <span class="daily-date">{{ d.date }}</span>
+              <div class="bar-track">
+                <div
+                  class="bar-fill"
+                  [style.width.%]="barWidth(d.total, maxDaily(r))"
+                ></div>
+              </div>
+              <span class="daily-values">
+                <strong>{{ d.total | currency:'BRL' }}</strong>
+                <small>{{ d.sales }} venda(s)</small>
+              </span>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+
+  } @else {
+    <div class="empty-state">
+      <i class="fas fa-chart-line"></i>
+      <p>Selecione um período e clique em Aplicar.</p>
+    </div>
+  }
+</div>

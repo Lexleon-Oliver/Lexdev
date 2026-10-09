@@ -53,4 +53,22 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findByIdWithSuppliers(
         @Param("id") Long id
     );
+
+    @Query("""
+        SELECT p.id, p.code, p.name, p.unitOfMeasure, p.controlsStock,
+               p.minimumStock, p.maximumStock, p.reorderPoint, p.salePrice,
+               COALESCE(SUM(CASE WHEN s.id IS NOT NULL AND s.status <> net.ddns.lexdev.systempro_api.enums.SaleStatus.CANCELADA THEN i.quantity ELSE 0 END), 0),
+               COALESCE(SUM(CASE WHEN s.id IS NOT NULL AND s.status <> net.ddns.lexdev.systempro_api.enums.SaleStatus.CANCELADA THEN i.total ELSE 0 END), 0)
+        FROM Product p
+        LEFT JOIN SaleItem i ON i.product = p
+        LEFT JOIN i.sale s ON s.saleAt >= :start AND s.saleAt < :endExclusive
+        GROUP BY p.id, p.code, p.name, p.unitOfMeasure, p.controlsStock,
+                 p.minimumStock, p.maximumStock, p.reorderPoint, p.salePrice
+        ORDER BY p.name ASC, p.code ASC
+        """)
+    java.util.List<Object[]> stockReport(
+        @Param("start") java.time.Instant start,
+        @Param("endExclusive") java.time.Instant endExclusive
+    );
+
 }

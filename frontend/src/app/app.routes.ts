@@ -72,6 +72,18 @@ export const routes: Routes = [
             .then(m => m.SalesComponent)
       },
       {
+        path: 'estoque',
+        loadComponent: () =>
+          import('./features/reports/stock-report/stock-report')
+            .then(m => m.StockReportComponent)
+      },
+      {
+        path: 'financeiro',
+        loadComponent: () =>
+          import('./features/reports/financial-report/financial-report')
+            .then(m => m.FinancialReportComponent)
+      },
+      {
         path: 'configuracoes/empresa',
         redirectTo: 'configuracoes/fiscal',
         pathMatch: 'full'
