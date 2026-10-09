@@ -54,6 +54,8 @@ class SaleServiceNumberingTest {
 
     @Mock private NfceContingencyPolicy contingencyPolicy;
 
+    @Mock private StockService stockService;
+
     private SaleService service;
     private FiscalEstablishment establishment;
 
@@ -77,7 +79,8 @@ class SaleServiceNumberingTest {
             gateway,
             properties,
             rtcSnapshotService,
-            contingencyPolicy
+            contingencyPolicy,
+            stockService
         );
 
         establishment = new FiscalEstablishment(null);
@@ -92,7 +95,7 @@ class SaleServiceNumberingTest {
         when(productRepository.findById(10L)).thenReturn(Optional.of(product));
         when(profileRepository.findByProductId(product.getId())).thenReturn(Optional.of(profile));
         when(currentUserProvider.requireUser()).thenReturn(user);
-        when(saleRepository.save(any(Sale.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(saleRepository.saveAndFlush(any(Sale.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(fiscalDocumentRepository.save(any(FiscalDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 

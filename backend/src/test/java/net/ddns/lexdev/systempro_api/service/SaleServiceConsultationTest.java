@@ -55,6 +55,8 @@ class SaleServiceConsultationTest {
 
     @Mock private NfceContingencyPolicy contingencyPolicy;
 
+    @Mock private StockService stockService;
+
     private SaleService service;
 
     @BeforeEach
@@ -72,7 +74,8 @@ class SaleServiceConsultationTest {
             gateway,
             fiscalProperties,
             rtcSnapshotService,
-            contingencyPolicy
+            contingencyPolicy,
+            stockService
         );
     }
 

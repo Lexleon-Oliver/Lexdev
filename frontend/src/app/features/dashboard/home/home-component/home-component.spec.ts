@@ -3,8 +3,8 @@ import { of, throwError } from 'rxjs';
 import { AuthService } from '../../../../core/services/auth-service';
 import { DashboardService } from '../../../../core/services/dashboard-service';
 import { NotificationService } from '../../../../core/services/notification-service';
-import { Dashboard } from '../../models/dashboard';
 import { HomeComponent } from './home-component';
+import { Dashboard } from '../../../models/dashboard';
 
 describe('HomeComponent', () => {
   let component: HomeComponent;

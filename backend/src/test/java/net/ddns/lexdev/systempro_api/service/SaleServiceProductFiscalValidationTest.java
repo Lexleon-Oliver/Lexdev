@@ -57,6 +57,8 @@ class SaleServiceProductFiscalValidationTest {
 
     @Mock private NfceContingencyPolicy contingencyPolicy;
 
+    @Mock private StockService stockService;
+
     private SaleService service;
     private FiscalEstablishment establishment;
     private Product product;
@@ -82,7 +84,8 @@ class SaleServiceProductFiscalValidationTest {
             gateway,
             properties,
             rtcSnapshotService,
-            contingencyPolicy
+            contingencyPolicy,
+            stockService
         );
 
         establishment = new FiscalEstablishment(null);
@@ -99,7 +102,7 @@ class SaleServiceProductFiscalValidationTest {
         lenient().when(currentUserProvider.requireUser()).thenReturn(
             new User("tester", "Tester", "tester@example.com", "secret", "ROLE_USER")
         );
-        lenient().when(saleRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(saleRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
         lenient().when(fiscalDocumentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
@@ -173,12 +176,12 @@ class SaleServiceProductFiscalValidationTest {
 
     @Test
     void validSupportedFiscalProductShouldCreateDocumentAndConsumeExactlyOneNumber() {
-        when(saleRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(saleRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(fiscalDocumentRepository.save(any(FiscalDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.create(request());
 
-        verify(saleRepository).save(any());
+        verify(saleRepository).saveAndFlush(any());
         verify(fiscalDocumentRepository).save(any(FiscalDocument.class));
         assertThat(establishment.getNextNumber()).isEqualTo(901L);
     }

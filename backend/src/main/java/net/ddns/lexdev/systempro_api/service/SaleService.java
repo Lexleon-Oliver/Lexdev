@@ -68,6 +68,7 @@ public class SaleService {
     private final FiscalProperties fiscalProperties;
     private final IbsCbsSaleSnapshotService rtcSnapshotService;
     private final NfceContingencyPolicy contingencyPolicy;
+    private final StockService stockService;
 
     private static final ZoneId FISCAL_ZONE = ZoneId.of("America/Sao_Paulo");
 
@@ -84,7 +85,8 @@ public class SaleService {
         SefazNfceGateway gateway,
         FiscalProperties fiscalProperties,
         IbsCbsSaleSnapshotService rtcSnapshotService,
-        NfceContingencyPolicy contingencyPolicy
+        NfceContingencyPolicy contingencyPolicy,
+        StockService stockService
     ) {
         this.saleRepository = saleRepository;
         this.productRepository = productRepository;
@@ -99,6 +101,7 @@ public class SaleService {
         this.fiscalProperties = fiscalProperties;
         this.rtcSnapshotService = rtcSnapshotService;
         this.contingencyPolicy = contingencyPolicy;
+        this.stockService = stockService;
     }
 
     @Transactional
@@ -237,7 +240,8 @@ public class SaleService {
         sale.setTotal(total);
         sale.setStatus(SaleStatus.AGUARDANDO_FISCAL);
 
-        Sale saved = saleRepository.save(sale);
+        Sale saved = saleRepository.saveAndFlush(sale);
+        stockService.registerSaleOut(saved);
 
         FiscalDocument document = new FiscalDocument();
         document.setSale(saved);
@@ -434,6 +438,7 @@ public class SaleService {
             document.setCancellationProtocol(result.protocol());
             document.setCanceledAt(Instant.now());
             sale.setStatus(SaleStatus.CANCELADA);
+            stockService.registerSaleCancellationReturn(sale);
             updatePendingCancellationEvent(document, result);
         } else {
             document.setStatus(FiscalDocumentStatus.CANCELAMENTO_PENDENTE);
@@ -472,6 +477,7 @@ public class SaleService {
         if (result.status() == FiscalDocumentStatus.CANCELADA) {
             document.setCanceledAt(Instant.now());
             sale.setStatus(SaleStatus.CANCELADA);
+            stockService.registerSaleCancellationReturn(sale);
         }
 
         return response(sale, document);

@@ -49,6 +49,8 @@ class SaleServiceFiscalStateMatrixTest {
     @Mock private FiscalProperties fiscalProperties;
     @Mock private NfceContingencyPolicy contingencyPolicy;
 
+    @Mock private StockService stockService;
+
     private SaleService service;
 
     @BeforeEach
@@ -56,7 +58,7 @@ class SaleServiceFiscalStateMatrixTest {
         service = new SaleService(
             saleRepository, productRepository, profileRepository, establishmentRepository,
             clientRepository, fiscalDocumentRepository, fiscalEventRepository, currentUserProvider,
-            fiscalEstablishmentService, gateway, fiscalProperties, rtcSnapshotService, contingencyPolicy
+            fiscalEstablishmentService, gateway, fiscalProperties, rtcSnapshotService, contingencyPolicy, stockService
         );
     }
 

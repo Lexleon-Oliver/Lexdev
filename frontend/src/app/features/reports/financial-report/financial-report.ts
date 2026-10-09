@@ -5,6 +5,7 @@ import { finalize } from 'rxjs';
 import { ReportService } from '../../../core/services/report-service';
 import { FinancialReport, PaymentMethod } from '../models/report';
 
+
 @Component({ selector: 'app-financial-report', imports: [CommonModule, FormsModule], templateUrl: './financial-report.html', styleUrl: './financial-report.scss' })
 export class FinancialReportComponent {
   private readonly service = inject(ReportService);

@@ -96,7 +96,8 @@ class SaleServiceFiscalPendingTest {
             mock(SefazNfceGateway.class),
             mock(FiscalProperties.class),
             mock(IbsCbsSaleSnapshotService.class),
-            mock(NfceContingencyPolicy.class)
+            mock(NfceContingencyPolicy.class),
+            mock(StockService.class)
         );
     }
 

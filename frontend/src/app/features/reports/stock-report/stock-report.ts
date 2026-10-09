@@ -5,6 +5,7 @@ import { finalize } from 'rxjs';
 import { ReportService } from '../../../core/services/report-service';
 import { StockReport } from '../models/report';
 
+
 @Component({ selector: 'app-stock-report', imports: [CommonModule, FormsModule], templateUrl: './stock-report.html', styleUrl: './stock-report.scss' })
 export class StockReportComponent {
   private readonly service = inject(ReportService);

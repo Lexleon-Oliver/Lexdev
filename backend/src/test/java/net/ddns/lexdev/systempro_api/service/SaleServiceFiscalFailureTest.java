@@ -56,6 +56,8 @@ class SaleServiceFiscalFailureTest {
 
     @Mock private NfceContingencyPolicy contingencyPolicy;
 
+    @Mock private StockService stockService;
+
     private SaleService service;
 
     @BeforeEach
@@ -74,7 +76,8 @@ class SaleServiceFiscalFailureTest {
             gateway,
             fiscalProperties,
             rtcSnapshotService,
-            contingencyPolicy
+            contingencyPolicy,
+            stockService
         );
     }
 

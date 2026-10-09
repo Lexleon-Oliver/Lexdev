@@ -61,6 +61,8 @@ class SaleServiceCancellationTest {
 
     @Mock private NfceContingencyPolicy contingencyPolicy;
 
+    @Mock private StockService stockService;
+
     private SaleService service;
 
     @BeforeEach
@@ -68,7 +70,7 @@ class SaleServiceCancellationTest {
         service = new SaleService(
             saleRepository, productRepository, profileRepository, establishmentRepository,
             clientRepository, fiscalDocumentRepository, fiscalEventRepository,
-            currentUserProvider, fiscalEstablishmentService, gateway, fiscalProperties, rtcSnapshotService, contingencyPolicy
+            currentUserProvider, fiscalEstablishmentService, gateway, fiscalProperties, rtcSnapshotService, contingencyPolicy, stockService
         );
     }
 
@@ -95,6 +97,7 @@ class SaleServiceCancellationTest {
         verify(fixture.document()).setCancellationProtocol("131260000000999");
         verify(fixture.document()).setCanceledAt(any());
         verify(fixture.sale()).setStatus(SaleStatus.CANCELADA);
+        verify(stockService).registerSaleCancellationReturn(fixture.sale());
         verify(fiscalEventRepository).save(any(FiscalEvent.class));
     }
 
@@ -119,6 +122,7 @@ class SaleServiceCancellationTest {
         verify(fixture.document()).setStatus(FiscalDocumentStatus.CANCELAMENTO_PENDENTE);
         verify(fixture.document(), never()).setCanceledAt(any());
         verify(fixture.sale(), never()).setStatus(SaleStatus.CANCELADA);
+        verify(stockService, never()).registerSaleCancellationReturn(any());
         verify(fiscalEventRepository).save(any(FiscalEvent.class));
     }
 

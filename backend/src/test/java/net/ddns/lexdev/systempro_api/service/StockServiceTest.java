@@ -19,6 +19,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import net.ddns.lexdev.systempro_api.domain.Product;
+import net.ddns.lexdev.systempro_api.domain.Sale;
+import net.ddns.lexdev.systempro_api.domain.SaleItem;
 import net.ddns.lexdev.systempro_api.domain.StockBalance;
 import net.ddns.lexdev.systempro_api.domain.StockMovement;
 import net.ddns.lexdev.systempro_api.domain.User;
@@ -200,6 +202,82 @@ class StockServiceTest {
             service.adjustPositive(10L, new BigDecimal("2"), "Ajuste", "adj-6")
         );
         verify(balanceRepository, never()).findByProductIdForUpdate(any());
+    }
+
+    @Test
+    void shouldRegisterSaleOutAndReduceBalance() {
+        Sale sale = saleWithItem(100L, 200L, product, new BigDecimal("3"));
+        StockBalance balance = new StockBalance(product, new BigDecimal("10"));
+        when(movementRepository.findByOriginAndSourceReference(StockMovementOrigin.SALE, "SALE_ITEM:200"))
+            .thenReturn(Optional.empty());
+        when(productRepository.findByIdForStockUpdate(10L)).thenReturn(Optional.of(product));
+        when(balanceRepository.findByProductIdForUpdate(10L)).thenReturn(Optional.of(balance));
+        when(currentUserProvider.requireUser()).thenReturn(user);
+        when(movementRepository.save(any(StockMovement.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.registerSaleOut(sale);
+
+        assertEquals(new BigDecimal("7"), balance.getQuantity());
+        verify(movementRepository).save(org.mockito.ArgumentMatchers.argThat(m ->
+            m.getMovementType() == StockMovementType.SALE_OUT
+                && m.getOrigin() == StockMovementOrigin.SALE
+                && m.getQuantity().compareTo(new BigDecimal("3")) == 0
+                && "SALE_ITEM:200".equals(m.getSourceReference())
+        ));
+    }
+
+    @Test
+    void shouldRejectSaleOutWhenBalanceIsInsufficient() {
+        Sale sale = saleWithItem(100L, 200L, product, new BigDecimal("3"));
+        StockBalance balance = new StockBalance(product, new BigDecimal("2"));
+        when(movementRepository.findByOriginAndSourceReference(StockMovementOrigin.SALE, "SALE_ITEM:200"))
+            .thenReturn(Optional.empty());
+        when(productRepository.findByIdForStockUpdate(10L)).thenReturn(Optional.of(product));
+        when(balanceRepository.findByProductIdForUpdate(10L)).thenReturn(Optional.of(balance));
+
+        assertThrows(BusinessException.class, () -> service.registerSaleOut(sale));
+
+        assertEquals(new BigDecimal("2"), balance.getQuantity());
+        verify(movementRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldReturnOnlyStockThatWasActuallyRemovedBySaleAndBeIdempotent() {
+        Sale sale = saleWithItem(100L, 200L, product, new BigDecimal("3"));
+        SaleItem item = sale.getItems().getFirst();
+        StockMovement original = new StockMovement(
+            product, StockMovementType.SALE_OUT, StockMovementOrigin.SALE, "SALE_ITEM:200",
+            new BigDecimal("3"), new BigDecimal("10"), new BigDecimal("7"), sale, item, "Venda", user
+        );
+        StockBalance balance = new StockBalance(product, new BigDecimal("7"));
+        when(movementRepository.findByOriginAndSourceReference(StockMovementOrigin.SALE, "SALE_ITEM:200"))
+            .thenReturn(Optional.of(original));
+        when(movementRepository.findByOriginAndSourceReference(
+            StockMovementOrigin.SALE_CANCELLATION, "SALE_CANCELLATION_ITEM:200"
+        )).thenReturn(Optional.empty());
+        when(productRepository.findByIdForStockUpdate(10L)).thenReturn(Optional.of(product));
+        when(balanceRepository.findByProductIdForUpdate(10L)).thenReturn(Optional.of(balance));
+        when(currentUserProvider.requireUser()).thenReturn(user);
+        when(movementRepository.save(any(StockMovement.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.registerSaleCancellationReturn(sale);
+
+        assertEquals(new BigDecimal("10"), balance.getQuantity());
+        verify(movementRepository).save(org.mockito.ArgumentMatchers.argThat(m ->
+            m.getMovementType() == StockMovementType.SALE_CANCELLATION_RETURN
+                && m.getOrigin() == StockMovementOrigin.SALE_CANCELLATION
+        ));
+    }
+
+    private Sale saleWithItem(Long saleId, Long itemId, Product itemProduct, BigDecimal quantity) {
+        Sale sale = new Sale();
+        ReflectionTestUtils.setField(sale, "id", saleId);
+        SaleItem item = new SaleItem();
+        ReflectionTestUtils.setField(item, "id", itemId);
+        item.setProduct(itemProduct);
+        item.setQuantity(quantity);
+        sale.addItem(item);
+        return sale;
     }
 
     private void stubAdjustment(String reference, StockBalance balance) {
