@@ -12,7 +12,7 @@
           type="text"
           placeholder="Buscar fornecedores..."
           [value]="searchTerm()"
-          (input)="searchTerm.set($any($event.target).value)"
+          (input)="onSearchInput($any($event.target).value)"
         />
       </div>
       <button class="btn-primary" (click)="openCreateModal()">
@@ -33,7 +33,7 @@
   @if (isLoading()) {
     <div class="loading"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>
   } @else {
-    @if (filteredSuppliers().length === 0) {
+    @if (suppliers().length === 0) {
       <div class="empty-state">
         <i class="fas fa-truck"></i>
         <p>Nenhum fornecedor encontrado.</p>
@@ -52,7 +52,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (supplier of filteredSuppliers(); track supplier.id) {
+            @for (supplier of suppliers(); track supplier.id) {
               <tr>
                 <td data-label="Nome/Razão">{{ supplier.person?.name }}</td>
                 <td data-label="CPF/CNPJ">
@@ -101,6 +101,35 @@
           </tbody>
         </table>
       </div>
+
+      @if (totalPages() > 1) {
+        <div class="pagination">
+          <button
+            type="button"
+            class="page-btn"
+            [disabled]="currentPage() === 0 || isLoading()"
+            (click)="loadSuppliers(currentPage() - 1)"
+            title="Página anterior"
+          >
+            <i class="fas fa-chevron-left"></i>
+          </button>
+
+          <span class="page-info">
+            {{ currentPage() + 1 }} / {{ totalPages() }}
+            <small>{{ totalElements() }} registro(s)</small>
+          </span>
+
+          <button
+            type="button"
+            class="page-btn"
+            [disabled]="currentPage() + 1 >= totalPages() || isLoading()"
+            (click)="loadSuppliers(currentPage() + 1)"
+            title="Próxima página"
+          >
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      }
     }
   }
 

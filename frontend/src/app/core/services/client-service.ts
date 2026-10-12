@@ -10,10 +10,15 @@ export class ClientService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/clients';
 
-  findAll(page = 0, size = 10): Observable<SpringPage<Client>> {
-    const params = new HttpParams()
+  findAll(page = 0, size = 10, query = ''): Observable<SpringPage<Client>> {
+    let params = new HttpParams()
       .set('page', page.toString())
       .set('size', size.toString());
+
+    const normalizedQuery = query.trim();
+    if (normalizedQuery) {
+      params = params.set('q', normalizedQuery);
+    }
 
     return this.http.get<SpringPage<Client>>(this.apiUrl, { params });
   }

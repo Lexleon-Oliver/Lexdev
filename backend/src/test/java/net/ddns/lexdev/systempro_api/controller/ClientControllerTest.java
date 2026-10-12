@@ -128,7 +128,7 @@ class ClientControllerTest {
             1
         );
 
-        when(service.findAll(any(Pageable.class)))
+        when(service.findAll(any(Pageable.class), eq("")))
             .thenReturn(page);
 
         mockMvc.perform(get("/clients"))
@@ -162,7 +162,7 @@ class ClientControllerTest {
 
             .andExpect(jsonPath("$.content[0].active").value(true));
 
-        verify(service).findAll(any(Pageable.class));
+        verify(service).findAll(any(Pageable.class), eq(""));
     }
 
     @Test
@@ -175,7 +175,7 @@ class ClientControllerTest {
             0
         );
 
-        when(service.findAll(any(Pageable.class)))
+        when(service.findAll(any(Pageable.class), eq("")))
             .thenReturn(page);
 
         mockMvc.perform(
@@ -190,8 +190,27 @@ class ClientControllerTest {
                 pageable ->
                     pageable.getPageNumber() == 1 &&
                     pageable.getPageSize() == 5
-            )
+            ),
+            eq("")
         );
+    }
+
+    @Test
+    @DisplayName("Deve encaminhar termo de pesquisa ao service")
+    void deveEncaminharTermoDePesquisaAoService() throws Exception {
+
+        PageImpl<ClientResponseDto> page = new PageImpl<>(List.of());
+
+        when(service.findAll(any(Pageable.class), eq("joao")))
+            .thenReturn(page);
+
+        mockMvc.perform(
+            get("/clients")
+                .param("q", "joao")
+        )
+        .andExpect(status().isOk());
+
+        verify(service).findAll(any(Pageable.class), eq("joao"));
     }
 
     @Test

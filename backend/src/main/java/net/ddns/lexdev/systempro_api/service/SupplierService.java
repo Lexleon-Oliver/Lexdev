@@ -38,9 +38,11 @@ public class SupplierService {
     }
 
     @Transactional(readOnly = true)
-    public Page<SupplierResponseDto> findAll(Pageable pageable) {
+    public Page<SupplierResponseDto> findAll(Pageable pageable, String query) {
+        String term = query == null ? "" : query.trim().toLowerCase();
+        String digits = term.replaceAll("\\D", "");
 
-        return supplierRepository.findAllWithPerson(pageable)
+        return supplierRepository.search(term, digits, pageable)
             .map(SupplierResponseDto::fromEntity);
     }
 

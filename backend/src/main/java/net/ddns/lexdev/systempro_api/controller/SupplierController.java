@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -31,8 +32,10 @@ public class SupplierController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<SupplierResponseDto>> findAll(Pageable pageable) {
-        return ResponseEntity.ok(service.findAll(pageable));
+    public ResponseEntity<Page<SupplierResponseDto>> findAll(
+            Pageable pageable,
+            @RequestParam(required = false, defaultValue = "") String q) {
+        return ResponseEntity.ok(service.findAll(pageable, q));
     }
 
     @GetMapping("/{id}")

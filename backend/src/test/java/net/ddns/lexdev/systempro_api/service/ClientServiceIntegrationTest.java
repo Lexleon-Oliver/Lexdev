@@ -1360,7 +1360,7 @@ class ClientServiceIntegrationTest extends IntegrationTestBase {
         // ============================================================
 
         Page<ClientResponseDto> resultado =
-            clientService.findAll(PageRequest.of(0, 10));
+            clientService.findAll(PageRequest.of(0, 10), "");
 
         // ============================================================
         // Assertions

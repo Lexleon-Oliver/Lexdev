@@ -881,14 +881,16 @@ class ClientServiceTest {
             );
 
         when(
-            clientRepository.findAllWithPerson(
+            clientRepository.search(
+                "",
+                "",
                 pageable
             )
         )
             .thenReturn(clientPage);
 
         Page<ClientResponseDto> result =
-            service.findAll(pageable);
+            service.findAll(pageable, "");
 
         assertThat(result)
             .isNotNull();
@@ -946,7 +948,7 @@ class ClientServiceTest {
             .isEqualTo(2);
 
         verify(clientRepository)
-            .findAllWithPerson(pageable);
+            .search("", "", pageable);
     }
 
     @Test
@@ -957,7 +959,9 @@ class ClientServiceTest {
             PageRequest.of(0, 10);
 
         when(
-            clientRepository.findAllWithPerson(
+            clientRepository.search(
+                "",
+                "",
                 pageable
             )
         )
@@ -966,7 +970,7 @@ class ClientServiceTest {
             );
 
         Page<ClientResponseDto> result =
-            service.findAll(pageable);
+            service.findAll(pageable, "");
 
         assertThat(result)
             .isNotNull();
@@ -978,7 +982,7 @@ class ClientServiceTest {
             .isZero();
 
         verify(clientRepository)
-            .findAllWithPerson(pageable);
+            .search("", "", pageable);
     }
 
     @Test

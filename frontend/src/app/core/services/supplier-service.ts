@@ -14,10 +14,12 @@ export class SupplierService {
 
   constructor(private http: HttpClient) {}
 
-  findAll(page = 0, size = 10, sort?: string): Observable<SpringPage<SupplierResponseDto>> {
+  findAll(page = 0, size = 10, query = '', sort?: string): Observable<SpringPage<SupplierResponseDto>> {
     let params = new HttpParams()
       .set('page', page.toString())
       .set('size', size.toString());
+    const normalizedQuery = query.trim();
+    if (normalizedQuery) params = params.set('q', normalizedQuery);
     if (sort) params = params.set('sort', sort);
     return this.http.get<SpringPage<SupplierResponseDto>>(this.apiUrl, { params });
   }

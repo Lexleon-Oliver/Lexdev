@@ -219,7 +219,7 @@ class SupplierControllerTest {
             1
         );
 
-        when(service.findAll(any(Pageable.class))).thenReturn(page);
+        when(service.findAll(any(Pageable.class), eq(""))).thenReturn(page);
 
         mockMvc.perform(get("/suppliers"))
             .andExpect(status().isOk())
@@ -259,7 +259,7 @@ class SupplierControllerTest {
                 .value(1000.00))
             .andExpect(jsonPath("$.content[0].active").value(true));
 
-        verify(service).findAll(any(Pageable.class));
+        verify(service).findAll(any(Pageable.class), eq(""));
     }
 
     @Test
@@ -272,7 +272,7 @@ class SupplierControllerTest {
             0
         );
 
-        when(service.findAll(any(Pageable.class))).thenReturn(page);
+        when(service.findAll(any(Pageable.class), eq(""))).thenReturn(page);
 
         mockMvc.perform(
             get("/suppliers")
@@ -285,8 +285,31 @@ class SupplierControllerTest {
             org.mockito.ArgumentMatchers.argThat(pageable ->
                 pageable.getPageNumber() == 1 &&
                 pageable.getPageSize() == 5
-            )
+            ),
+            eq("")
         );
+    }
+
+    @Test
+    @DisplayName("Deve encaminhar termo de pesquisa ao service")
+    void deveEncaminharTermoDePesquisaAoService() throws Exception {
+
+        PageImpl<SupplierResponseDto> page = new PageImpl<>(
+            List.of(),
+            PageRequest.of(0, 10),
+            0
+        );
+
+        when(service.findAll(any(Pageable.class), eq("tech")))
+            .thenReturn(page);
+
+        mockMvc.perform(
+            get("/suppliers")
+                .param("q", "tech")
+        )
+            .andExpect(status().isOk());
+
+        verify(service).findAll(any(Pageable.class), eq("tech"));
     }
 
     @Test

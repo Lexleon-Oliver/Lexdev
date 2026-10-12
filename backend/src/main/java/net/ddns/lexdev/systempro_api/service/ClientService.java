@@ -35,9 +35,11 @@ public class ClientService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ClientResponseDto> findAll(Pageable pageable) {
+    public Page<ClientResponseDto> findAll(Pageable pageable, String query) {
+        String term = query == null ? "" : query.trim().toLowerCase();
+        String digits = term.replaceAll("\\D", "");
 
-        return clientRepository.findAllWithPerson(pageable)
+        return clientRepository.search(term, digits, pageable)
             .map(ClientResponseDto::fromEntity);
     }
 

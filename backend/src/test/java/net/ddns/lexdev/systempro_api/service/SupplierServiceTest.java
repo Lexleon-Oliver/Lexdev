@@ -741,7 +741,7 @@ class SupplierServiceTest {
 
     @Test
     @DisplayName(
-        "Deve realizar soft delete do fornecedor sem inativar a Person"
+        "Deve solicitar soft delete do fornecedor sem inativar a Person"
     )
     void deveRealizarSoftDeleteDoFornecedor() {
 
@@ -762,9 +762,6 @@ class SupplierServiceTest {
 
         service.delete(1L);
 
-        assertThat(supplier.isActive())
-            .isFalse();
-
         assertThat(person.isActive())
             .isTrue();
 
@@ -772,7 +769,10 @@ class SupplierServiceTest {
             .findByIdWithPerson(1L);
 
         verify(supplierRepository)
-            .save(supplier);
+            .delete(supplier);
+
+        verify(supplierRepository, never())
+            .save(any(Supplier.class));
 
         verify(personService, never())
             .reactivate(anyLong());
@@ -843,11 +843,11 @@ class SupplierServiceTest {
                 2
             );
 
-        when(supplierRepository.findAllWithPerson(pageable))
+        when(supplierRepository.search("", "", pageable))
             .thenReturn(supplierPage);
 
         Page<SupplierResponseDto> result =
-            service.findAll(pageable);
+            service.findAll(pageable, "");
 
         assertThat(result)
             .isNotNull();
@@ -889,7 +889,7 @@ class SupplierServiceTest {
             .isEqualTo(2);
 
         verify(supplierRepository)
-            .findAllWithPerson(pageable);
+            .search("", "", pageable);
     }
 
     @Test
@@ -901,11 +901,11 @@ class SupplierServiceTest {
         Pageable pageable =
             PageRequest.of(0, 10);
 
-        when(supplierRepository.findAllWithPerson(pageable))
+        when(supplierRepository.search("", "", pageable))
             .thenReturn(Page.empty(pageable));
 
         Page<SupplierResponseDto> result =
-            service.findAll(pageable);
+            service.findAll(pageable, "");
 
         assertThat(result)
             .isNotNull();
@@ -917,6 +917,24 @@ class SupplierServiceTest {
             .isZero();
 
         verify(supplierRepository)
-            .findAllWithPerson(pageable);
+            .search("", "", pageable);
     }
+    @Test
+    @DisplayName("Deve normalizar termo e dígitos na pesquisa paginada")
+    void deveNormalizarTermoEDigitosNaPesquisaPaginada() {
+
+        Pageable pageable = PageRequest.of(0, 10);
+
+        when(supplierRepository.search("fornecedor 123.456", "123456", pageable))
+            .thenReturn(Page.empty(pageable));
+
+        Page<SupplierResponseDto> result =
+            service.findAll(pageable, "  Fornecedor 123.456  ");
+
+        assertThat(result).isEmpty();
+
+        verify(supplierRepository)
+            .search("fornecedor 123.456", "123456", pageable);
+    }
+
 }

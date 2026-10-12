@@ -17,8 +17,49 @@ public interface SupplierRepository extends JpaRepository<Supplier, Long> {
     @Query("SELECT DISTINCT s FROM Supplier s JOIN FETCH s.person WHERE s.id = :id")
     Optional<Supplier> findByIdWithPerson(@Param("id") Long id);
 
-    @Query("SELECT DISTINCT s FROM Supplier s JOIN FETCH s.person")
-    Page<Supplier> findAllWithPerson(Pageable pageable);
+    @Query(
+        value = """
+            SELECT s
+            FROM Supplier s
+            JOIN FETCH s.person p
+            WHERE :term = ''
+               OR LOWER(p.name) LIKE CONCAT('%', :term, '%')
+               OR (:digits <> '' AND p.cpfCnpj LIKE CONCAT('%', :digits, '%'))
+               OR LOWER(COALESCE(s.categoria, '')) LIKE CONCAT('%', :term, '%')
+               OR EXISTS (
+                   SELECT pc.id
+                   FROM PersonContact pc
+                   WHERE pc.person = p
+                     AND (
+                         LOWER(pc.value) LIKE CONCAT('%', :term, '%')
+                         OR (:digits <> '' AND pc.value LIKE CONCAT('%', :digits, '%'))
+                     )
+               )
+            """,
+        countQuery = """
+            SELECT COUNT(s)
+            FROM Supplier s
+            JOIN s.person p
+            WHERE :term = ''
+               OR LOWER(p.name) LIKE CONCAT('%', :term, '%')
+               OR (:digits <> '' AND p.cpfCnpj LIKE CONCAT('%', :digits, '%'))
+               OR LOWER(COALESCE(s.categoria, '')) LIKE CONCAT('%', :term, '%')
+               OR EXISTS (
+                   SELECT pc.id
+                   FROM PersonContact pc
+                   WHERE pc.person = p
+                     AND (
+                         LOWER(pc.value) LIKE CONCAT('%', :term, '%')
+                         OR (:digits <> '' AND pc.value LIKE CONCAT('%', :digits, '%'))
+                     )
+               )
+            """
+    )
+    Page<Supplier> search(
+        @Param("term") String term,
+        @Param("digits") String digits,
+        Pageable pageable
+    );
 
     @Query(value = """
         SELECT s.id

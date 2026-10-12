@@ -9,7 +9,7 @@
           type="text"
           placeholder="Buscar clientes..."
           [value]="searchTerm()"
-          (input)="searchTerm.set($any($event.target).value)"
+          (input)="onSearchInput($any($event.target).value)"
         />
       </div>
       <button class="btn-primary" (click)="openCreateModal()">
@@ -30,7 +30,7 @@
   @if (isLoading()) {
     <div class="loading"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>
   } @else {
-    @if (filteredClients().length === 0) {
+    @if (clients().length === 0) {
       <div class="empty-state">
         <i class="fas fa-users"></i>
         <p>Nenhum cliente encontrado.</p>
@@ -48,7 +48,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (client of filteredClients(); track client.id) {
+            @for (client of clients(); track client.id) {
               <tr>
                 <td data-label="Nome/Razão">{{ client.person.name }}</td>
                 <td data-label="CPF/CNPJ">{{ applyCpfCnpjMask(client.person.cpfCnpj, client.person.tipoPessoa) }}</td>
@@ -69,6 +69,35 @@
           </tbody>
         </table>
       </div>
+
+      @if (totalPages() > 1) {
+        <div class="pagination">
+          <button
+            type="button"
+            class="page-btn"
+            [disabled]="currentPage() === 0 || isLoading()"
+            (click)="loadClients(currentPage() - 1)"
+            title="Página anterior"
+          >
+            <i class="fas fa-chevron-left"></i>
+          </button>
+
+          <span class="page-info">
+            {{ currentPage() + 1 }} / {{ totalPages() }}
+            <small>{{ totalElements() }} registro(s)</small>
+          </span>
+
+          <button
+            type="button"
+            class="page-btn"
+            [disabled]="currentPage() + 1 >= totalPages() || isLoading()"
+            (click)="loadClients(currentPage() + 1)"
+            title="Próxima página"
+          >
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      }
     }
   }
 

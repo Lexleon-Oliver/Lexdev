@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { AbstractControl, FormArray, FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NotificationService } from '../../../core/services/notification-service';
 import { SupplierResponseDto } from '../../models/supplier-response-dto';
@@ -33,68 +33,8 @@ export class SupplierComponent implements OnInit {
   pageSize = signal(10);
   totalElements = signal(0);
 
-  /* ===================== Filtro ===================== */
-  filteredSuppliers = computed(() => {
-
-    const term =
-      this.searchTerm().trim();
-
-    const normalizedTerm =
-      this.normalizeSearchValue(term);
-
-    const list =
-      this.suppliers();
-
-    if (!Array.isArray(list)) {
-      return [];
-    }
-
-    if (!term) {
-      return list;
-    }
-
-    return list.filter((supplier) => {
-
-      const name =
-        this.normalizeSearchValue(
-          supplier.person?.name ?? ''
-        );
-
-      const doc =
-        this.normalizeSearchValue(
-          supplier.person?.cpfCnpj ?? ''
-        );
-
-      const email =
-        this.normalizeSearchValue(
-          this.getPrimaryContactValue(
-            supplier,
-            'EMAIL'
-          )
-        );
-
-      const phone =
-        this.normalizeSearchValue(
-          this.getPrimaryContactValue(
-            supplier,
-            'TELEFONE'
-          )
-        );
-
-      const categoria =
-        this.normalizeSearchValue(
-          supplier.categoria ?? ''
-        );
-
-      return (
-        name.includes(normalizedTerm) ||
-        doc.includes(normalizedTerm) ||
-        email.includes(normalizedTerm) ||
-        phone.includes(normalizedTerm) ||
-        categoria.includes(normalizedTerm)
-      );
-    });
-  });
+  totalPages = signal(0);
+  private searchDebounce?: ReturnType<typeof setTimeout>;
 
   /* ===================== UI ===================== */
   showFormModal = signal(false);
@@ -191,20 +131,38 @@ export class SupplierComponent implements OnInit {
   }
 
   /* ===================== CRUD ===================== */
-  loadSuppliers(): void {
+  loadSuppliers(page = this.currentPage()): void {
+    this.currentPage.set(page);
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
-    this.supplierService.findAll(this.currentPage(), this.pageSize()).subscribe({
-      next: (page) => {
-        this.suppliers.set(page.content ?? []);
-        this.totalElements.set(page.totalElements ?? 0);
-        this.isLoading.set(false);
-      },
-      error: () => {
-        this.isLoading.set(false);
-      }
-    });
+    this.supplierService
+      .findAll(page, this.pageSize(), this.searchTerm())
+      .subscribe({
+        next: (result) => {
+          this.suppliers.set(result.content ?? []);
+          this.totalElements.set(result.totalElements ?? 0);
+          this.totalPages.set(result.totalPages ?? 0);
+          this.currentPage.set(result.number ?? page);
+          this.isLoading.set(false);
+        },
+        error: () => {
+          this.errorMessage.set('Não foi possível carregar os fornecedores.');
+          this.isLoading.set(false);
+        }
+      });
+  }
+
+  onSearchInput(value: string): void {
+    this.searchTerm.set(value);
+
+    if (this.searchDebounce) {
+      clearTimeout(this.searchDebounce);
+    }
+
+    this.searchDebounce = setTimeout(() => {
+      this.loadSuppliers(0);
+    }, 350);
   }
 
   openCreateModal(): void {
@@ -296,13 +254,11 @@ export class SupplierComponent implements OnInit {
 
     if (editing?.id) {
       this.supplierService.update(editing.id, payload).subscribe({
-        next: (updated) => {
-          this.suppliers.update(list =>
-            list.map(s => (s.id === editing.id ? updated : s))
-          );
+        next: () => {
           this.notification.success('Fornecedor atualizado com sucesso!');
           this.isSaving.set(false);
           this.closeFormModal();
+          this.loadSuppliers(this.currentPage());
         },
         error: () => {
           this.notification.error('Erro ao atualizar fornecedor.');
@@ -311,11 +267,11 @@ export class SupplierComponent implements OnInit {
       });
     } else {
       this.supplierService.create(payload).subscribe({
-        next: (created) => {
-          this.suppliers.update(list => [created, ...list]);
+        next: () => {
           this.notification.success('Fornecedor criado com sucesso!');
           this.isSaving.set(false);
           this.closeFormModal();
+          this.loadSuppliers(0);
         },
         error: () => {
           this.isSaving.set(false);
@@ -340,9 +296,14 @@ export class SupplierComponent implements OnInit {
 
     this.supplierService.delete(supplier.id).subscribe({
       next: () => {
-        this.suppliers.update(list => list.filter(s => s.id !== supplier.id));
+        const targetPage =
+          this.suppliers().length === 1 && this.currentPage() > 0
+            ? this.currentPage() - 1
+            : this.currentPage();
+
         this.notification.success('Fornecedor excluído com sucesso!');
         this.closeDeleteModal();
+        this.loadSuppliers(targetPage);
       },
       error: () => this.notification.error('Erro ao excluir fornecedor.')
     });

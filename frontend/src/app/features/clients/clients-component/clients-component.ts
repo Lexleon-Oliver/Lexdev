@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NotificationService } from '../../../core/services/notification-service';
 import { cpfCnpjValidator } from '../../../core/validators/cpf-cnpj.validator';
@@ -35,52 +35,8 @@ export class ClientsComponent implements OnInit {
   pageSize = signal(10);
   totalElements = signal(0);
 
-  filteredClients = computed(() => {
-    const term = this.searchTerm().trim();
-    const normalizedTerm = this.normalizeSearchValue(term);
-
-    const list = this.clients();
-
-    if (!Array.isArray(list)) {
-      return [];
-    }
-
-    if (!term) {
-      return list;
-    }
-
-    return list.filter((client) => {
-
-      const name = this.normalizeSearchValue(
-        client.person?.name ?? ''
-      );
-
-      const doc = this.normalizeSearchValue(
-        client.person?.cpfCnpj ?? ''
-      );
-
-      const emails = (client.contacts ?? [])
-        .filter((c) => c.type === 'EMAIL')
-        .map((c) =>
-          this.normalizeSearchValue(c.value ?? '')
-        )
-        .join(' ');
-
-      const phones = (client.contacts ?? [])
-        .filter((c) => c.type !== 'EMAIL')
-        .map((c) =>
-          this.normalizeSearchValue(c.value ?? '')
-        )
-        .join(' ');
-
-      return (
-        name.includes(normalizedTerm) ||
-        doc.includes(normalizedTerm) ||
-        emails.includes(normalizedTerm) ||
-        phones.includes(normalizedTerm)
-      );
-    });
-  });
+  totalPages = signal(0);
+  private searchDebounce?: ReturnType<typeof setTimeout>;
 
   // Modais e UI
   showFormModal = signal(false);
@@ -124,20 +80,38 @@ export class ClientsComponent implements OnInit {
 
   /* ==================== Carregamento ==================== */
 
-  loadClients(): void {
+  loadClients(page = this.currentPage()): void {
+    this.currentPage.set(page);
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
-    this.clientService.findAll(this.currentPage(), this.pageSize()).subscribe({
-      next: (page) => {
-        this.clients.set(page.content ?? []);
-        this.totalElements.set(page.totalElements);
-        this.isLoading.set(false);
-      },
-      error: () => {
-        this.isLoading.set(false);
-      },
-    });
+    this.clientService
+      .findAll(page, this.pageSize(), this.searchTerm())
+      .subscribe({
+        next: (result) => {
+          this.clients.set(result.content ?? []);
+          this.totalElements.set(result.totalElements ?? 0);
+          this.totalPages.set(result.totalPages ?? 0);
+          this.currentPage.set(result.number ?? page);
+          this.isLoading.set(false);
+        },
+        error: () => {
+          this.errorMessage.set('Não foi possível carregar os clientes.');
+          this.isLoading.set(false);
+        },
+      });
+  }
+
+  onSearchInput(value: string): void {
+    this.searchTerm.set(value);
+
+    if (this.searchDebounce) {
+      clearTimeout(this.searchDebounce);
+    }
+
+    this.searchDebounce = setTimeout(() => {
+      this.loadClients(0);
+    }, 350);
   }
 
   /* ==================== Helpers de exibição ==================== */
@@ -318,18 +292,15 @@ export class ClientsComponent implements OnInit {
       : this.clientService.create(payload);
 
     request$.subscribe({
-      next: (saved) => {
-        if (editing?.id) {
-          this.clients.update((list) =>
-            list.map((c) => (c.id === editing.id ? saved : c))
-          );
-          this.notification.success('Cliente atualizado com sucesso!');
-        } else {
-          this.clients.update((list) => [saved, ...list]);
-          this.notification.success('Cliente criado com sucesso!');
-        }
+      next: () => {
+        this.notification.success(
+          editing?.id
+            ? 'Cliente atualizado com sucesso!'
+            : 'Cliente criado com sucesso!'
+        );
         this.isSaving.set(false);
         this.closeFormModal();
+        this.loadClients(editing?.id ? this.currentPage() : 0);
       },
       error: () => {
         this.notification.error(
@@ -358,9 +329,14 @@ export class ClientsComponent implements OnInit {
 
     this.clientService.delete(client.id).subscribe({
       next: () => {
-        this.clients.update((list) => list.filter((c) => c.id !== client.id));
+        const targetPage =
+          this.clients().length === 1 && this.currentPage() > 0
+            ? this.currentPage() - 1
+            : this.currentPage();
+
         this.notification.success('Cliente excluído com sucesso!');
         this.closeDeleteModal();
+        this.loadClients(targetPage);
       },
       error: () => this.notification.error('Erro ao excluir cliente.'),
     });
@@ -550,11 +526,4 @@ export class ClientsComponent implements OnInit {
     return str.replace(/^(\d{5})(\d)/, '$1-$2');
   }
 
-  private normalizeSearchValue(value: string): string {
-    return value
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '');
-  }
 }

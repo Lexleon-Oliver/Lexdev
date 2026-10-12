@@ -762,7 +762,8 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
 
         Page<SupplierResponseDto> resultado =
             supplierService.findAll(
-                PageRequest.of(0, 10)
+                PageRequest.of(0, 10),
+                ""
             );
 
         // ============================================================

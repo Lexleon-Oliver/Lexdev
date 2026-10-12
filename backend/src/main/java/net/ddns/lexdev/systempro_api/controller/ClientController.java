@@ -32,8 +32,10 @@ public class ClientController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<ClientResponseDto>> findAll(Pageable pageable) {
-        return ResponseEntity.ok(service.findAll(pageable));
+    public ResponseEntity<Page<ClientResponseDto>> findAll(
+            Pageable pageable,
+            @RequestParam(required = false, defaultValue = "") String q) {
+        return ResponseEntity.ok(service.findAll(pageable, q));
     }
 
     @GetMapping("/by-document")
