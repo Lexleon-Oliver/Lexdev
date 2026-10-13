@@ -231,9 +231,10 @@
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
+
 .stock-table {
   width: 100%;
-  min-width: 1000px;
+  min-width: 1500px;              /* desktop largo — 12 colunas confortáveis */
   border-collapse: collapse;
   table-layout: fixed;
 
@@ -303,6 +304,52 @@
   i { font-size: 0.6rem; }
 }
 
+/* ===== Situação do estoque ===== */
+.period-info {
+  margin: -0.5rem 0 1rem;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.85rem;
+}
+
+.stock-status {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.stock-status.success {
+  color: #81c784;
+  background: rgba(76, 175, 80, 0.16);
+  border-color: rgba(76, 175, 80, 0.35);
+}
+.stock-status.warning {
+  color: #ffd54f;
+  background: rgba(255, 193, 7, 0.14);
+  border-color: rgba(255, 193, 7, 0.35);
+}
+.stock-status.danger {
+  color: #ef9a9a;
+  background: rgba(244, 67, 54, 0.14);
+  border-color: rgba(244, 67, 54, 0.35);
+}
+.stock-status.info {
+  color: #90caf9;
+  background: rgba(33, 150, 243, 0.14);
+  border-color: rgba(33, 150, 243, 0.35);
+}
+.stock-status.muted {
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.replenishment-row {
+  background: rgba(255, 193, 7, 0.035);
+}
+
 /* ===== Responsividade ===== */
 @media (max-width: 768px) {
   .report-page {
@@ -352,7 +399,7 @@
   .stock-table {
     display: block;
     width: 100%;
-    min-width: 0;
+    min-width: 0;                 /* ⬅ sobrescreve os 1500px do desktop */
     table-layout: auto;
     border-collapse: separate;
     border-spacing: 0;
@@ -417,27 +464,25 @@
   }
 }
 
-/* ===== Rede de segurança: tablet ===== */
+/* ===== Tablet ===== */
 @media (min-width: 769px) and (max-width: 1024px) {
   .table-wrapper {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
+
   .stock-table {
     min-width: 860px;
   }
+
   .kpi-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
-/* ===== Situação do estoque ===== */
-.period-info { margin: -0.5rem 0 1rem; color: rgba(255,255,255,.65); font-size: .85rem; }
-.stock-table { min-width: 1500px; }
-.stock-status { display:inline-flex; align-items:center; white-space:nowrap; padding:3px 8px; border-radius:10px; font-size:.72rem; border:1px solid rgba(255,255,255,.18); }
-.stock-status.success { color:#81c784; background:rgba(76,175,80,.16); border-color:rgba(76,175,80,.35); }
-.stock-status.warning { color:#ffd54f; background:rgba(255,193,7,.14); border-color:rgba(255,193,7,.35); }
-.stock-status.danger { color:#ef9a9a; background:rgba(244,67,54,.14); border-color:rgba(244,67,54,.35); }
-.stock-status.info { color:#90caf9; background:rgba(33,150,243,.14); border-color:rgba(33,150,243,.35); }
-.stock-status.muted { color:rgba(255,255,255,.6); background:rgba(255,255,255,.06); }
-.replenishment-row { background:rgba(255,193,7,.035); }
+/* ===== Desktop largo ===== */
+@media (min-width: 1025px) {
+  .stock-table {
+    min-width: 1500px;
+  }
+}
