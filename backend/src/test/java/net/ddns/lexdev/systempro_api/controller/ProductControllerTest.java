@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -47,7 +48,7 @@ class ProductControllerTest {
                 .param("size", "10"))
             .andExpect(status().isOk());
 
-        verify(productService).findAll(any(Pageable.class), eq("motor"));
+        verify(productService).findAll(any(Pageable.class),eq("motor"),isNull());
     }
 
     @Test
@@ -58,6 +59,6 @@ class ProductControllerTest {
         mockMvc.perform(get("/products"))
             .andExpect(status().isOk());
 
-        verify(productService).findAll(any(Pageable.class), eq(""));
+        verify(productService).findAll(any(Pageable.class),eq(""),isNull());
     }
 }

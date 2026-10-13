@@ -12,6 +12,14 @@ interface DeletedRecord {
   lastModifiedAt: string | null;
 }
 
+interface DeletedRecordPage {
+  content: DeletedRecord[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
 type DeletedRecordType = 'CLIENT' | 'SUPPLIER' | 'PRODUCT' | 'SUPPLIER_DOCUMENT' | 'USER';
 
 @Component({
@@ -32,9 +40,14 @@ export class DeletedRecordsComponent implements OnInit {
     { value: 'USER', label: 'Usuários' }
   ];
 
+  readonly pageSize = 20;
+
   selectedType: DeletedRecordType = 'CLIENT';
   search = '';
   records: DeletedRecord[] = [];
+  currentPage = 0;
+  totalElements = 0;
+  totalPages = 0;
   loading = false;
   restoringId: number | null = null;
   error = '';
@@ -53,11 +66,16 @@ export class DeletedRecordsComponent implements OnInit {
 
     const params = new HttpParams()
       .set('type', this.selectedType)
-      .set('search', this.search.trim());
+      .set('search', this.search.trim())
+      .set('page', this.currentPage)
+      .set('size', this.pageSize);
 
-    this.http.get<DeletedRecord[]>('/api/support/deleted-records', { params }).subscribe({
-      next: records => {
-        this.records = records;
+    this.http.get<DeletedRecordPage>('/api/support/deleted-records', { params }).subscribe({
+      next: response => {
+        this.records = response.content;
+        this.currentPage = response.page;
+        this.totalElements = response.totalElements;
+        this.totalPages = response.totalPages;
         this.loading = false;
       },
       error: error => {
@@ -67,11 +85,34 @@ export class DeletedRecordsComponent implements OnInit {
     });
   }
 
+  searchRecords(): void {
+    this.currentPage = 0;
+    this.success = '';
+    this.load();
+  }
+
   changeType(type: DeletedRecordType): void {
     this.closeRestoreModal();
     this.success = '';
     this.selectedType = type;
     this.search = '';
+    this.currentPage = 0;
+    this.load();
+  }
+
+  previousPage(): void {
+    if (this.loading || this.currentPage === 0) {
+      return;
+    }
+    this.currentPage--;
+    this.load();
+  }
+
+  nextPage(): void {
+    if (this.loading || this.currentPage + 1 >= this.totalPages) {
+      return;
+    }
+    this.currentPage++;
     this.load();
   }
 
@@ -110,24 +151,20 @@ export class DeletedRecordsComponent implements OnInit {
       .patch<void>(`/api/support/deleted-records/${record.type}/${record.id}/restore`, {})
       .pipe(
         finalize(() => {
-          /*
-           * O estado transitório pertence ao ciclo de vida da requisição,
-           * portanto deve ser encerrado independentemente de sucesso ou erro.
-           * O detectChanges explícito garante que o modal não permaneça
-           * visualmente em "Recuperando..." depois que o HTTP já terminou.
-           */
           this.restoringId = null;
           this.cdr.detectChanges();
         })
       )
       .subscribe({
         next: () => {
-          this.records = this.records.filter(
-            item => !(item.id === record.id && item.type === record.type)
-          );
+          const pageWillBeEmpty = this.records.length === 1 && this.currentPage > 0;
+          if (pageWillBeEmpty) {
+            this.currentPage--;
+          }
           this.showRestoreModal = false;
           this.restoringRecord = null;
           this.success = 'Registro recuperado com sucesso.';
+          this.load();
         },
         error: error => {
           this.error = error?.error?.message || 'Não foi possível recuperar o registro.';

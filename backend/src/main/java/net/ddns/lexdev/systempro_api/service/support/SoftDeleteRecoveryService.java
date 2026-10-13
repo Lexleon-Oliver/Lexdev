@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityNotFoundException;
 import net.ddns.lexdev.systempro_api.domain.User;
+import net.ddns.lexdev.systempro_api.dto.support.DeletedRecordPageResponseDto;
 import net.ddns.lexdev.systempro_api.dto.support.DeletedRecordResponseDto;
 import net.ddns.lexdev.systempro_api.dto.support.DeletedRecordType;
 import net.ddns.lexdev.systempro_api.exception.BusinessException;
@@ -30,14 +31,38 @@ public class SoftDeleteRecoveryService {
     }
 
     @Transactional(readOnly = true)
-    public List<DeletedRecordResponseDto> findDeleted(DeletedRecordType type, String search) {
+    public DeletedRecordPageResponseDto findDeleted(
+        DeletedRecordType type,
+        String search,
+        int page,
+        int size
+    ) {
         String q = search == null ? "" : search.trim().toLowerCase();
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 100);
+
         return switch (type) {
-            case CLIENT -> queryAudited("SELECT c.id,p.name title,p.cpf_cnpj subtitle,c.updated_at FROM tb_client c JOIN tb_person p ON p.id=c.person_id WHERE c.active=false AND (?='' OR LOWER(p.name) LIKE ? OR p.cpf_cnpj LIKE ?) ORDER BY c.updated_at DESC,c.id DESC", type, q, 2);
-            case SUPPLIER -> queryAudited("SELECT s.id,p.name title,p.cpf_cnpj subtitle,s.updated_at FROM tb_supplier s JOIN tb_person p ON p.id=s.person_id WHERE s.active=false AND (?='' OR LOWER(p.name) LIKE ? OR p.cpf_cnpj LIKE ?) ORDER BY s.updated_at DESC,s.id DESC", type, q, 2);
-            case PRODUCT -> queryAudited("SELECT p.id,p.name title,p.code subtitle,p.updated_at FROM tb_product p WHERE p.active=false AND (?='' OR LOWER(p.name) LIKE ? OR LOWER(p.code) LIKE ?) ORDER BY p.updated_at DESC,p.id DESC", type, q, 2);
-            case SUPPLIER_DOCUMENT -> queryAudited("SELECT d.id,d.tipo_documento title,COALESCE(d.numero_documento,sp.name) subtitle,d.updated_at FROM tb_supplier_documents d JOIN tb_supplier s ON s.id=d.supplier_id JOIN tb_person sp ON sp.id=s.person_id WHERE d.active=false AND (?='' OR LOWER(d.tipo_documento) LIKE ? OR LOWER(COALESCE(d.numero_documento,'')) LIKE ? OR LOWER(sp.name) LIKE ?) ORDER BY d.updated_at DESC,d.id DESC", type, q, 3);
-            case USER -> queryUsers(q);
+            case CLIENT -> queryAuditedPage(
+                "SELECT c.id,p.name title,p.cpf_cnpj subtitle,c.updated_at FROM tb_client c JOIN tb_person p ON p.id=c.person_id WHERE c.active=false AND (?='' OR LOWER(p.name) LIKE ? OR p.cpf_cnpj LIKE ?) ORDER BY c.updated_at DESC,c.id DESC",
+                "SELECT COUNT(*) FROM tb_client c JOIN tb_person p ON p.id=c.person_id WHERE c.active=false AND (?='' OR LOWER(p.name) LIKE ? OR p.cpf_cnpj LIKE ?)",
+                type, q, 2, safePage, safeSize
+            );
+            case SUPPLIER -> queryAuditedPage(
+                "SELECT s.id,p.name title,p.cpf_cnpj subtitle,s.updated_at FROM tb_supplier s JOIN tb_person p ON p.id=s.person_id WHERE s.active=false AND (?='' OR LOWER(p.name) LIKE ? OR p.cpf_cnpj LIKE ?) ORDER BY s.updated_at DESC,s.id DESC",
+                "SELECT COUNT(*) FROM tb_supplier s JOIN tb_person p ON p.id=s.person_id WHERE s.active=false AND (?='' OR LOWER(p.name) LIKE ? OR p.cpf_cnpj LIKE ?)",
+                type, q, 2, safePage, safeSize
+            );
+            case PRODUCT -> queryAuditedPage(
+                "SELECT p.id,p.name title,p.code subtitle,p.updated_at FROM tb_product p WHERE p.active=false AND (?='' OR LOWER(p.name) LIKE ? OR LOWER(p.code) LIKE ?) ORDER BY p.updated_at DESC,p.id DESC",
+                "SELECT COUNT(*) FROM tb_product p WHERE p.active=false AND (?='' OR LOWER(p.name) LIKE ? OR LOWER(p.code) LIKE ?)",
+                type, q, 2, safePage, safeSize
+            );
+            case SUPPLIER_DOCUMENT -> queryAuditedPage(
+                "SELECT d.id,d.tipo_documento title,COALESCE(d.numero_documento,sp.name) subtitle,d.updated_at FROM tb_supplier_documents d JOIN tb_supplier s ON s.id=d.supplier_id JOIN tb_person sp ON sp.id=s.person_id WHERE d.active=false AND (?='' OR LOWER(d.tipo_documento) LIKE ? OR LOWER(COALESCE(d.numero_documento,'')) LIKE ? OR LOWER(sp.name) LIKE ?) ORDER BY d.updated_at DESC,d.id DESC",
+                "SELECT COUNT(*) FROM tb_supplier_documents d JOIN tb_supplier s ON s.id=d.supplier_id JOIN tb_person sp ON sp.id=s.person_id WHERE d.active=false AND (?='' OR LOWER(d.tipo_documento) LIKE ? OR LOWER(COALESCE(d.numero_documento,'')) LIKE ? OR LOWER(sp.name) LIKE ?)",
+                type, q, 3, safePage, safeSize
+            );
+            case USER -> queryUsersPage(q, safePage, safeSize);
         };
     }
 
@@ -158,34 +183,60 @@ public class SoftDeleteRecoveryService {
         return restoreAudited("tb_supplier_documents", id);
     }
 
-    private List<DeletedRecordResponseDto> queryAudited(
-        String sql,
+    private DeletedRecordPageResponseDto queryAuditedPage(
+        String selectSql,
+        String countSql,
         DeletedRecordType type,
         String search,
-        int likeCount
+        int likeCount,
+        int page,
+        int size
     ) {
-        String like = "%" + search + "%";
-        Object[] args = new Object[likeCount + 1];
-        args[0] = search;
-        for (int i = 1; i < args.length; i++) args[i] = like;
+        Object[] filterArgs = filterArgs(search, likeCount);
+        Long total = jdbcTemplate.queryForObject(countSql, Long.class, filterArgs);
+        long totalElements = total == null ? 0L : total;
 
-        return jdbcTemplate.query(sql, (rs, row) -> {
-            Timestamp ts = rs.getTimestamp("updated_at");
-            Instant at = ts == null ? null : ts.toInstant();
-            return new DeletedRecordResponseDto(
-                rs.getLong("id"),
-                type,
-                rs.getString("title"),
-                rs.getString("subtitle"),
-                at
-            );
-        }, args);
+        Object[] pageArgs = new Object[filterArgs.length + 2];
+        System.arraycopy(filterArgs, 0, pageArgs, 0, filterArgs.length);
+        pageArgs[filterArgs.length] = size;
+        pageArgs[filterArgs.length + 1] = (long) page * size;
+
+        List<DeletedRecordResponseDto> content = jdbcTemplate.query(
+            selectSql + " LIMIT ? OFFSET ?",
+            (rs, row) -> {
+                Timestamp ts = rs.getTimestamp("updated_at");
+                Instant at = ts == null ? null : ts.toInstant();
+                return new DeletedRecordResponseDto(
+                    rs.getLong("id"),
+                    type,
+                    rs.getString("title"),
+                    rs.getString("subtitle"),
+                    at
+                );
+            },
+            pageArgs
+        );
+
+        return DeletedRecordPageResponseDto.of(
+            content, page, size, totalElements
+        );
     }
 
-    private List<DeletedRecordResponseDto> queryUsers(String search) {
-        String like = "%" + search + "%";
-        return jdbcTemplate.query(
-            "SELECT id,name title,username subtitle FROM tb_users WHERE active=false AND (?='' OR LOWER(name) LIKE ? OR LOWER(username) LIKE ? OR LOWER(email) LIKE ?) ORDER BY id DESC",
+    private DeletedRecordPageResponseDto queryUsersPage(
+        String search,
+        int page,
+        int size
+    ) {
+        Object[] filterArgs = filterArgs(search, 3);
+        Long total = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM tb_users WHERE active=false AND (?='' OR LOWER(name) LIKE ? OR LOWER(username) LIKE ? OR LOWER(email) LIKE ?)",
+            Long.class,
+            filterArgs
+        );
+        long totalElements = total == null ? 0L : total;
+
+        List<DeletedRecordResponseDto> content = jdbcTemplate.query(
+            "SELECT id,name title,username subtitle FROM tb_users WHERE active=false AND (?='' OR LOWER(name) LIKE ? OR LOWER(username) LIKE ? OR LOWER(email) LIKE ?) ORDER BY id DESC LIMIT ? OFFSET ?",
             (rs, row) -> new DeletedRecordResponseDto(
                 rs.getLong("id"),
                 DeletedRecordType.USER,
@@ -194,10 +245,26 @@ public class SoftDeleteRecoveryService {
                 null
             ),
             search,
-            like,
-            like,
-            like
+            "%" + search + "%",
+            "%" + search + "%",
+            "%" + search + "%",
+            size,
+            (long) page * size
         );
+
+        return DeletedRecordPageResponseDto.of(
+            content, page, size, totalElements
+        );
+    }
+
+    private Object[] filterArgs(String search, int likeCount) {
+        String like = "%" + search + "%";
+        Object[] args = new Object[likeCount + 1];
+        args[0] = search;
+        for (int i = 1; i < args.length; i++) {
+            args[i] = like;
+        }
+        return args;
     }
 
     private record DeletedRecordSnapshot(String title, String subtitle) {}

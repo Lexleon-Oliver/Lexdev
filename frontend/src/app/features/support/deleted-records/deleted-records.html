@@ -32,10 +32,10 @@
         type="text"
         placeholder="Buscar por título ou descrição..."
         [(ngModel)]="search"
-        (keyup.enter)="load()"
+        (keyup.enter)="searchRecords()"
       />
     </div>
-    <button class="btn-primary" (click)="load()" [disabled]="loading">
+    <button class="btn-primary" (click)="searchRecords()" [disabled]="loading">
       @if (loading) {
         <i class="fas fa-spinner fa-spin"></i>
       } @else {
@@ -110,6 +110,40 @@
               Recuperar
             </button>
           </div>
+        </div>
+      }
+    </div>
+
+    <div class="pagination-bar">
+      <span class="pagination-summary">
+        {{ totalElements }} registro{{ totalElements === 1 ? '' : 's' }} excluído{{ totalElements === 1 ? '' : 's' }}
+      </span>
+
+      @if (totalPages > 1) {
+        <div class="pagination-controls">
+          <button
+            type="button"
+            class="page-btn"
+            (click)="previousPage()"
+            [disabled]="loading || currentPage === 0"
+          >
+            <i class="fas fa-chevron-left"></i>
+            Anterior
+          </button>
+
+          <span class="page-indicator">
+            Página {{ currentPage + 1 }} de {{ totalPages }}
+          </span>
+
+          <button
+            type="button"
+            class="page-btn"
+            (click)="nextPage()"
+            [disabled]="loading || currentPage + 1 >= totalPages"
+          >
+            Próxima
+            <i class="fas fa-chevron-right"></i>
+          </button>
         </div>
       }
     </div>
