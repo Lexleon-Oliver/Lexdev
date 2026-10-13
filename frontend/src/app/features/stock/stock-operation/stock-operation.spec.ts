@@ -42,7 +42,7 @@ describe('StockOperationComponent', () => {
   });
 
   it('distinguishes uninitialized stock from zero balance', () => {
-    component.selectProduct({ id: 1, code: 'P1', name: 'Produto', status: 'ATIVO', unitOfMeasure: 'UN', controlsStock: true, controlsExpiration: false, suppliers: [], images: [], active: true });
+    component.selectProduct({ id: 1, code: 'P1', name: 'Produto', status: 'ATIVO', unitOfMeasure: 'UN', controlsStock: true, controlsExpiration: false, active: true });
     expect(component.balance()?.initialized).toBe(false);
     expect(component.balance()?.quantity).toBeNull();
     expect(component.canInitialize()).toBe(true);
@@ -50,7 +50,7 @@ describe('StockOperationComponent', () => {
   });
 
   it('keeps the same idempotency reference for retry until operation succeeds', () => {
-    component.selectProduct({ id: 1, code: 'P1', name: 'Produto', status: 'ATIVO', unitOfMeasure: 'UN', controlsStock: true, controlsExpiration: false, suppliers: [], images: [], active: true });
+    component.selectProduct({ id: 1, code: 'P1', name: 'Produto', status: 'ATIVO', unitOfMeasure: 'UN', controlsStock: true, controlsExpiration: false, active: true });
     component.beginOperation('INITIAL');
     component.form.setValue({ quantity: 10, reason: 'Contagem inicial', lotCode: '', manufactureDate: '', expirationDate: '' });
     component.submitOperation();
@@ -59,7 +59,7 @@ describe('StockOperationComponent', () => {
     expect(request.operationReference).toMatch(/^stock-ui:/);
   });
   it('renders lot and expiration fields for an incoming operation when the product controls expiration', () => {
-    component.selectProduct({ id: 1, code: 'P1', name: 'Produto', status: 'ATIVO', unitOfMeasure: 'UN', controlsStock: true, controlsExpiration: true, suppliers: [], images: [], active: true });
+    component.selectProduct({ id: 1, code: 'P1', name: 'Produto', status: 'ATIVO', unitOfMeasure: 'UN', controlsStock: true, controlsExpiration: true, active: true });
     component.beginOperation('INITIAL');
     fixture.detectChanges();
 
@@ -71,7 +71,7 @@ describe('StockOperationComponent', () => {
 
   it('does not render lot input fields for a negative adjustment', () => {
     stock.balance.mockReturnValue(of({ productId: 1, productCode: 'P1', productName: 'Produto', unitOfMeasure: 'UN', controlsStock: true, initialized: true, quantity: 10 }));
-    component.selectProduct({ id: 1, code: 'P1', name: 'Produto', status: 'ATIVO', unitOfMeasure: 'UN', controlsStock: true, controlsExpiration: true, suppliers: [], images: [], active: true });
+    component.selectProduct({ id: 1, code: 'P1', name: 'Produto', status: 'ATIVO', unitOfMeasure: 'UN', controlsStock: true, controlsExpiration: true, active: true });
     component.beginOperation('NEGATIVE');
     fixture.detectChanges();
 

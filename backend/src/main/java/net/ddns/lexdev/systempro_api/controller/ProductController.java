@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 import net.ddns.lexdev.systempro_api.dto.ProductRequestDto;
 import net.ddns.lexdev.systempro_api.dto.ProductResponseDto;
+import net.ddns.lexdev.systempro_api.dto.ProductSummaryResponseDto;
+import net.ddns.lexdev.systempro_api.dto.ProductSaleSummaryResponseDto;
 import net.ddns.lexdev.systempro_api.service.ProductImageService;
 import net.ddns.lexdev.systempro_api.service.ProductService;
 
@@ -85,7 +87,7 @@ public class ProductController {
     // ============================================================
 
     @GetMapping
-    public ResponseEntity<Page<ProductResponseDto>> findAll(
+    public ResponseEntity<Page<ProductSummaryResponseDto>> findAll(
         @RequestParam(defaultValue = "") String q,
         @RequestParam(required = false) Boolean controlsStock,
         @PageableDefault(size = 20, sort = "name")
@@ -102,7 +104,7 @@ public class ProductController {
     // ============================================================
 
     @GetMapping("/search")
-    public ResponseEntity<Page<ProductResponseDto>> search(
+    public ResponseEntity<Page<ProductSummaryResponseDto>> search(
         @RequestParam String q,
         @PageableDefault(size = 20, sort = "name")
         Pageable pageable
@@ -114,8 +116,8 @@ public class ProductController {
     }
 
     @GetMapping("/sale-search")
-    public ResponseEntity<Page<ProductResponseDto>> saleSearch(
-        @RequestParam String q,
+    public ResponseEntity<Page<ProductSaleSummaryResponseDto>> saleSearch(
+        @RequestParam(defaultValue = "") String q,
         @PageableDefault(size = 20, sort = "name") Pageable pageable
     ) {
         return ResponseEntity.ok(productService.searchForSale(q, pageable));

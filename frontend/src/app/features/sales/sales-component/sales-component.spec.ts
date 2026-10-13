@@ -61,13 +61,10 @@ describe('SalesComponent', () => {
         id: 1,
         code: 'P001',
         name: 'Produto teste',
-        status: 'ATIVO',
         unitOfMeasure: 'UN',
         controlsStock: true,
+        controlsExpiration: false,
         salePrice: 10,
-        suppliers: [],
-        images: [],
-        active: true,
       },
       quantity: 1,
       unitPrice: 10,
@@ -86,13 +83,10 @@ describe('SalesComponent', () => {
         id: 1,
         code: 'P001',
         name: 'Produto teste',
-        status: 'ATIVO',
         unitOfMeasure: 'UN',
         controlsStock: true,
+        controlsExpiration: false,
         salePrice: 100,
-        suppliers: [],
-        images: [],
-        active: true,
       },
       quantity: 1,
       unitPrice: 100,
@@ -120,13 +114,10 @@ describe('SalesComponent', () => {
         id: 1,
         code: 'P001',
         name: 'Produto teste',
-        status: 'ATIVO',
         unitOfMeasure: 'UN',
         controlsStock: true,
+        controlsExpiration: false,
         salePrice: 3499.9,
-        suppliers: [],
-        images: [],
-        active: true,
       },
       quantity: 1,
       unitPrice: 3499.9,
@@ -143,9 +134,8 @@ describe('SalesComponent', () => {
   it('should keep automatic payment synchronized after changing the single payment method', () => {
     component.cart.set([{
       product: {
-        id: 1, code: 'P001', name: 'Produto teste', status: 'ATIVO',
-        unitOfMeasure: 'UN', controlsStock: true, salePrice: 100,
-        suppliers: [], images: [], active: true,
+        id: 1, code: 'P001', name: 'Produto teste',
+        unitOfMeasure: 'UN', controlsStock: true, controlsExpiration: false, salePrice: 100,
       },
       quantity: 1, unitPrice: 100, discount: 0,
     }]);
@@ -162,9 +152,8 @@ describe('SalesComponent', () => {
   it('should preserve a manually entered payment when the cart total changes', () => {
     component.cart.set([{
       product: {
-        id: 1, code: 'P001', name: 'Produto teste', status: 'ATIVO',
-        unitOfMeasure: 'UN', controlsStock: true, salePrice: 100,
-        suppliers: [], images: [], active: true,
+        id: 1, code: 'P001', name: 'Produto teste',
+        unitOfMeasure: 'UN', controlsStock: true, controlsExpiration: false, salePrice: 100,
       },
       quantity: 1, unitPrice: 100, discount: 0,
     }]);
@@ -180,9 +169,8 @@ describe('SalesComponent', () => {
   it('should only allow finishing with establishment, items, positive total and sufficient payment', () => {
     component.cart.set([{
       product: {
-        id: 1, code: 'P001', name: 'Produto teste', status: 'ATIVO',
-        unitOfMeasure: 'UN', controlsStock: true, salePrice: 100,
-        suppliers: [], images: [], active: true,
+        id: 1, code: 'P001', name: 'Produto teste',
+        unitOfMeasure: 'UN', controlsStock: true, controlsExpiration: false, salePrice: 100,
       },
       quantity: 1, unitPrice: 100, discount: 0,
     }]);
@@ -213,9 +201,8 @@ describe('SalesComponent', () => {
     component.selectedEstablishmentId.set(1);
     component.cart.set([{
       product: {
-        id: 1, code: 'P001', name: 'Produto teste', status: 'ATIVO',
-        unitOfMeasure: 'UN', controlsStock: true, salePrice: 10,
-        suppliers: [], images: [], active: true,
+        id: 1, code: 'P001', name: 'Produto teste',
+        unitOfMeasure: 'UN', controlsStock: true, controlsExpiration: false, salePrice: 10,
       },
       quantity: 1, unitPrice: 10, discount: 0,
     }]);

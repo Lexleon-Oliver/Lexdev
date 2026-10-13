@@ -4,6 +4,7 @@ import { SupplierService } from '../../../core/services/supplier-service';
 import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NotificationService } from '../../../core/services/notification-service';
 import { Product } from '../../models/product';
+import { ProductSummary } from '../../models/product-summary';
 import { ProductImage } from '../../models/product-image';
 import { ProductStatus } from '../../models/product-status';
 import { ProductRequest } from '../../models/product-request';
@@ -50,7 +51,7 @@ private readonly productSearch = new Subject<string>();
 private readonly supplierSearch = new Subject<string>();
 
   /* ---------- Estado ---------- */
-  produtos = signal<Product[]>([]);
+  produtos = signal<ProductSummary[]>([]);
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
   searchTerm = signal('');
@@ -70,7 +71,7 @@ private readonly supplierSearch = new Subject<string>();
   showFormModal = signal(false);
   showDeleteModal = signal(false);
   editingProduto = signal<Product | null>(null);
-  deletingProduto = signal<Product | null>(null);
+  deletingProduto = signal<ProductSummary | null>(null);
   isSaving = signal(false);
 
   activeTab = signal<
@@ -380,7 +381,16 @@ private readonly supplierSearch = new Subject<string>();
     this.showFormModal.set(true);
   }
 
-  openEditModal(produto: Product): void {
+  openEditModal(produto: ProductSummary): void {
+    this.produtoService.findById(produto.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: product => this.openLoadedProduct(product),
+        error: () => this.notification.error('Não foi possível carregar os dados completos do produto.'),
+      });
+  }
+
+  private openLoadedProduct(produto: Product): void {
     this.editingProduto.set(produto);
     this.suppliers.clear();
     this.clearImageState();
@@ -753,7 +763,7 @@ private readonly supplierSearch = new Subject<string>();
   }
 
   /* ==================== Exclusão ==================== */
-  confirmDelete(produto: Product): void {
+  confirmDelete(produto: ProductSummary): void {
     this.deletingProduto.set(produto);
     this.showDeleteModal.set(true);
   }

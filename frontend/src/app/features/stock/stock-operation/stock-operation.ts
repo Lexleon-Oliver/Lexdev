@@ -6,7 +6,7 @@ import { debounceTime, distinctUntilChanged, finalize, forkJoin, Subject } from 
 import { NotificationService } from '../../../core/services/notification-service';
 import { ProductService } from '../../../core/services/product-service';
 import { StockService } from '../../../core/services/stock-service';
-import { Product } from '../../models/product';
+import { ProductSummary } from '../../models/product-summary';
 import { StockBalance, StockLot, StockMovement, StockMovementType, StockOperationRequest } from '../models/stock';
 
 export type StockOperationKind = 'INITIAL' | 'POSITIVE' | 'NEGATIVE';
@@ -24,7 +24,7 @@ export class StockOperationComponent implements OnInit {
   private readonly notification = inject(NotificationService);
   private readonly fb = inject(FormBuilder);
 
-  readonly products = signal<Product[]>([]);
+  readonly products = signal<ProductSummary[]>([]);
   readonly productsLoading = signal(false);
   readonly currentPage = signal(0);
   readonly pageSize = 20;
@@ -33,7 +33,7 @@ export class StockOperationComponent implements OnInit {
   readonly productSearch = signal('');
   private readonly productSearchChanges = new Subject<string>();
 
-  readonly selectedProduct = signal<Product | null>(null);
+  readonly selectedProduct = signal<ProductSummary | null>(null);
   readonly balance = signal<StockBalance | null>(null);
   readonly movements = signal<StockMovement[]>([]);
   readonly lots = signal<StockLot[]>([]);
@@ -78,7 +78,7 @@ export class StockOperationComponent implements OnInit {
     });
   }
 
-  selectProduct(product: Product): void {
+  selectProduct(product: ProductSummary): void {
     if (!product.id || !product.controlsStock) return;
     this.selectedProduct.set(product);
     this.operation.set(null);

@@ -1,5 +1,5 @@
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
-import { Product } from '../../models/product';
+import { ProductSaleSummary } from '../../models/product-summary';
 import { fiscalActionsFor, FiscalActions, PaymentMethod, Sale, SaleCreateRequest, SaleFiscalActionContext, SaleSummary } from '../../models/sale';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -13,7 +13,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SaleService } from '../../../core/services/sale-service';
 
 interface CartItem {
-  product: Product;
+  product: ProductSaleSummary;
   quantity: number;
   unitPrice: number;
   discount: number;
@@ -44,7 +44,7 @@ export class SalesComponent implements OnInit {
   private autoSuggestedPayment = true;
 
   establishments = signal<FiscalEstablishment[]>([]);
-  products = signal<Product[]>([]);
+  products = signal<ProductSaleSummary[]>([]);
   recentSales = signal<SaleSummary[]>([]);
   fiscalPendingSales = signal<SaleSummary[]>([]);
   fiscalPendingPage = signal(0);
@@ -91,7 +91,7 @@ export class SalesComponent implements OnInit {
 
   loadInitialProducts(): void {
     this.isLoadingProducts = true;
-    this.productService.findAll(0, 12)
+    this.productService.searchForSale('', 0, 12)
       .pipe(finalize(() => this.isLoadingProducts = false))
       .subscribe({
         next: page => this.products.set(page.content ?? []),
@@ -122,7 +122,7 @@ export class SalesComponent implements OnInit {
         this.isLoadingProducts = true;
         const request = query
           ? this.productService.searchForSale(query, 0, 12)
-          : this.productService.findAll(0, 12);
+          : this.productService.searchForSale('', 0, 12);
 
         return request.pipe(
           catchError(() => {
@@ -146,12 +146,12 @@ export class SalesComponent implements OnInit {
     this.productSearch.next(this.search.trim());
   }
 
-  addProduct(product: Product): void {
+  addProduct(product: ProductSaleSummary): void {
     if (!product.id) return;
     this.addToCart(product);
   }
 
-  private addToCart(product: Product): void {
+  private addToCart(product: ProductSaleSummary): void {
     const current = this.cart();
     const existing = current.find(item => item.product.id === product.id);
     if (existing) {

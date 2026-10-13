@@ -4,13 +4,14 @@ import { Observable } from 'rxjs';
 import { SpringPage } from '../../features/models/spring-page';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { ProductRequest } from '../../features/models/product-request';
+import { ProductSaleSummary, ProductSummary } from '../../features/models/product-summary';
 
 @Injectable({ providedIn: 'root' })
 export class ProductService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/products';
 
-  findAll(page = 0, size = 10, query = '', controlsStock?: boolean): Observable<SpringPage<Product>> {
+  findAll(page = 0, size = 10, query = '', controlsStock?: boolean): Observable<SpringPage<ProductSummary>> {
     let params = new HttpParams()
       .set('page', page)
       .set('size', size);
@@ -23,12 +24,12 @@ export class ProductService {
       params = params.set('controlsStock', controlsStock);
     }
 
-    return this.http.get<SpringPage<Product>>(this.apiUrl, { params });
+    return this.http.get<SpringPage<ProductSummary>>(this.apiUrl, { params });
   }
 
-  searchForSale(search: string, page = 0, size = 20): Observable<SpringPage<Product>> {
-    const params = new HttpParams().set('q', search).set('page', page).set('size', size);
-    return this.http.get<SpringPage<Product>>(`${this.apiUrl}/sale-search`, { params });
+  searchForSale(search = '', page = 0, size = 20): Observable<SpringPage<ProductSaleSummary>> {
+    const params = new HttpParams().set('q', search.trim()).set('page', page).set('size', size);
+    return this.http.get<SpringPage<ProductSaleSummary>>(`${this.apiUrl}/sale-search`, { params });
   }
 
   findById(id: number): Observable<Product> {

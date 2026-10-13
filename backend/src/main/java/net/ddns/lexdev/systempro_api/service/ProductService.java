@@ -13,6 +13,8 @@ import net.ddns.lexdev.systempro_api.domain.ProductSupplier;
 import net.ddns.lexdev.systempro_api.domain.Supplier;
 import net.ddns.lexdev.systempro_api.dto.ProductRequestDto;
 import net.ddns.lexdev.systempro_api.dto.ProductResponseDto;
+import net.ddns.lexdev.systempro_api.dto.ProductSummaryResponseDto;
+import net.ddns.lexdev.systempro_api.dto.ProductSaleSummaryResponseDto;
 import net.ddns.lexdev.systempro_api.dto.ProductSupplierRequestDto;
 import net.ddns.lexdev.systempro_api.repository.ProductRepository;
 import net.ddns.lexdev.systempro_api.repository.SupplierRepository;
@@ -108,12 +110,12 @@ public class ProductService {
     // ============================================================
 
     @Transactional(readOnly = true)
-    public Page<ProductResponseDto> findAll(Pageable pageable) {
+    public Page<ProductSummaryResponseDto> findAll(Pageable pageable) {
         return findAll(pageable, "");
     }
 
     @Transactional(readOnly = true)
-    public Page<ProductResponseDto> findAll(
+    public Page<ProductSummaryResponseDto> findAll(
         Pageable pageable,
         String search
     ) {
@@ -121,7 +123,7 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ProductResponseDto> findAll(
+    public Page<ProductSummaryResponseDto> findAll(
         Pageable pageable,
         String search,
         Boolean controlsStock
@@ -133,14 +135,14 @@ public class ProductService {
         if (controlsStock != null) {
             return productRepository
                 .findByStockControl(controlsStock, normalizedSearch, pageable)
-                .map(ProductResponseDto::fromEntity);
+                .map(ProductSummaryResponseDto::fromEntity);
         }
 
         if (normalizedSearch.isEmpty()) {
-            return productRepository.findAllProducts(pageable).map(ProductResponseDto::fromEntity);
+            return productRepository.findAllProducts(pageable).map(ProductSummaryResponseDto::fromEntity);
         }
 
-        return productRepository.search(normalizedSearch, pageable).map(ProductResponseDto::fromEntity);
+        return productRepository.search(normalizedSearch, pageable).map(ProductSummaryResponseDto::fromEntity);
     }
 
     // ============================================================
@@ -148,7 +150,7 @@ public class ProductService {
     // ============================================================
 
     @Transactional(readOnly = true)
-    public Page<ProductResponseDto> search(
+    public Page<ProductSummaryResponseDto> search(
         String search,
         Pageable pageable
     ) {
@@ -159,16 +161,14 @@ public class ProductService {
 
         return productRepository
             .search(search.trim(), pageable)
-            .map(ProductResponseDto::fromEntity);
+            .map(ProductSummaryResponseDto::fromEntity);
     }
 
     @Transactional(readOnly = true)
-    public Page<ProductResponseDto> searchForSale(String search, Pageable pageable) {
-        if (search == null || search.isBlank()) {
-            return findAll(pageable, "");
-        }
-        return productRepository.searchForSale(search.trim(), pageable)
-            .map(ProductResponseDto::fromEntity);
+    public Page<ProductSaleSummaryResponseDto> searchForSale(String search, Pageable pageable) {
+        String normalizedSearch = search == null ? "" : search.trim();
+        return productRepository.searchForSale(normalizedSearch, pageable)
+            .map(ProductSaleSummaryResponseDto::fromEntity);
     }
 
     // ============================================================

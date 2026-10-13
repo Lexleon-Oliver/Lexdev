@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -66,6 +67,18 @@ class ProductServiceTest {
         verify(productRepository).findByStockControl(true, "leite", pageable);
         verify(productRepository, never()).findAllProducts(any());
         verify(productRepository, never()).search(any(), any());
+    }
+
+    @Test
+    void deveUsarConsultaComercialMesmoSemTermoDeBusca() {
+        Pageable pageable = PageRequest.of(0, 12);
+        when(productRepository.searchForSale("", pageable))
+            .thenReturn(new PageImpl<>(List.of(), pageable, 0));
+
+        service.searchForSale("   ", pageable);
+
+        verify(productRepository).searchForSale("", pageable);
+        verify(productRepository, never()).findAllProducts(any());
     }
 
 }
