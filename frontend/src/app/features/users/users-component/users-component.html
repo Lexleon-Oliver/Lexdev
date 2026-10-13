@@ -12,7 +12,7 @@
           type="text"
           placeholder="Buscar usuários..."
           [value]="searchTerm()"
-          (input)="searchTerm.set($any($event.target).value)"
+          (input)="onSearchChange($any($event.target).value)"
         />
       </div>
       <button class="btn-primary" (click)="openCreateModal()">
@@ -35,7 +35,7 @@
       <i class="fas fa-spinner fa-spin"></i> Carregando...
     </div>
   } @else {
-    @if (filteredUsers().length === 0) {
+    @if (users().length === 0) {
       <div class="empty-state">
         <i class="fas fa-users"></i>
         <p>Nenhum usuário encontrado.</p>
@@ -53,7 +53,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (user of filteredUsers(); track user.id) {
+            @for (user of users(); track user.id) {
               <tr>
                 <td data-label="Nome">{{ user.fullName }}</td>
                 <td data-label="Usuário">{{ user.username }}</td>
@@ -85,6 +85,18 @@
           </tbody>
         </table>
       </div>
+
+      @if (totalPages() > 1) {
+        <div class="pagination">
+          <button type="button" (click)="previousPage()" [disabled]="currentPage() === 0">
+            <i class="fas fa-chevron-left"></i> Anterior
+          </button>
+          <span>Página {{ currentPage() + 1 }} de {{ totalPages() }} · {{ totalElements() }} usuários</span>
+          <button type="button" (click)="nextPage()" [disabled]="currentPage() + 1 >= totalPages()">
+            Próxima <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      }
     }
   }
 
@@ -174,7 +186,13 @@
         </div>
         <div class="modal-actions">
           <button class="btn-cancel" (click)="closeDeleteModal()">Cancelar</button>
-          <button class="btn-confirm-delete" (click)="deleteUser()">Excluir</button>
+          <button class="btn-confirm-delete" (click)="deleteUser()" [disabled]="isDeleting()">
+            @if (isDeleting()) {
+              <i class="fas fa-spinner fa-spin"></i> Excluindo...
+            } @else {
+              Excluir
+            }
+          </button>
         </div>
       </div>
     </div>

@@ -46,8 +46,9 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public Page<UserResponseDto> findAll(Pageable pageable) {
-        return userRepository.findByActiveTrue(pageable).map(UserResponseDto::fromEntity);
+    public Page<UserResponseDto> findAll(Pageable pageable, String query) {
+        String term = query == null ? "" : query.trim().toLowerCase();
+        return userRepository.search(term, pageable).map(UserResponseDto::fromEntity);
     }
 
     @Transactional(readOnly = true)
@@ -72,7 +73,6 @@ public class UserService {
         user.setName(dto.name());
         user.setEmail(dto.email());
         user.setRole(dto.role());
-        user.setActive(dto.active());
 
         return UserResponseDto.fromEntity(userRepository.save(user));
     }

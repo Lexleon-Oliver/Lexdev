@@ -6,6 +6,5 @@ import jakarta.validation.constraints.NotBlank;
 public record UserUpdateDto(
     @NotBlank String name,
     @NotBlank @Email String email,
-    @NotBlank String role,
-    boolean active
+    @NotBlank String role
 ) {}
