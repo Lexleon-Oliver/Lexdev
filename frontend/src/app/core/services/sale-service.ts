@@ -1,6 +1,6 @@
 import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { inject, Injectable} from '@angular/core';
-import { Sale, SaleCreateRequest } from '../../features/models/sale';
+import { Sale, SaleCreateRequest, SaleSummary } from '../../features/models/sale';
 import { Observable } from 'rxjs';
 import { SpringPage } from '../../features/models/spring-page';
 import { SKIP_ERROR_NOTIFICATION } from '../interceptors/error.interceptor';
@@ -23,14 +23,14 @@ export class SaleService {
     return this.http.get<Sale>(`${this.apiUrl}/${id}`);
   }
 
-  findAll(page = 0, size = 20): Observable<SpringPage<Sale>> {
+  findAll(page = 0, size = 20): Observable<SpringPage<SaleSummary>> {
     const params = new HttpParams().set('page', page.toString()).set('size', size.toString());
-    return this.http.get<SpringPage<Sale>>(this.apiUrl, { params });
+    return this.http.get<SpringPage<SaleSummary>>(this.apiUrl, { params });
   }
 
-  findFiscalPending(page = 0, size = 20): Observable<SpringPage<Sale>> {
+  findFiscalPending(page = 0, size = 20): Observable<SpringPage<SaleSummary>> {
     const params = new HttpParams().set('page', page.toString()).set('size', size.toString());
-    return this.http.get<SpringPage<Sale>>(`${this.apiUrl}/fiscal-pending`, { params });
+    return this.http.get<SpringPage<SaleSummary>>(`${this.apiUrl}/fiscal-pending`, { params });
   }
 
   prepareOfflineContingency(id: number, justification: string): Observable<Sale> {

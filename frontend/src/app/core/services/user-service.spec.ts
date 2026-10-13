@@ -35,7 +35,7 @@ describe('UserService', () => {
     service.findAll(0, 10, '   ').subscribe();
 
     const req = http.expectOne('/api/users?page=0&size=10');
-    expect(req.request.params.has('q')).toBeFalse();
+    expect(req.request.params.has('q')).toBe(false);
     req.flush({ content: [], totalElements: 0, totalPages: 0, size: 10, number: 0 });
   });
 });

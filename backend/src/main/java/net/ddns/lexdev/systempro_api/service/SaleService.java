@@ -33,6 +33,7 @@ import net.ddns.lexdev.systempro_api.dto.SaleCreateRequestDto;
 import net.ddns.lexdev.systempro_api.dto.SaleItemRequestDto;
 import net.ddns.lexdev.systempro_api.dto.SalePaymentRequestDto;
 import net.ddns.lexdev.systempro_api.dto.SaleResponseDto;
+import net.ddns.lexdev.systempro_api.dto.SaleSummaryResponseDto;
 import net.ddns.lexdev.systempro_api.enums.FiscalDocumentStatus;
 import net.ddns.lexdev.systempro_api.enums.FiscalEmissionType;
 import net.ddns.lexdev.systempro_api.enums.FiscalEventType;
@@ -370,16 +371,13 @@ public class SaleService {
     }
 
     @Transactional(readOnly = true)
-    public Page<SaleResponseDto> findAll(Pageable pageable) {
-        return saleRepository.findAll(pageable)
-            .map(sale -> response(
-                sale,
-                fiscalDocumentRepository.findBySaleId(sale.getId()).orElse(null)
-            ));
+    public Page<SaleSummaryResponseDto> findAll(Pageable pageable) {
+        return saleRepository.findSummaries(pageable)
+            .map(SaleSummaryResponseDto::fromProjection);
     }
 
     @Transactional(readOnly = true)
-    public Page<SaleResponseDto> findFiscalPending(Pageable pageable) {
+    public Page<SaleSummaryResponseDto> findFiscalPending(Pageable pageable) {
         Set<FiscalDocumentStatus> pendingStatuses = Set.of(
             FiscalDocumentStatus.AGUARDANDO_AUTORIZACAO,
             FiscalDocumentStatus.PENDENTE_CONSULTA,
@@ -387,12 +385,8 @@ public class SaleService {
             FiscalDocumentStatus.CANCELAMENTO_PENDENTE
         );
 
-        return saleRepository.findByFiscalDocumentStatusIn(pendingStatuses, pageable)
-            .map(sale -> response(
-                sale,
-                fiscalDocumentRepository.findBySaleId(sale.getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Documento fiscal da venda não encontrado."))
-            ));
+        return saleRepository.findPendingSummaries(pendingStatuses, pageable)
+            .map(SaleSummaryResponseDto::fromProjection);
     }
 
     @Transactional

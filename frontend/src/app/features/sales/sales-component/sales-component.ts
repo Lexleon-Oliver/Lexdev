@@ -1,6 +1,6 @@
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { Product } from '../../models/product';
-import { fiscalActionsFor, FiscalActions, PaymentMethod, Sale, SaleCreateRequest } from '../../models/sale';
+import { fiscalActionsFor, FiscalActions, PaymentMethod, Sale, SaleCreateRequest, SaleFiscalActionContext, SaleSummary } from '../../models/sale';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProductService } from '../../../core/services/product-service';
@@ -45,8 +45,8 @@ export class SalesComponent implements OnInit {
 
   establishments = signal<FiscalEstablishment[]>([]);
   products = signal<Product[]>([]);
-  recentSales = signal<Sale[]>([]);
-  fiscalPendingSales = signal<Sale[]>([]);
+  recentSales = signal<SaleSummary[]>([]);
+  fiscalPendingSales = signal<SaleSummary[]>([]);
   fiscalPendingPage = signal(0);
   fiscalPendingTotalPages = signal(0);
   isLoadingFiscalPending = signal(false);
@@ -66,9 +66,9 @@ export class SalesComponent implements OnInit {
   selectedSale = signal<Sale | null>(null);
   errorMessage = signal<string | null>(null);
   fiscalActionSaleId = signal<number | null>(null);
-  contingencySale = signal<Sale | null>(null);
+  contingencySale = signal<SaleFiscalActionContext | null>(null);
   contingencyJustification = '';
-  cancellationSale = signal<Sale | null>(null);
+  cancellationSale = signal<SaleFiscalActionContext | null>(null);
   cancellationKind = signal<'commercial' | 'fiscal' | null>(null);
   cancellationProcessing = signal(false);
   cancellationJustification = '';
@@ -454,16 +454,16 @@ export class SalesComponent implements OnInit {
     }
   }
 
-  fiscalActions(sale: Sale): FiscalActions {
+  fiscalActions(sale: SaleFiscalActionContext): FiscalActions {
     return fiscalActionsFor(sale);
   }
 
-  retryIssue(sale: Sale): void {
+  retryIssue(sale: SaleFiscalActionContext): void {
     if (!this.fiscalActions(sale).issueNormal || this.fiscalActionSaleId() !== null) return;
     this.runFiscalAction(sale, this.saleService.issue(sale.id), 'NFC-e processada.');
   }
 
-  openOfflineContingency(sale: Sale): void {
+  openOfflineContingency(sale: SaleFiscalActionContext): void {
     if (!this.fiscalActions(sale).prepareOfflineContingency || this.fiscalActionSaleId() !== null) return;
     this.contingencySale.set(sale);
     this.contingencyJustification = '';
@@ -498,12 +498,12 @@ export class SalesComponent implements OnInit {
       });
   }
 
-  transmitOfflineContingency(sale: Sale): void {
+  transmitOfflineContingency(sale: SaleFiscalActionContext): void {
     if (!this.fiscalActions(sale).transmitOfflineContingency || this.fiscalActionSaleId() !== null) return;
     this.runFiscalAction(sale, this.saleService.transmitOfflineContingency(sale.id), 'Transmissão da NFC-e em contingência processada.');
   }
 
-  downloadDanfe(sale: Sale): void {
+  downloadDanfe(sale: SaleFiscalActionContext): void {
     if (!this.fiscalActions(sale).downloadDanfe) return;
     this.saleService.downloadDanfe(sale.id).subscribe({
       next: blob => this.downloadBlob(blob, `danfe-nfce-venda-${sale.id}.pdf`),
@@ -511,12 +511,12 @@ export class SalesComponent implements OnInit {
     });
   }
 
-  consult(sale: Sale): void {
+  consult(sale: SaleFiscalActionContext): void {
     if (!this.fiscalActions(sale).consult || this.fiscalActionSaleId() !== null) return;
     this.runFiscalAction(sale, this.saleService.consult(sale.id), 'Situação fiscal atualizada.');
   }
 
-  consultPendingCancellation(sale: Sale): void {
+  consultPendingCancellation(sale: SaleFiscalActionContext): void {
     if (!this.fiscalActions(sale).consultPendingCancellation || this.fiscalActionSaleId() !== null) return;
     this.runFiscalAction(
       sale,
@@ -525,12 +525,12 @@ export class SalesComponent implements OnInit {
     );
   }
 
-  cancelCommercial(sale: Sale): void {
+  cancelCommercial(sale: SaleFiscalActionContext): void {
     if (!this.fiscalActions(sale).cancelCommercial || this.fiscalActionSaleId() !== null || this.cancellationProcessing()) return;
     this.openCancellation(sale, 'commercial');
   }
 
-  cancel(sale: Sale): void {
+  cancel(sale: SaleFiscalActionContext): void {
     if (!this.fiscalActions(sale).cancel || this.fiscalActionSaleId() !== null || this.cancellationProcessing()) return;
     this.openCancellation(sale, 'fiscal');
   }
@@ -579,7 +579,7 @@ export class SalesComponent implements OnInit {
     });
   }
 
-  private openCancellation(sale: Sale, kind: 'commercial' | 'fiscal'): void {
+  private openCancellation(sale: SaleFiscalActionContext, kind: 'commercial' | 'fiscal'): void {
     this.cancellationSale.set(sale);
     this.cancellationKind.set(kind);
     this.cancellationJustification = '';
@@ -591,7 +591,7 @@ export class SalesComponent implements OnInit {
     this.cancellationJustification = '';
   }
 
-  downloadXml(sale: Sale): void {
+  downloadXml(sale: SaleFiscalActionContext): void {
     if (!this.fiscalActions(sale).downloadXml) return;
     this.saleService.downloadXml(sale.id).subscribe({
       next: blob => this.downloadBlob(blob, `nfce-venda-${sale.id}.xml`),
@@ -599,7 +599,7 @@ export class SalesComponent implements OnInit {
     });
   }
 
-  private runFiscalAction(sale: Sale, request: Observable<Sale>, successMessage: string): void {
+  private runFiscalAction(sale: SaleFiscalActionContext, request: Observable<Sale>, successMessage: string): void {
     this.fiscalActionSaleId.set(sale.id);
     request.pipe(finalize(() => this.fiscalActionSaleId.set(null))).subscribe({
       next: updated => {
@@ -612,7 +612,23 @@ export class SalesComponent implements OnInit {
 
   private applyUpdatedSale(updated: Sale): void {
     this.selectedSale.set(updated);
-    this.recentSales.update(items => items.map(item => item.id === updated.id ? updated : item));
+    const summary: SaleSummary = {
+      id: updated.id,
+      status: updated.status,
+      saleAt: updated.saleAt,
+      total: updated.total,
+      fiscalDocument: updated.fiscalDocument
+        ? {
+            id: updated.fiscalDocument.id,
+            number: updated.fiscalDocument.number,
+            emissionType: updated.fiscalDocument.emissionType,
+            status: updated.fiscalDocument.status,
+            accessKey: updated.fiscalDocument.accessKey,
+            protocol: updated.fiscalDocument.protocol,
+          }
+        : null,
+    };
+    this.recentSales.update(items => items.map(item => item.id === updated.id ? summary : item));
     this.loadFiscalPendingSales();
   }
 

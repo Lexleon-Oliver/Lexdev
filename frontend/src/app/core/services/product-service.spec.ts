@@ -35,7 +35,7 @@ describe('ProductService', () => {
     service.findAll(0, 10, '   ').subscribe();
 
     const req = http.expectOne('/api/products?page=0&size=10');
-    expect(req.request.params.has('q')).toBeFalse();
+    expect(req.request.params.has('q')).toBe(false);
     req.flush({ content: [], totalElements: 0 });
   });
   it('deve enviar o filtro de controle de estoque quando informado', () => {

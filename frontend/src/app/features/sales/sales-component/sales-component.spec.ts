@@ -258,7 +258,20 @@ describe('SalesComponent', () => {
 
     expect(contingencySpy).toHaveBeenCalledWith(sale.id, 'Indisponibilidade conhecida da SEFAZ');
     expect(component.selectedSale()).toEqual(prepared);
-    expect(component.recentSales()[0]).toEqual(prepared);
+    expect(component.recentSales()[0]).toEqual({
+      id: prepared.id,
+      status: prepared.status,
+      saleAt: prepared.saleAt,
+      total: prepared.total,
+      fiscalDocument: {
+        id: prepared.fiscalDocument!.id,
+        number: prepared.fiscalDocument!.number,
+        emissionType: prepared.fiscalDocument!.emissionType,
+        status: prepared.fiscalDocument!.status,
+        accessKey: prepared.fiscalDocument!.accessKey,
+        protocol: prepared.fiscalDocument!.protocol,
+      },
+    });
     expect(component.contingencySale()).toBeNull();
     expect(component.fiscalActionSaleId()).toBeNull();
   });

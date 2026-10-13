@@ -45,6 +45,28 @@ export interface FiscalDocument {
   contingencyJustification?: string | null;
 }
 
+
+export interface FiscalDocumentSummary {
+  id: number;
+  number: number;
+  emissionType: FiscalEmissionType;
+  status: FiscalDocumentStatus;
+  accessKey?: string | null;
+  protocol?: string | null;
+}
+
+export interface SaleFiscalActionContext {
+  id: number;
+  status: SaleStatus;
+  fiscalDocument?: FiscalDocumentSummary | FiscalDocument | null;
+}
+
+export interface SaleSummary extends SaleFiscalActionContext {
+  saleAt: string;
+  total: number;
+  fiscalDocument?: FiscalDocumentSummary | null;
+}
+
 export interface SaleItem {
   id: number;
   itemNumber: number;
@@ -96,7 +118,7 @@ export interface FiscalActions {
   cancelCommercial: boolean;
 }
 
-export function fiscalActionsFor(sale: Sale): FiscalActions {
+export function fiscalActionsFor(sale: SaleFiscalActionContext): FiscalActions {
   const document = sale.fiscalDocument;
   if (!document) {
     return noFiscalActions();

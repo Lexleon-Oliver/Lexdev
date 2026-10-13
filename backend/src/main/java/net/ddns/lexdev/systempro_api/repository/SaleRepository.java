@@ -17,6 +17,7 @@ import net.ddns.lexdev.systempro_api.repository.projection.FinancialDailyProject
 import net.ddns.lexdev.systempro_api.repository.projection.FinancialPaymentProjection;
 import net.ddns.lexdev.systempro_api.repository.projection.FinancialSummaryProjection;
 import net.ddns.lexdev.systempro_api.repository.projection.DashboardRecentSaleProjection;
+import net.ddns.lexdev.systempro_api.repository.projection.SaleSummaryProjection;
 
 public interface SaleRepository extends JpaRepository<Sale, Long> {
 
@@ -52,7 +53,38 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
 
     @Query(
         value = """
-            SELECT s
+            SELECT s.id AS id,
+                   s.status AS status,
+                   s.saleAt AS saleAt,
+                   s.total AS total,
+                   d.id AS fiscalDocumentId,
+                   d.number AS fiscalNumber,
+                   d.emissionType AS fiscalEmissionType,
+                   d.status AS fiscalStatus,
+                   d.accessKey AS fiscalAccessKey,
+                   d.protocol AS fiscalProtocol
+            FROM Sale s
+            LEFT JOIN FiscalDocument d ON d.sale = s
+            """,
+        countQuery = """
+            SELECT COUNT(s)
+            FROM Sale s
+            """
+    )
+    Page<SaleSummaryProjection> findSummaries(Pageable pageable);
+
+    @Query(
+        value = """
+            SELECT s.id AS id,
+                   s.status AS status,
+                   s.saleAt AS saleAt,
+                   s.total AS total,
+                   d.id AS fiscalDocumentId,
+                   d.number AS fiscalNumber,
+                   d.emissionType AS fiscalEmissionType,
+                   d.status AS fiscalStatus,
+                   d.accessKey AS fiscalAccessKey,
+                   d.protocol AS fiscalProtocol
             FROM Sale s
             JOIN FiscalDocument d ON d.sale = s
             WHERE d.status IN :statuses
@@ -64,7 +96,7 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
             WHERE d.status IN :statuses
             """
     )
-    Page<Sale> findByFiscalDocumentStatusIn(
+    Page<SaleSummaryProjection> findPendingSummaries(
         @Param("statuses") Set<FiscalDocumentStatus> statuses,
         Pageable pageable
     );

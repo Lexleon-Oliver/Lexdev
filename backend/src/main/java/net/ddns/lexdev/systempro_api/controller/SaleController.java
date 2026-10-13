@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 import net.ddns.lexdev.systempro_api.dto.SaleCreateRequestDto;
 import net.ddns.lexdev.systempro_api.dto.SaleResponseDto;
+import net.ddns.lexdev.systempro_api.dto.SaleSummaryResponseDto;
 import net.ddns.lexdev.systempro_api.service.SaleService;
 import net.ddns.lexdev.systempro_api.fiscal.danfe.NfceDanfeService;
 
@@ -63,12 +64,12 @@ public class SaleController {
     }
 
     @GetMapping
-    public Page<SaleResponseDto> findAll(@PageableDefault(size = 20, sort = "saleAt", direction = Sort.Direction.DESC) Pageable pageable) {
+    public Page<SaleSummaryResponseDto> findAll(@PageableDefault(size = 20, sort = "saleAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return service.findAll(pageable);
     }
 
     @GetMapping("/fiscal-pending")
-    public Page<SaleResponseDto> findFiscalPending(
+    public Page<SaleSummaryResponseDto> findFiscalPending(
         @PageableDefault(size = 20, sort = "saleAt", direction = Sort.Direction.ASC) Pageable pageable
     ) {
         return service.findFiscalPending(pageable);
