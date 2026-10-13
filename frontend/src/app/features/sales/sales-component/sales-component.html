@@ -493,3 +493,70 @@
     </section>
   </div>
 }
+
+@if (cancellationSale(); as sale) {
+  <div class="contingency-backdrop" (click)="closeCancellation()">
+    <section
+      class="contingency-dialog cancellation-dialog"
+      (click)="$event.stopPropagation()"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cancellation-title"
+    >
+      <h2 id="cancellation-title">
+        @if (cancellationKind() === 'commercial') {
+          Cancelar venda #{{ sale.id }}
+        } @else {
+          Cancelar NFC-e da venda #{{ sale.id }}
+        }
+      </h2>
+
+      <p>
+        @if (cancellationKind() === 'commercial') {
+          O cancelamento comercial estorna os itens ao estoque e encerra a venda. Esta ação não pode ser desfeita.
+        } @else {
+          A solicitação de cancelamento da NFC-e será enviada à SEFAZ. Esta ação não pode ser desfeita.
+        }
+      </p>
+
+      <label class="field-label">
+        Justificativa do cancelamento
+        <textarea
+          [(ngModel)]="cancellationJustification"
+          minlength="15"
+          maxlength="256"
+          rows="4"
+          placeholder="Descreva o motivo do cancelamento"
+        ></textarea>
+      </label>
+      <small>{{ cancellationJustification.trim().length }}/256 caracteres · mínimo 15</small>
+
+      <div class="contingency-actions">
+        <button
+          type="button"
+          class="secondary"
+          (click)="closeCancellation()"
+          [disabled]="cancellationProcessing()"
+        >
+          Voltar
+        </button>
+        <button
+          type="button"
+          class="finish-button danger"
+          (click)="confirmCancellation()"
+          [disabled]="
+            cancellationJustification.trim().length < 15 ||
+            cancellationJustification.trim().length > 256 ||
+            cancellationProcessing()
+          "
+        >
+          @if (cancellationProcessing()) {
+            <i class="fas fa-spinner fa-spin"></i> Cancelando…
+          } @else {
+            Confirmar cancelamento
+          }
+        </button>
+      </div>
+    </section>
+  </div>
+}

@@ -105,6 +105,12 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/fiscal/fiscal-configuration-component/fiscal-configuration-component')
             .then(m => m.FiscalConfigurationComponent)
+      },
+      {
+        path: 'configuracoes/estoque',
+        loadComponent: () =>
+          import('./features/stock/stock-settings/stock-settings')
+            .then(m => m.StockSettingsComponent)
       }
     ]
   },

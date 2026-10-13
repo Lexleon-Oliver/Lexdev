@@ -3,8 +3,8 @@ import java.math.BigDecimal; import java.time.LocalDate; import java.util.*; imp
 import net.ddns.lexdev.systempro_api.domain.*; import net.ddns.lexdev.systempro_api.exception.BusinessException; import net.ddns.lexdev.systempro_api.repository.*;
 @Service
 public class StockLotService {
- private final StockLotRepository lots; private final StockMovementLotRepository allocations;
- public StockLotService(StockLotRepository lots, StockMovementLotRepository allocations){this.lots=lots;this.allocations=allocations;}
+ private final StockLotRepository lots; private final StockMovementLotRepository allocations; private final StockSettingsService settings;
+ public StockLotService(StockLotRepository lots, StockMovementLotRepository allocations, StockSettingsService settings){this.lots=lots;this.allocations=allocations;this.settings=settings;}
  public void add(Product product, StockMovement movement, BigDecimal quantity, String lotCode, LocalDate manufactureDate, LocalDate expirationDate){
    if(!product.isControlsExpiration()) return;
    String code=requireLotCode(lotCode); validateDates(manufactureDate,expirationDate);
@@ -24,13 +24,23 @@ public class StockLotService {
 
  public void consumeFefo(Product product, StockMovement movement, BigDecimal quantity, boolean allowExpired){
    if(!product.isControlsExpiration()) return;
+   List<StockLot> available = lots.findAvailableForUpdateFefo(product.getId());
+   int minimumDays = allowExpired ? Integer.MIN_VALUE : settings.minSellableShelfLifeDays();
+   LocalDate minimumExpiration = allowExpired ? null : LocalDate.now().plusDays(minimumDays);
+   BigDecimal physicalTotal = available.stream().map(StockLot::getQuantity).reduce(BigDecimal.ZERO, BigDecimal::add);
+   List<StockLot> eligible = allowExpired ? available : available.stream().filter(lot -> !lot.getExpirationDate().isBefore(minimumExpiration)).toList();
+   BigDecimal eligibleTotal = eligible.stream().map(StockLot::getQuantity).reduce(BigDecimal.ZERO, BigDecimal::add);
+   if(eligibleTotal.compareTo(quantity)<0){
+     if(!allowExpired && physicalTotal.compareTo(quantity)>=0)
+       throw new BusinessException("O produto " + product.getCode() + " possui estoque, mas não há lote com validade mínima suficiente para venda (mínimo: " + minimumDays + (minimumDays == 1 ? " dia)." : " dias)."));
+     throw new BusinessException("Saldo por lote insuficiente para o produto " + product.getCode() + ".");
+   }
    BigDecimal remaining=quantity;
-   for(StockLot lot: allowExpired ? lots.findAvailableForUpdateFefo(product.getId()) : lots.findSellableForUpdateFefo(product.getId())){
+   for(StockLot lot: eligible){
      if(remaining.signum()==0) break;
      BigDecimal take=lot.getQuantity().min(remaining); if(take.signum()<=0) continue;
      lot.setQuantity(lot.getQuantity().subtract(take)); allocations.save(new StockMovementLot(movement,lot,take)); remaining=remaining.subtract(take);
    }
-   if(remaining.signum()>0) throw new BusinessException("Saldo por lote insuficiente para o produto " + product.getCode() + ".");
  }
  public void restoreFrom(StockMovement original, StockMovement returnMovement){
    if(!original.getProduct().isControlsExpiration()) return;

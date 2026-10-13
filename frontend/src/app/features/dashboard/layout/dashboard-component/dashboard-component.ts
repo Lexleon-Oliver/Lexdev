@@ -115,6 +115,12 @@ export class DashboardComponent implements OnInit {
             label: 'Fiscal / NFC-e',
             icon: '',
             route: ['/configuracoes/fiscal']
+          },
+          {
+            key: 'estoque-config',
+            label: 'Estoque',
+            icon: '',
+            route: ['/configuracoes/estoque']
           }
         ]
       }

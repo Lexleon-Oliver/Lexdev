@@ -292,20 +292,69 @@ describe('SalesComponent', () => {
   });
 
 
-  it('should cancel a non-authorized sale through the commercial cancellation endpoint', () => {
+  it('should open the commercial cancellation modal without calling the endpoint', () => {
+    const awaiting = fiscalSale('AGUARDANDO_FISCAL', 'AGUARDANDO_AUTORIZACAO', 'NORMAL');
+    const saleService = (component as any).saleService;
+    const commercialCancelSpy = vi.spyOn(saleService, 'cancelCommercial');
+
+    component.cancelCommercial(awaiting);
+
+    expect(component.cancellationSale()).toEqual(awaiting);
+    expect(component.cancellationKind()).toBe('commercial');
+    expect(component.cancellationJustification).toBe('');
+    expect(commercialCancelSpy).not.toHaveBeenCalled();
+  });
+
+  it('should confirm commercial cancellation through the dedicated endpoint', () => {
     const awaiting = fiscalSale('AGUARDANDO_FISCAL', 'AGUARDANDO_AUTORIZACAO', 'NORMAL');
     const cancelled = fiscalSale('CANCELADA', 'DESCARTADA', 'NORMAL');
     const saleService = (component as any).saleService;
     const commercialCancelSpy = vi.spyOn(saleService, 'cancelCommercial').mockReturnValue(of(cancelled));
     const fiscalCancelSpy = vi.spyOn(saleService, 'cancel');
-    vi.spyOn(window, 'prompt').mockReturnValue('Venda cancelada pelo estabelecimento');
 
     component.cancelCommercial(awaiting);
+    component.cancellationJustification = 'Venda cancelada pelo estabelecimento';
+    component.confirmCancellation();
 
     expect(commercialCancelSpy).toHaveBeenCalledWith(awaiting.id, 'Venda cancelada pelo estabelecimento');
     expect(fiscalCancelSpy).not.toHaveBeenCalled();
     expect(component.selectedSale()).toEqual(cancelled);
-    expect(component.fiscalActionSaleId()).toBeNull();
+    expect(component.cancellationSale()).toBeNull();
+    expect(component.cancellationKind()).toBeNull();
+    expect(component.cancellationProcessing()).toBe(false);
+  });
+
+  it('should use the same modal for fiscal cancellation and call only the fiscal endpoint', () => {
+    const authorized = fiscalSale('FISCALIZADA', 'AUTORIZADA', 'NORMAL', 'KEY-AUTH');
+    const cancelled = fiscalSale('CANCELADA', 'CANCELADA', 'NORMAL', 'KEY-AUTH');
+    const saleService = (component as any).saleService;
+    const fiscalCancelSpy = vi.spyOn(saleService, 'cancel').mockReturnValue(of(cancelled));
+    const commercialCancelSpy = vi.spyOn(saleService, 'cancelCommercial');
+
+    component.cancel(authorized);
+    expect(component.cancellationKind()).toBe('fiscal');
+
+    component.cancellationJustification = 'Cancelamento solicitado pelo estabelecimento';
+    component.confirmCancellation();
+
+    expect(fiscalCancelSpy).toHaveBeenCalledWith(authorized.id, 'Cancelamento solicitado pelo estabelecimento');
+    expect(commercialCancelSpy).not.toHaveBeenCalled();
+    expect(component.selectedSale()).toEqual(cancelled);
+    expect(component.cancellationSale()).toBeNull();
+  });
+
+  it('should keep cancellation modal open when justification is shorter than 15 characters', () => {
+    const awaiting = fiscalSale('AGUARDANDO_FISCAL', 'AGUARDANDO_AUTORIZACAO', 'NORMAL');
+    const saleService = (component as any).saleService;
+    const commercialCancelSpy = vi.spyOn(saleService, 'cancelCommercial');
+
+    component.cancelCommercial(awaiting);
+    component.cancellationJustification = 'Muito curta';
+    component.confirmCancellation();
+
+    expect(commercialCancelSpy).not.toHaveBeenCalled();
+    expect(component.cancellationSale()).toEqual(awaiting);
+    expect(component.cancellationKind()).toBe('commercial');
   });
 
   it('should never expose commercial cancellation for pending fiscal consultation', () => {

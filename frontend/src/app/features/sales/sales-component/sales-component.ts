@@ -68,6 +68,10 @@ export class SalesComponent implements OnInit {
   fiscalActionSaleId = signal<number | null>(null);
   contingencySale = signal<Sale | null>(null);
   contingencyJustification = '';
+  cancellationSale = signal<Sale | null>(null);
+  cancellationKind = signal<'commercial' | 'fiscal' | null>(null);
+  cancellationProcessing = signal(false);
+  cancellationJustification = '';
 
   readonly paymentMethods: { value: PaymentMethod; label: string }[] = [
     { value: 'DINHEIRO', label: 'Dinheiro' },
@@ -522,32 +526,69 @@ export class SalesComponent implements OnInit {
   }
 
   cancelCommercial(sale: Sale): void {
-    if (!this.fiscalActions(sale).cancelCommercial || this.fiscalActionSaleId() !== null) return;
-    const justification = window.prompt(
-      'Justificativa do cancelamento da venda (mínimo de 15 caracteres):',
-      'Venda cancelada pelo estabelecimento',
-    );
-    if (!justification) return;
-    this.runFiscalAction(
-      sale,
-      this.saleService.cancelCommercial(sale.id, justification),
-      'Venda cancelada e estoque estornado.',
-    );
+    if (!this.fiscalActions(sale).cancelCommercial || this.fiscalActionSaleId() !== null || this.cancellationProcessing()) return;
+    this.openCancellation(sale, 'commercial');
   }
 
   cancel(sale: Sale): void {
-    if (!this.fiscalActions(sale).cancel) return;
-    const justification = window.prompt('Justificativa do cancelamento (mínimo de 15 caracteres):', 'Cancelamento solicitado pelo estabelecimento');
-    if (!justification) return;
-    this.saleService.cancel(sale.id, justification).subscribe({
+    if (!this.fiscalActions(sale).cancel || this.fiscalActionSaleId() !== null || this.cancellationProcessing()) return;
+    this.openCancellation(sale, 'fiscal');
+  }
+
+  closeCancellation(): void {
+    if (this.cancellationProcessing()) return;
+    this.resetCancellation();
+  }
+
+  confirmCancellation(): void {
+    const sale = this.cancellationSale();
+    const kind = this.cancellationKind();
+    const justification = this.cancellationJustification.trim();
+
+    if (!sale || !kind || this.cancellationProcessing()) return;
+    if (justification.length < 15 || justification.length > 256) {
+      this.notification.show(
+        'A justificativa do cancelamento deve ter entre 15 e 256 caracteres.',
+        'warning',
+        6000,
+      );
+      return;
+    }
+
+    const request = kind === 'commercial'
+      ? this.saleService.cancelCommercial(sale.id, justification)
+      : this.saleService.cancel(sale.id, justification);
+
+    const successMessage = kind === 'commercial'
+      ? 'Venda cancelada e estoque estornado.'
+      : 'Solicitação de cancelamento processada.';
+
+    this.cancellationProcessing.set(true);
+    request.pipe(finalize(() => this.cancellationProcessing.set(false))).subscribe({
       next: updated => {
-        this.selectedSale.set(updated);
-        this.loadRecentSales();
-        this.loadFiscalPendingSales();
-        this.notification.success('Solicitação de cancelamento processada.');
+        this.applyUpdatedSale(updated);
+        this.notification.success(successMessage);
+        this.resetCancellation();
       },
-      error: error => this.notification.error(error?.error?.message ?? 'Não foi possível cancelar a NFC-e.'),
+      error: error => this.notification.error(
+        error?.error?.message
+          ?? (kind === 'commercial'
+            ? 'Não foi possível cancelar a venda.'
+            : 'Não foi possível cancelar a NFC-e.'),
+      ),
     });
+  }
+
+  private openCancellation(sale: Sale, kind: 'commercial' | 'fiscal'): void {
+    this.cancellationSale.set(sale);
+    this.cancellationKind.set(kind);
+    this.cancellationJustification = '';
+  }
+
+  private resetCancellation(): void {
+    this.cancellationSale.set(null);
+    this.cancellationKind.set(null);
+    this.cancellationJustification = '';
   }
 
   downloadXml(sale: Sale): void {

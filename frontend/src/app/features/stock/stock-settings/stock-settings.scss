@@ -1,0 +1,207 @@
+/* ===== Container principal ===== */
+:host {
+  display: block;
+  min-height: 100%;
+  background-color: #080710;
+  font-family: 'Poppins', sans-serif;
+  color: #ffffff;
+}
+
+.settings-page {
+  padding: 1.5rem;
+  max-width: 720px;          /* tela de config: mais estreita que listagens */
+  margin: 0 auto;
+}
+
+/* ===== Cabeçalho ===== */
+.page-header {
+  margin-bottom: 1.5rem;
+
+  h2 {
+    font-size: 1.8rem;
+    font-weight: 500;
+    background: linear-gradient(to right, #1845ad, #23a2f6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0 0 0.35rem;
+  }
+}
+.page-subtitle {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+}
+
+/* ===== Estados ===== */
+.loading {
+  text-align: center;
+  padding: 2rem;
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* ===== Card ===== */
+.report-card {
+  background-color: rgba(255, 255, 255, 0.07);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 30px rgba(8, 7, 16, 0.4);
+  padding: 1.5rem;
+}
+
+.card-header {
+  margin-bottom: 1rem;
+
+  h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #23a2f6;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+}
+
+/* ===== Hint ===== */
+.hint-muted {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0 0 1.25rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  line-height: 1.4;
+
+  i { color: #23a2f6; flex: 0 0 auto; margin-top: 2px; }
+}
+
+/* ===== Formulário ===== */
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  input {
+    width: 100%;
+    height: 40px;
+    padding: 0 12px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    color: #ffffff;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+
+    &:focus {
+      outline: none;
+      border-color: #23a2f6;
+      background-color: rgba(255, 255, 255, 0.15);
+    }
+  }
+}
+
+.field-error {
+  color: #ff6b5e;
+  font-size: 0.75rem;
+  margin-top: 2px;
+}
+
+/* ===== Preview da política ===== */
+.policy-preview {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+  padding: 0.85rem 1rem;
+  border-radius: 8px;
+  background: linear-gradient(
+    135deg,
+    rgba(35, 162, 246, 0.12),
+    rgba(24, 69, 173, 0.08)
+  );
+  border: 1px solid rgba(35, 162, 246, 0.35);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.9);
+
+  i {
+    color: #23a2f6;
+    flex: 0 0 auto;
+    margin-top: 2px;
+    font-size: 0.95rem;
+  }
+}
+
+/* ===== Ações ===== */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+}
+
+.btn-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 220px;
+  padding: 0.75rem 1.4rem;
+  border-radius: 5px;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.95rem;
+  cursor: pointer;
+  border: none;
+  background-color: #ffffff;
+  color: #080710;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background-color: #e0e0e0;
+    transform: translateY(-1px);
+  }
+  &:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+
+/* ===== Responsividade ===== */
+@media (max-width: 768px) {
+  .settings-page {
+    padding: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .page-header {
+    h2 { font-size: 1.4rem; }
+  }
+  .page-subtitle { font-size: 0.85rem; }
+
+  .report-card { padding: 1.15rem; }
+
+  .form-actions {
+    justify-content: stretch;
+
+    .btn-submit {
+      width: 100%;
+      min-width: 0;
+    }
+  }
+}

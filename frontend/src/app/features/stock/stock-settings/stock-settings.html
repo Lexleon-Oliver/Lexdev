@@ -1,0 +1,71 @@
+<div class="settings-page">
+  <div class="page-header">
+    <h2>Configuração de Estoque</h2>
+    <p class="page-subtitle">
+      Defina a política mínima de validade para que um produto possa ser vendido.
+    </p>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="save()" class="settings-form">
+    <div class="report-card">
+      <div class="card-header">
+        <h3>
+          <i class="fas fa-calendar-check"></i> Validade mínima para venda
+          @if (loading) {
+            <i class="fas fa-spinner fa-spin loading-inline"></i>
+          }
+        </h3>
+      </div>
+
+      <p class="hint-muted">
+        <i class="fas fa-info-circle"></i>
+        Este valor é aplicado no momento da venda: produtos com validade abaixo do limite não poderão ser adicionados ao carrinho.
+      </p>
+
+      <div class="form-row">
+        <label for="minSellableShelfLifeDays">Dias mínimos de validade</label>
+        <input
+          id="minSellableShelfLifeDays"
+          type="number"
+          inputmode="numeric"
+          min="0"
+          max="3650"
+          step="1"
+          formControlName="minSellableShelfLifeDays"
+          placeholder="0"
+          [disabled]="loading || saving"
+        />
+        @if (form.controls.minSellableShelfLifeDays.touched && !loading) {
+          @if (form.controls.minSellableShelfLifeDays.hasError('required')) {
+            <small class="field-error">Campo obrigatório.</small>
+          } @else if (form.controls.minSellableShelfLifeDays.hasError('min')) {
+            <small class="field-error">O valor mínimo é 0.</small>
+          } @else if (form.controls.minSellableShelfLifeDays.hasError('max')) {
+            <small class="field-error">O valor máximo é 3650 dias (10 anos).</small>
+          } @else if (form.controls.minSellableShelfLifeDays.hasError('pattern')) {
+            <small class="field-error">Informe apenas números inteiros.</small>
+          }
+        }
+      </div>
+
+      <div class="policy-preview">
+        <i class="fas fa-circle-info"></i>
+        <span>{{ policyText() }}</span>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button
+        type="submit"
+        class="btn-submit"
+        [disabled]="loading || form.invalid || saving"
+      >
+        @if (saving) {
+          <i class="fas fa-spinner fa-spin"></i> Salvando...
+        } @else {
+          <i class="fas fa-check"></i> Salvar configuração
+        }
+      </button>
+    </div>
+  </form>
+</div>
