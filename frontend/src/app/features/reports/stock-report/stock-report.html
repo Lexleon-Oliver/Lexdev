@@ -6,7 +6,7 @@
       <div class="date-range">
         <label><span>De</span><input type="date" [value]="startDate" (input)="startDate = $any($event.target).value" /></label>
         <label><span>Até</span><input type="date" [value]="endDate" (input)="endDate = $any($event.target).value" /></label>
-        <button class="btn-primary" (click)="load()" [disabled]="loading()">@if (loading()) { <i class="fas fa-spinner fa-spin"></i> } @else { <i class="fas fa-filter"></i> } Aplicar</button>
+        <button class="btn-primary" (click)="applyPeriod()" [disabled]="loading()">@if (loading()) { <i class="fas fa-spinner fa-spin"></i> } @else { <i class="fas fa-filter"></i> } Aplicar</button>
       </div>
     </div>
   </div>
@@ -28,14 +28,14 @@
       <div class="kpi-card highlight"><div class="kpi-icon blue"><i class="fas fa-dollar-sign"></i></div><div class="kpi-info"><span class="kpi-label">Valor de vendas</span><span class="kpi-value">{{ r.salesValue | currency:'BRL' }}</span></div></div>
     </div>
 
-    @if (items().length === 0) {
+    @if (r.items.content.length === 0) {
       <div class="empty-state"><i class="fas fa-box-open"></i><p>Nenhum item encontrado para o período/filtro.</p></div>
     } @else {
       <div class="table-wrapper">
         <table class="stock-table">
           <thead><tr><th>Código</th><th>Produto</th><th>Situação</th><th>Saldo</th><th>Entradas</th><th>Saídas</th><th>Qtd. vendida</th><th>Vendas</th><th>Mín.</th><th>Máx.</th><th>Repos.</th><th>Preço</th></tr></thead>
           <tbody>
-            @for (item of items(); track item.productId) {
+            @for (item of r.items.content; track item.productId) {
               <tr [class.replenishment-row]="item.replenishmentNeeded">
                 <td data-label="Código"><span class="code-chip">{{ item.code }}</span></td>
                 <td data-label="Produto"><div class="product-cell"><span class="product-name">{{ item.name }}</span><small>{{ item.unitOfMeasure }}</small></div></td>
@@ -53,6 +53,16 @@
             }
           </tbody>
         </table>
+      </div>
+      <div class="report-pagination">
+        <span>{{ totalElements() }} produto(s) encontrado(s)</span>
+        @if (totalPages() > 1) {
+          <div class="pagination">
+            <button type="button" class="page-btn" [disabled]="currentPage() === 0" (click)="loadPage(currentPage() - 1)"><i class="fas fa-chevron-left"></i></button>
+            <span class="page-info">{{ currentPage() + 1 }} / {{ totalPages() }}</span>
+            <button type="button" class="page-btn" [disabled]="currentPage() + 1 >= totalPages()" (click)="loadPage(currentPage() + 1)"><i class="fas fa-chevron-right"></i></button>
+          </div>
+        }
       </div>
     }
   } @else {

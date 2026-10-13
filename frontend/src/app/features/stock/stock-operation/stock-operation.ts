@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { finalize, forkJoin } from 'rxjs';
+import { debounceTime, distinctUntilChanged, finalize, forkJoin, Subject } from 'rxjs';
 import { NotificationService } from '../../../core/services/notification-service';
 import { ProductService } from '../../../core/services/product-service';
 import { StockService } from '../../../core/services/stock-service';
@@ -18,6 +19,7 @@ export type StockOperationKind = 'INITIAL' | 'POSITIVE' | 'NEGATIVE';
 })
 export class StockOperationComponent implements OnInit {
   private readonly productService = inject(ProductService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly stockService = inject(StockService);
   private readonly notification = inject(NotificationService);
   private readonly fb = inject(FormBuilder);
@@ -28,6 +30,8 @@ export class StockOperationComponent implements OnInit {
   readonly pageSize = 20;
   readonly totalPages = signal(0);
   readonly totalElements = signal(0);
+  readonly productSearch = signal('');
+  private readonly productSearchChanges = new Subject<string>();
 
   readonly selectedProduct = signal<Product | null>(null);
   readonly balance = signal<StockBalance | null>(null);
@@ -41,7 +45,6 @@ export class StockOperationComponent implements OnInit {
   readonly saving = signal(false);
   private operationReference: string | null = null;
 
-  readonly controlledProducts = computed(() => this.products().filter(product => product.controlsStock));
   readonly canInitialize = computed(() => this.balance()?.controlsStock === true && this.balance()?.initialized === false);
   readonly canAdjust = computed(() => this.balance()?.controlsStock === true && this.balance()?.initialized === true);
 
@@ -54,12 +57,18 @@ export class StockOperationComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.productSearchChanges.pipe(debounceTime(350), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef)).subscribe(() => this.loadProducts(0));
     this.loadProducts();
+  }
+
+  setProductSearch(value: string): void {
+    this.productSearch.set(value);
+    this.productSearchChanges.next(value.trim());
   }
 
   loadProducts(page = this.currentPage()): void {
     this.productsLoading.set(true);
-    this.productService.findAll(page, this.pageSize).pipe(finalize(() => this.productsLoading.set(false))).subscribe({
+    this.productService.findAll(page, this.pageSize, this.productSearch(), true).pipe(finalize(() => this.productsLoading.set(false))).subscribe({
       next: result => {
         this.products.set(result.content ?? []);
         this.currentPage.set(result.number ?? page);

@@ -2,7 +2,7 @@ package net.ddns.lexdev.systempro_api.dto.report;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
+import org.springframework.data.domain.Page;
 
 public record StockReportResponseDto(
     LocalDate startDate,
@@ -16,5 +16,5 @@ public record StockReportResponseDto(
     BigDecimal stockOutputs,
     BigDecimal quantitySold,
     BigDecimal salesValue,
-    List<StockReportItemDto> items
+    Page<StockReportItemDto> items
 ) {}

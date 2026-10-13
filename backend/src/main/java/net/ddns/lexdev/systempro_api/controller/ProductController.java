@@ -87,12 +87,13 @@ public class ProductController {
     @GetMapping
     public ResponseEntity<Page<ProductResponseDto>> findAll(
         @RequestParam(defaultValue = "") String q,
+        @RequestParam(required = false) Boolean controlsStock,
         @PageableDefault(size = 20, sort = "name")
         Pageable pageable
     ) {
 
         return ResponseEntity.ok(
-            productService.findAll(pageable, q)
+            productService.findAll(pageable, q, controlsStock)
         );
     }
 

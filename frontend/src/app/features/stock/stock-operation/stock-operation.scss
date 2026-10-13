@@ -853,3 +853,13 @@
     min-width: 560px;
   }
 }
+
+.product-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: .85rem;
+  i { position: absolute; left: 10px; color: rgba(255,255,255,.55); font-size: .8rem; }
+  input { width: 100%; box-sizing: border-box; height: 36px; padding: 0 10px 0 32px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); border-radius: 6px; color: #fff; font-family: 'Poppins', sans-serif; }
+  input:focus { outline: none; border-color: #23a2f6; }
+}

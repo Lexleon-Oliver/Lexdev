@@ -1,3 +1,5 @@
+import { SpringPage } from '../../models/spring-page';
+
 export type StockLevelStatus =
   | 'NOT_CONTROLLED'
   | 'NOT_INITIALIZED'
@@ -39,7 +41,7 @@ export interface StockReport {
   stockOutputs: number;
   quantitySold: number;
   salesValue: number;
-  items: StockReportItem[];
+  items: SpringPage<StockReportItem>;
 }
 
 export type PaymentMethod = 'DINHEIRO' | 'CREDITO' | 'DEBITO' | 'PIX' | 'OUTRO';

@@ -2,6 +2,8 @@ package net.ddns.lexdev.systempro_api.controller;
 
 import java.time.LocalDate;
 
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,8 +24,10 @@ public class ReportController {
     @GetMapping("/stock")
     public ResponseEntity<StockReportResponseDto> stock(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
-    ) { return ResponseEntity.ok(service.stock(startDate, endDate)); }
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+        @RequestParam(defaultValue = "") String q,
+        @PageableDefault(size = 20) Pageable pageable
+    ) { return ResponseEntity.ok(service.stock(startDate, endDate, q, pageable)); }
 
     @GetMapping("/financial")
     public ResponseEntity<FinancialReportResponseDto> financial(

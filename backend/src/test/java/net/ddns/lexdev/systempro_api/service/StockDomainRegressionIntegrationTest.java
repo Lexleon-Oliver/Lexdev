@@ -9,6 +9,7 @@ import java.time.LocalDate;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -101,7 +102,7 @@ class StockDomainRegressionIntegrationTest extends IntegrationTestBase {
                 StockMovementType.SALE_CANCELLATION_RETURN
             );
 
-        StockReportResponseDto report = reportService.stock(LocalDate.now(), LocalDate.now());
+        StockReportResponseDto report = reportService.stock(LocalDate.now(), LocalDate.now(), "", PageRequest.of(0, 20));
         StockReportItemDto item = report.items().stream()
             .filter(row -> row.productId().equals(product.getId()))
             .findFirst().orElseThrow();

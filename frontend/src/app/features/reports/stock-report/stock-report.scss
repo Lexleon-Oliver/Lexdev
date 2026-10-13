@@ -350,6 +350,12 @@
   background: rgba(255, 193, 7, 0.035);
 }
 
+.report-pagination { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-top:1rem; color:rgba(255,255,255,.7); font-size:.82rem; }
+.pagination { display:flex; align-items:center; gap:.75rem; }
+.page-btn { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); color:#fff; width:32px; height:32px; border-radius:6px; cursor:pointer; }
+.page-btn:disabled { opacity:.35; cursor:not-allowed; }
+.page-info { min-width:60px; text-align:center; font-variant-numeric:tabular-nums; }
+
 /* ===== Responsividade ===== */
 @media (max-width: 768px) {
   .report-page {

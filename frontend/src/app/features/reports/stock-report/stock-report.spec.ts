@@ -19,6 +19,7 @@ describe('StockReportComponent', () => {
 
   it('loads the stock report without issuing a real HTTP request', () => {
     expect(reportService.stock).toHaveBeenCalledOnce();
+    expect(reportService.stock).toHaveBeenCalledWith(component.startDate, component.endDate, 0, 20, '');
     expect(component.report()).toEqual(stockReportFixture());
     expect(component.loading()).toBe(false);
   });
@@ -39,9 +40,9 @@ function stockReportFixture(): StockReport {
     startDate:'2026-10-01', endDate:'2026-10-09', products:1, stockControlledProducts:1,
     initializedStockProducts:1, replenishmentNeededProducts:1, currentBalance:4,
     stockEntries:10, stockOutputs:6, quantitySold:6, salesValue:90,
-    items:[{ productId:1, code:'P001', name:'Produto teste', unitOfMeasure:'UN', controlsStock:true,
+    items:{ content:[{ productId:1, code:'P001', name:'Produto teste', unitOfMeasure:'UN', controlsStock:true,
       initialized:true, currentBalance:4, stockStatus:'REORDER', replenishmentNeeded:true,
       minimumStock:2, maximumStock:20, reorderPoint:5, salePrice:15,
-      stockEntries:10, stockOutputs:6, quantitySold:6, salesValue:90 }]
+      stockEntries:10, stockOutputs:6, quantitySold:6, salesValue:90 }], totalElements:1, totalPages:1, size:20, number:0 }
   };
 }

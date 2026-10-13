@@ -20,7 +20,7 @@
 
         <i class="fas fa-boxes"></i>
 
-        {{ controlledProducts().length }} de {{ totalElements() }} controlam estoque
+        {{ totalElements() }} produto(s) com controle de estoque
 
       </span>
 
@@ -48,7 +48,10 @@
 
       </div>
 
-
+      <div class="product-search">
+        <i class="fas fa-search"></i>
+        <input type="text" placeholder="Buscar por código ou nome..." [value]="productSearch()" (input)="setProductSearch($any($event.target).value)" />
+      </div>
 
       @if (productsLoading() && products().length === 0) {
 
@@ -60,7 +63,7 @@
 
           <i class="fas fa-box-open"></i>
 
-          <p>Nenhum produto cadastrado.</p>
+          <p>Nenhum produto com controle de estoque encontrado.</p>
 
         </div>
 
@@ -80,10 +83,6 @@
 
                 [class.active]="selectedProduct()?.id === product.id"
 
-                [class.disabled]="!product.controlsStock"
-
-                [disabled]="!product.controlsStock"
-
                 (click)="selectProduct(product)"
 
               >
@@ -96,15 +95,7 @@
 
                 </div>
 
-                @if (!product.controlsStock) {
-
-                  <span class="badge-muted">sem controle</span>
-
-                } @else {
-
-                  <i class="fas fa-chevron-right arrow"></i>
-
-                }
+                <i class="fas fa-chevron-right arrow"></i>
 
               </button>
 

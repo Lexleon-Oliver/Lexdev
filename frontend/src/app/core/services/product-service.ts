@@ -10,7 +10,7 @@ export class ProductService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/products';
 
-  findAll(page = 0, size = 10, query = ''): Observable<SpringPage<Product>> {
+  findAll(page = 0, size = 10, query = '', controlsStock?: boolean): Observable<SpringPage<Product>> {
     let params = new HttpParams()
       .set('page', page)
       .set('size', size);
@@ -18,6 +18,9 @@ export class ProductService {
     const normalizedQuery = query.trim();
     if (normalizedQuery) {
       params = params.set('q', normalizedQuery);
+    }
+    if (controlsStock !== undefined) {
+      params = params.set('controlsStock', controlsStock);
     }
 
     return this.http.get<SpringPage<Product>>(this.apiUrl, { params });

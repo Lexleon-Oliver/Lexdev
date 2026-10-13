@@ -55,4 +55,17 @@ class ProductServiceTest {
         verify(productRepository).search("motor", pageable);
         verify(productRepository, never()).findAllProducts(any());
     }
+    @Test
+    void deveFiltrarProdutosControladosNoBanco() {
+        Pageable pageable = PageRequest.of(0, 20);
+        when(productRepository.findByStockControl(true, "leite", pageable))
+            .thenReturn(new PageImpl<Product>(List.of(), pageable, 0));
+
+        service.findAll(pageable, " leite ", true);
+
+        verify(productRepository).findByStockControl(true, "leite", pageable);
+        verify(productRepository, never()).findAllProducts(any());
+        verify(productRepository, never()).search(any(), any());
+    }
+
 }

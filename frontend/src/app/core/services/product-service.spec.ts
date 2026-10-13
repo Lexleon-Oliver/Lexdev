@@ -38,4 +38,16 @@ describe('ProductService', () => {
     expect(req.request.params.has('q')).toBeFalse();
     req.flush({ content: [], totalElements: 0 });
   });
+  it('deve enviar o filtro de controle de estoque quando informado', () => {
+    service.findAll(0, 20, ' leite ', true).subscribe();
+
+    const req = http.expectOne((request) =>
+      request.url === '/api/products' &&
+      request.params.get('q') === 'leite' &&
+      request.params.get('controlsStock') === 'true'
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush({ content: [], totalElements: 0, totalPages: 0, size: 20, number: 0 });
+  });
+
 });

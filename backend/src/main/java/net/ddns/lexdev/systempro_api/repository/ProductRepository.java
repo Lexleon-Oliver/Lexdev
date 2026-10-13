@@ -64,6 +64,27 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         """)
     Page<Product> findAllProducts(Pageable pageable);
 
+    @Query(value = """
+        SELECT p FROM Product p
+        WHERE p.controlsStock = :controlsStock
+          AND (:search = ''
+               OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(p.code) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(COALESCE(p.gtin, '')) LIKE LOWER(CONCAT('%', :search, '%')))
+        """, countQuery = """
+        SELECT COUNT(p) FROM Product p
+        WHERE p.controlsStock = :controlsStock
+          AND (:search = ''
+               OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(p.code) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(COALESCE(p.gtin, '')) LIKE LOWER(CONCAT('%', :search, '%')))
+        """)
+    Page<Product> findByStockControl(
+        @Param("controlsStock") boolean controlsStock,
+        @Param("search") String search,
+        Pageable pageable
+    );
+
     @Query("""
         SELECT DISTINCT p
         FROM Product p
@@ -77,50 +98,72 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query(value = """
         WITH sales AS (
-            SELECT i.product_id,
-                   COALESCE(SUM(i.quantity), 0) AS quantity_sold,
-                   COALESCE(SUM(i.total), 0) AS sales_value
-              FROM tb_sale_item i
-              JOIN tb_sale s ON s.id = i.sale_id
-             WHERE s.sale_at >= :start
-               AND s.sale_at < :endExclusive
-               AND s.status <> 'CANCELADA'
+            SELECT i.product_id, COALESCE(SUM(i.quantity), 0) AS quantity_sold, COALESCE(SUM(i.total), 0) AS sales_value
+              FROM tb_sale_item i JOIN tb_sale s ON s.id = i.sale_id
+             WHERE s.sale_at >= :start AND s.sale_at < :endExclusive AND s.status <> 'CANCELADA'
              GROUP BY i.product_id
         ), movements AS (
             SELECT m.product_id,
-                   COALESCE(SUM(CASE
-                       WHEN m.movement_type IN ('INITIAL_BALANCE', 'PURCHASE_ENTRY', 'SALE_CANCELLATION_RETURN', 'POSITIVE_ADJUSTMENT')
-                       THEN m.quantity ELSE 0 END), 0) AS stock_entries,
-                   COALESCE(SUM(CASE
-                       WHEN m.movement_type IN ('SALE_OUT', 'NEGATIVE_ADJUSTMENT')
-                       THEN m.quantity ELSE 0 END), 0) AS stock_outputs
+                   COALESCE(SUM(CASE WHEN m.movement_type IN ('INITIAL_BALANCE','PURCHASE_ENTRY','SALE_CANCELLATION_RETURN','POSITIVE_ADJUSTMENT') THEN m.quantity ELSE 0 END), 0) AS stock_entries,
+                   COALESCE(SUM(CASE WHEN m.movement_type IN ('SALE_OUT','NEGATIVE_ADJUSTMENT') THEN m.quantity ELSE 0 END), 0) AS stock_outputs
               FROM tb_stock_movement m
-             WHERE m.created_at >= :start
-               AND m.created_at < :endExclusive
+             WHERE m.created_at >= :start AND m.created_at < :endExclusive
              GROUP BY m.product_id
         )
-        SELECT p.id AS productId,
-               p.code AS code,
-               p.name AS name,
-               p.unit_of_measure AS unitOfMeasure,
-               p.controls_stock AS controlsStock,
-               p.minimum_stock AS minimumStock,
-               p.maximum_stock AS maximumStock,
-               p.reorder_point AS reorderPoint,
-               p.sale_price AS salePrice,
-               b.quantity AS currentBalance,
-               COALESCE(s.quantity_sold, 0) AS quantitySold,
-               COALESCE(s.sales_value, 0) AS salesValue,
-               COALESCE(m.stock_entries, 0) AS stockEntries,
-               COALESCE(m.stock_outputs, 0) AS stockOutputs
+        SELECT p.id AS productId, p.code AS code, p.name AS name, p.unit_of_measure AS unitOfMeasure,
+               p.controls_stock AS controlsStock, p.minimum_stock AS minimumStock, p.maximum_stock AS maximumStock,
+               p.reorder_point AS reorderPoint, p.sale_price AS salePrice, b.quantity AS currentBalance,
+               COALESCE(s.quantity_sold, 0) AS quantitySold, COALESCE(s.sales_value, 0) AS salesValue,
+               COALESCE(m.stock_entries, 0) AS stockEntries, COALESCE(m.stock_outputs, 0) AS stockOutputs
           FROM tb_product p
           LEFT JOIN tb_stock_balance b ON b.product_id = p.id
           LEFT JOIN sales s ON s.product_id = p.id
           LEFT JOIN movements m ON m.product_id = p.id
          WHERE p.active = true
-         ORDER BY p.name ASC, p.code ASC
+           AND (:search = '' OR LOWER(p.code) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')))
+         ORDER BY p.name ASC, p.code ASC, p.id ASC
+        """, countQuery = """
+        SELECT COUNT(*) FROM tb_product p
+         WHERE p.active = true
+           AND (:search = '' OR LOWER(p.code) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')))
         """, nativeQuery = true)
-    java.util.List<net.ddns.lexdev.systempro_api.repository.projection.StockReportProjection> stockReport(
+    Page<net.ddns.lexdev.systempro_api.repository.projection.StockReportProjection> stockReportItems(
+        @Param("start") java.time.Instant start,
+        @Param("endExclusive") java.time.Instant endExclusive,
+        @Param("search") String search,
+        Pageable pageable
+    );
+
+    @Query(value = """
+        WITH sales AS (
+            SELECT i.product_id, COALESCE(SUM(i.quantity), 0) AS quantity_sold, COALESCE(SUM(i.total), 0) AS sales_value
+              FROM tb_sale_item i JOIN tb_sale s ON s.id = i.sale_id
+             WHERE s.sale_at >= :start AND s.sale_at < :endExclusive AND s.status <> 'CANCELADA'
+             GROUP BY i.product_id
+        ), movements AS (
+            SELECT m.product_id,
+                   COALESCE(SUM(CASE WHEN m.movement_type IN ('INITIAL_BALANCE','PURCHASE_ENTRY','SALE_CANCELLATION_RETURN','POSITIVE_ADJUSTMENT') THEN m.quantity ELSE 0 END), 0) AS stock_entries,
+                   COALESCE(SUM(CASE WHEN m.movement_type IN ('SALE_OUT','NEGATIVE_ADJUSTMENT') THEN m.quantity ELSE 0 END), 0) AS stock_outputs
+              FROM tb_stock_movement m
+             WHERE m.created_at >= :start AND m.created_at < :endExclusive
+             GROUP BY m.product_id
+        )
+        SELECT COUNT(*) AS products,
+               COALESCE(SUM(CASE WHEN p.controls_stock THEN 1 ELSE 0 END), 0) AS stockControlledProducts,
+               COALESCE(SUM(CASE WHEN p.controls_stock AND b.product_id IS NOT NULL THEN 1 ELSE 0 END), 0) AS initializedStockProducts,
+               COALESCE(SUM(CASE WHEN p.controls_stock AND b.product_id IS NOT NULL AND
+                    (b.quantity = 0 OR (p.minimum_stock IS NOT NULL AND b.quantity < p.minimum_stock) OR
+                     (p.reorder_point IS NOT NULL AND b.quantity <= p.reorder_point)) THEN 1 ELSE 0 END), 0) AS replenishmentNeededProducts,
+               COALESCE(SUM(CASE WHEN p.controls_stock AND b.product_id IS NOT NULL THEN b.quantity ELSE 0 END), 0) AS currentBalance,
+               COALESCE(SUM(m.stock_entries), 0) AS stockEntries, COALESCE(SUM(m.stock_outputs), 0) AS stockOutputs,
+               COALESCE(SUM(s.quantity_sold), 0) AS quantitySold, COALESCE(SUM(s.sales_value), 0) AS salesValue
+          FROM tb_product p
+          LEFT JOIN tb_stock_balance b ON b.product_id = p.id
+          LEFT JOIN sales s ON s.product_id = p.id
+          LEFT JOIN movements m ON m.product_id = p.id
+         WHERE p.active = true
+        """, nativeQuery = true)
+    net.ddns.lexdev.systempro_api.repository.projection.StockReportSummaryProjection stockReportSummary(
         @Param("start") java.time.Instant start,
         @Param("endExclusive") java.time.Instant endExclusive
     );

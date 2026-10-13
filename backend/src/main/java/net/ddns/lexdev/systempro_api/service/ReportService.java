@@ -7,6 +7,8 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,7 @@ import net.ddns.lexdev.systempro_api.repository.ProductRepository;
 import net.ddns.lexdev.systempro_api.repository.SaleRepository;
 import net.ddns.lexdev.systempro_api.repository.projection.FinancialSummaryProjection;
 import net.ddns.lexdev.systempro_api.repository.projection.StockReportProjection;
+import net.ddns.lexdev.systempro_api.repository.projection.StockReportSummaryProjection;
 
 @Service
 public class ReportService {
@@ -37,25 +40,25 @@ public class ReportService {
     }
 
     @Transactional(readOnly = true)
-    public StockReportResponseDto stock(LocalDate startDate, LocalDate endDate) {
+    public StockReportResponseDto stock(LocalDate startDate, LocalDate endDate, String search, Pageable pageable) {
         Period period = period(startDate, endDate);
-        List<StockReportItemDto> items = productRepository.stockReport(period.start(), period.endExclusive()).stream()
-            .map(this::stockItem)
-            .toList();
+        String normalizedSearch = search == null ? "" : search.trim();
 
-        long controlled = items.stream().filter(StockReportItemDto::controlsStock).count();
-        long initialized = items.stream().filter(item -> item.controlsStock() && item.initialized()).count();
-        long replenishmentNeeded = items.stream().filter(StockReportItemDto::replenishmentNeeded).count();
-        BigDecimal currentBalance = items.stream()
-            .filter(StockReportItemDto::initialized)
-            .map(StockReportItemDto::currentBalance)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal entries = items.stream().map(StockReportItemDto::stockEntries).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal outputs = items.stream().map(StockReportItemDto::stockOutputs).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal quantity = items.stream().map(StockReportItemDto::quantitySold).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal value = items.stream().map(StockReportItemDto::salesValue).reduce(BigDecimal.ZERO, BigDecimal::add);
-        return new StockReportResponseDto(startDate, endDate, items.size(), controlled, initialized,
-            replenishmentNeeded, currentBalance, entries, outputs, quantity, value, items);
+        StockReportSummaryProjection summary = productRepository.stockReportSummary(period.start(), period.endExclusive());
+        Page<StockReportItemDto> items = productRepository
+            .stockReportItems(period.start(), period.endExclusive(), normalizedSearch, pageable)
+            .map(this::stockItem);
+
+        return new StockReportResponseDto(
+            startDate, endDate, longOrZero(summary.getProducts()), longOrZero(summary.getStockControlledProducts()),
+            longOrZero(summary.getInitializedStockProducts()), longOrZero(summary.getReplenishmentNeededProducts()),
+            zeroIfNull(summary.getCurrentBalance()), zeroIfNull(summary.getStockEntries()), zeroIfNull(summary.getStockOutputs()),
+            zeroIfNull(summary.getQuantitySold()), zeroIfNull(summary.getSalesValue()), items
+        );
+    }
+
+    private static long longOrZero(Long value) {
+        return value == null ? 0L : value;
     }
 
     private StockReportItemDto stockItem(StockReportProjection row) {

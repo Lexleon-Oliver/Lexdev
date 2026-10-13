@@ -8,8 +8,11 @@ export class ReportService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/reports';
 
-  stock(startDate: string, endDate: string): Observable<StockReport> {
-    return this.http.get<StockReport>(`${this.apiUrl}/stock`, { params: this.period(startDate, endDate) });
+  stock(startDate: string, endDate: string, page = 0, size = 20, query = ''): Observable<StockReport> {
+    let params = this.period(startDate, endDate).set('page', page).set('size', size);
+    const normalizedQuery = query.trim();
+    if (normalizedQuery) params = params.set('q', normalizedQuery);
+    return this.http.get<StockReport>(`${this.apiUrl}/stock`, { params });
   }
   financial(startDate: string, endDate: string): Observable<FinancialReport> {
     return this.http.get<FinancialReport>(`${this.apiUrl}/financial`, { params: this.period(startDate, endDate) });

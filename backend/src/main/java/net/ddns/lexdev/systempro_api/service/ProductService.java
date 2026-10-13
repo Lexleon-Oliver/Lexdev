@@ -117,19 +117,30 @@ public class ProductService {
         Pageable pageable,
         String search
     ) {
+        return findAll(pageable, search, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProductResponseDto> findAll(
+        Pageable pageable,
+        String search,
+        Boolean controlsStock
+    ) {
         String normalizedSearch = search == null
             ? ""
             : search.trim();
 
-        if (normalizedSearch.isEmpty()) {
+        if (controlsStock != null) {
             return productRepository
-                .findAllProducts(pageable)
+                .findByStockControl(controlsStock, normalizedSearch, pageable)
                 .map(ProductResponseDto::fromEntity);
         }
 
-        return productRepository
-            .search(normalizedSearch, pageable)
-            .map(ProductResponseDto::fromEntity);
+        if (normalizedSearch.isEmpty()) {
+            return productRepository.findAllProducts(pageable).map(ProductResponseDto::fromEntity);
+        }
+
+        return productRepository.search(normalizedSearch, pageable).map(ProductResponseDto::fromEntity);
     }
 
     // ============================================================

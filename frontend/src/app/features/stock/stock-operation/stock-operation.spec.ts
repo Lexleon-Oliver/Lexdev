@@ -8,9 +8,11 @@ import { StockOperationComponent } from './stock-operation';
 describe('StockOperationComponent', () => {
   let fixture: ComponentFixture<StockOperationComponent>;
   let component: StockOperationComponent;
+  let products: { findAll: ReturnType<typeof vi.fn> };
   let stock: { lots: ReturnType<typeof vi.fn>; balance: ReturnType<typeof vi.fn>; movements: ReturnType<typeof vi.fn>; initializeBalance: ReturnType<typeof vi.fn>; adjustPositive: ReturnType<typeof vi.fn>; adjustNegative: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
+    products = { findAll: vi.fn().mockReturnValue(of({ content: [], totalElements: 0, totalPages: 0, size: 20, number: 0 })) };
     stock = {
       lots: vi.fn().mockReturnValue(of([])),
       balance: vi.fn().mockReturnValue(of({ productId: 1, productCode: 'P1', productName: 'Produto', unitOfMeasure: 'UN', controlsStock: true, initialized: false, quantity: null })),
@@ -23,7 +25,7 @@ describe('StockOperationComponent', () => {
     await TestBed.configureTestingModule({
       imports: [StockOperationComponent],
       providers: [
-        { provide: ProductService, useValue: { findAll: vi.fn().mockReturnValue(of({ content: [], totalElements: 0, totalPages: 0, size: 20, number: 0 })) } },
+        { provide: ProductService, useValue: products },
         { provide: StockService, useValue: stock },
         { provide: NotificationService, useValue: { success: vi.fn(), error: vi.fn() } },
       ],
@@ -32,6 +34,11 @@ describe('StockOperationComponent', () => {
     fixture = TestBed.createComponent(StockOperationComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+  });
+
+
+  it('requests only stock-controlled products from the server', () => {
+    expect(products.findAll).toHaveBeenCalledWith(0, 20, '', true);
   });
 
   it('distinguishes uninitialized stock from zero balance', () => {
