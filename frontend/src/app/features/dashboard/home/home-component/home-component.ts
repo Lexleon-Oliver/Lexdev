@@ -90,6 +90,7 @@ export class HomeComponent implements OnInit {
       REJEITADA: 'Rejeitada',
       CANCELAMENTO_PENDENTE: 'Cancelamento pendente',
       CANCELADA: 'Cancelada',
+      DESCARTADA: 'Descartada',
       CONTINGENCIA: 'Contingência',
     };
     return labels[status];

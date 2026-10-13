@@ -30,25 +30,31 @@ public class StockService {
     private final StockBalanceRepository balanceRepository;
     private final StockMovementRepository movementRepository;
     private final CurrentUserProvider currentUserProvider;
+    private final StockLotService stockLotService;
 
     public StockService(
         ProductRepository productRepository,
         StockBalanceRepository balanceRepository,
         StockMovementRepository movementRepository,
-        CurrentUserProvider currentUserProvider
+        CurrentUserProvider currentUserProvider,
+        StockLotService stockLotService
     ) {
         this.productRepository = productRepository;
         this.balanceRepository = balanceRepository;
         this.movementRepository = movementRepository;
         this.currentUserProvider = currentUserProvider;
+        this.stockLotService = stockLotService;
+    }
+
+    @Transactional
+    public StockMovement initializeBalance(Long productId, BigDecimal quantity, String reason, String operationReference) {
+        return initializeBalance(productId, quantity, reason, operationReference, null, null, null);
     }
 
     @Transactional
     public StockMovement initializeBalance(
-        Long productId,
-        BigDecimal quantity,
-        String reason,
-        String operationReference
+        Long productId, BigDecimal quantity, String reason, String operationReference,
+        String lotCode, java.time.LocalDate manufactureDate, java.time.LocalDate expirationDate
     ) {
         Product product = lockControlledProduct(productId);
         requirePositive(quantity);
@@ -64,6 +70,7 @@ public class StockService {
                     "A referência da operação já foi utilizada com dados diferentes."
                 );
             }
+            stockLotService.validateExistingEntry(product, sameProduct, quantity, lotCode, manufactureDate, expirationDate);
             return sameProduct;
         }
 
@@ -86,27 +93,24 @@ public class StockService {
             normalizedReason,
             user
         );
-        return saveMovement(movement);
+        StockMovement saved = saveMovement(movement);
+        stockLotService.add(product, saved, quantity, lotCode, manufactureDate, expirationDate);
+        return saved;
     }
 
     @Transactional
-    public StockMovement adjustPositive(
-        Long productId,
-        BigDecimal quantity,
-        String reason,
-        String operationReference
-    ) {
-        return adjust(productId, quantity, reason, operationReference, true);
+    public StockMovement adjustPositive(Long productId, BigDecimal quantity, String reason, String operationReference) {
+        return adjust(productId, quantity, reason, operationReference, true, null, null, null);
     }
 
     @Transactional
-    public StockMovement adjustNegative(
-        Long productId,
-        BigDecimal quantity,
-        String reason,
-        String operationReference
-    ) {
-        return adjust(productId, quantity, reason, operationReference, false);
+    public StockMovement adjustPositive(Long productId, BigDecimal quantity, String reason, String operationReference, String lotCode, java.time.LocalDate manufactureDate, java.time.LocalDate expirationDate) {
+        return adjust(productId, quantity, reason, operationReference, true, lotCode, manufactureDate, expirationDate);
+    }
+
+    @Transactional
+    public StockMovement adjustNegative(Long productId, BigDecimal quantity, String reason, String operationReference) {
+        return adjust(productId, quantity, reason, operationReference, false, null, null, null);
     }
 
 
@@ -164,7 +168,7 @@ public class StockService {
         }
 
         balance.setQuantity(resulting);
-        saveMovement(new StockMovement(
+        StockMovement saleMovement = saveMovement(new StockMovement(
             product,
             StockMovementType.SALE_OUT,
             StockMovementOrigin.SALE,
@@ -177,6 +181,7 @@ public class StockService {
             "Saída pela venda " + sale.getId(),
             currentUserProvider.requireUser()
         ));
+        stockLotService.consumeFefo(product, saleMovement, item.getQuantity(), false);
     }
 
     private void registerSaleItemReturn(Sale sale, SaleItem item) {
@@ -210,7 +215,7 @@ public class StockService {
         BigDecimal previous = balance.getQuantity();
         BigDecimal resulting = previous.add(original.getQuantity());
         balance.setQuantity(resulting);
-        saveMovement(new StockMovement(
+        StockMovement returnMovement = saveMovement(new StockMovement(
             product,
             StockMovementType.SALE_CANCELLATION_RETURN,
             StockMovementOrigin.SALE_CANCELLATION,
@@ -223,6 +228,7 @@ public class StockService {
             "Retorno pelo cancelamento da venda " + sale.getId(),
             currentUserProvider.requireUser()
         ));
+        stockLotService.restoreFrom(original, returnMovement);
     }
 
     private void validateSaleMovement(
@@ -282,6 +288,14 @@ public class StockService {
     }
 
     @Transactional(readOnly = true)
+    public java.util.List<net.ddns.lexdev.systempro_api.dto.stock.StockLotResponseDto> lots(Long productId) {
+        Product product = productRepository.findById(productId).orElseThrow(() -> new BusinessException("Produto não encontrado."));
+        requireStockControl(product);
+        if (!product.isControlsExpiration()) return java.util.List.of();
+        return stockLotService.list(productId).stream().map(net.ddns.lexdev.systempro_api.dto.stock.StockLotResponseDto::fromEntity).toList();
+    }
+
+    @Transactional(readOnly = true)
     public Page<StockMovementResponseDto> movements(Long productId, Pageable pageable) {
         Product product = productRepository.findById(productId)
             .orElseThrow(() -> new BusinessException("Produto não encontrado."));
@@ -291,17 +305,13 @@ public class StockService {
     }
 
     @Transactional
-    public StockMovementResponseDto initializeBalanceResponse(
-        Long productId, BigDecimal quantity, String reason, String operationReference
-    ) {
-        return toResponse(initializeBalance(productId, quantity, reason, operationReference));
+    public StockMovementResponseDto initializeBalanceResponse(Long productId, BigDecimal quantity, String reason, String operationReference, String lotCode, java.time.LocalDate manufactureDate, java.time.LocalDate expirationDate) {
+        return toResponse(initializeBalance(productId, quantity, reason, operationReference, lotCode, manufactureDate, expirationDate));
     }
 
     @Transactional
-    public StockMovementResponseDto adjustPositiveResponse(
-        Long productId, BigDecimal quantity, String reason, String operationReference
-    ) {
-        return toResponse(adjustPositive(productId, quantity, reason, operationReference));
+    public StockMovementResponseDto adjustPositiveResponse(Long productId, BigDecimal quantity, String reason, String operationReference, String lotCode, java.time.LocalDate manufactureDate, java.time.LocalDate expirationDate) {
+        return toResponse(adjustPositive(productId, quantity, reason, operationReference, lotCode, manufactureDate, expirationDate));
     }
 
     @Transactional
@@ -334,7 +344,8 @@ public class StockService {
         BigDecimal quantity,
         String reason,
         String operationReference,
-        boolean positive
+        boolean positive,
+        String lotCode, java.time.LocalDate manufactureDate, java.time.LocalDate expirationDate
     ) {
         Product product = lockControlledProduct(productId);
         requirePositive(quantity);
@@ -353,6 +364,7 @@ public class StockService {
                     "A referência da operação já foi utilizada com dados diferentes."
                 );
             }
+            if (positive) stockLotService.validateExistingEntry(product, sameProduct, quantity, lotCode, manufactureDate, expirationDate);
             return sameProduct;
         }
 
@@ -387,7 +399,10 @@ public class StockService {
             normalizedReason,
             user
         );
-        return saveMovement(movement);
+        StockMovement saved = saveMovement(movement);
+        if (positive) stockLotService.add(product, saved, quantity, lotCode, manufactureDate, expirationDate);
+        else stockLotService.consumeFefo(product, saved, quantity, true);
+        return saved;
     }
 
     private Product lockControlledProduct(Long productId) {

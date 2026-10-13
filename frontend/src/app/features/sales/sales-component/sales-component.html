@@ -377,8 +377,11 @@
                 @if (fiscalActions(sale).downloadXml) {
                   <button type="button" (click)="downloadXml(sale)" title="Baixar XML"><i class="fas fa-file-code"></i></button>
                 }
+                @if (fiscalActions(sale).cancelCommercial) {
+                  <button type="button" class="danger-icon" (click)="cancelCommercial(sale)" title="Cancelar venda" [disabled]="fiscalActionSaleId() !== null"><i class="fas fa-ban"></i></button>
+                }
                 @if (fiscalActions(sale).cancel) {
-                  <button type="button" class="danger-icon" (click)="cancel(sale)" title="Cancelar"><i class="fas fa-ban"></i></button>
+                  <button type="button" class="danger-icon" (click)="cancel(sale)" title="Cancelar NFC-e"><i class="fas fa-ban"></i></button>
                 }
               </td>
             </tr>
@@ -452,8 +455,11 @@
                 @if (fiscalActions(sale).downloadXml) {
                   <button type="button" (click)="downloadXml(sale)" title="Baixar XML"><i class="fas fa-file-code"></i></button>
                 }
+                @if (fiscalActions(sale).cancelCommercial) {
+                  <button type="button" class="danger-icon" (click)="cancelCommercial(sale)" title="Cancelar venda" [disabled]="fiscalActionSaleId() !== null"><i class="fas fa-ban"></i></button>
+                }
                 @if (fiscalActions(sale).cancel) {
-                  <button type="button" class="danger-icon" (click)="cancel(sale)" title="Cancelar"><i class="fas fa-ban"></i></button>
+                  <button type="button" class="danger-icon" (click)="cancel(sale)" title="Cancelar NFC-e"><i class="fas fa-ban"></i></button>
                 }
               </td>
             </tr>

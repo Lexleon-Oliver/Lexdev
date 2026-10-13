@@ -1,8 +1,8 @@
-*<!-- ============================================================*
+<!-- ============================================================*
 
 *     stock-operation.html*
 
-*     ============================================================ -->*
+*     ============================================================ -->
 
 <div class="stock-page">
 
@@ -332,7 +332,65 @@
 
 
 
-<!-- ===================== Formulário de operação ===================== -->
+          @if (selectedProduct()?.controlsExpiration) {
+            <div class="report-card">
+              <div class="card-header">
+                <h3><i class="fas fa-calendar-check"></i> Lotes e validades</h3>
+              </div>
+
+              @if (lots().length === 0) {
+                <div class="empty-state small">
+                  <i class="fas fa-box-open"></i>
+                  <p>Nenhum lote registrado.</p>
+                </div>
+              } @else {
+                <div class="table-wrapper">
+                  <table class="lots-table">
+                    <thead>
+                      <tr>
+                        <th>Lote</th>
+                        <th>Fabricação</th>
+                        <th>Validade</th>
+                        <th>Saldo</th>
+                        <th>Situação</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (lot of lots(); track lot.id) {
+                        <tr>
+                          <td data-label="Lote">
+                            <span class="lot-chip">{{ lot.lotCode }}</span>
+                          </td>
+                          <td data-label="Fabricação">
+                            {{ lot.manufactureDate ? lot.manufactureDate : '—' }}
+                          </td>
+                          <td data-label="Validade">{{ lot.expirationDate }}</td>
+                          <td data-label="Saldo">
+                            <strong>{{ lot.quantity }}</strong>
+                          </td>
+                          <td data-label="Situação">
+                            <span
+                              class="status-chip"
+                              [class.danger]="
+                                lotStatus(lot.expirationDate) === 'Vencido' ||
+                                lotStatus(lot.expirationDate) === 'Vence hoje'
+                              "
+                              [class.warning]="lotStatus(lot.expirationDate).startsWith('Vence em')"
+                              [class.ok]="lotStatus(lot.expirationDate) === 'Dentro da validade'"
+                            >
+                              {{ lotStatus(lot.expirationDate) }}
+                            </span>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </div>
+          }
+
+        <!-- ===================== Formulário de operação ===================== -->
 
           @if (operation()) {
 
@@ -399,6 +457,82 @@
                   }
 
                 </div>
+
+
+
+                @if (selectedProduct()?.controlsExpiration && operation() !== 'NEGATIVE') {
+
+                  <div class="form-row">
+
+                    <label for="lotCode">Código do lote</label>
+
+                    <input
+
+                      id="lotCode"
+
+                      type="text"
+
+                      formControlName="lotCode"
+
+                      maxlength="100"
+
+                      autocomplete="off"
+
+                      placeholder="Ex.: LOTE-OUT-20"
+
+                    />
+
+                    @if (form.get('lotCode')?.touched && !form.get('lotCode')?.value?.trim()) {
+
+                      <small class="field-error">Informe o código do lote.</small>
+
+                    }
+
+                  </div>
+
+
+
+                  <div class="form-row">
+
+                    <label for="manufactureDate">Data de fabricação <span class="optional">(opcional)</span></label>
+
+                    <input
+
+                      id="manufactureDate"
+
+                      type="date"
+
+                      formControlName="manufactureDate"
+
+                    />
+
+                  </div>
+
+
+
+                  <div class="form-row">
+
+                    <label for="expirationDate">Data de validade</label>
+
+                    <input
+
+                      id="expirationDate"
+
+                      type="date"
+
+                      formControlName="expirationDate"
+
+                    />
+
+                    @if (form.get('expirationDate')?.touched && !form.get('expirationDate')?.value) {
+
+                      <small class="field-error">Informe a data de validade.</small>
+
+                    }
+
+                  </div>
+
+                }
 
 
 

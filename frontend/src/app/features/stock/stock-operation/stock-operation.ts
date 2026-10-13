@@ -6,7 +6,7 @@ import { NotificationService } from '../../../core/services/notification-service
 import { ProductService } from '../../../core/services/product-service';
 import { StockService } from '../../../core/services/stock-service';
 import { Product } from '../../models/product';
-import { StockBalance, StockMovement, StockMovementType, StockOperationRequest } from '../models/stock';
+import { StockBalance, StockLot, StockMovement, StockMovementType, StockOperationRequest } from '../models/stock';
 
 export type StockOperationKind = 'INITIAL' | 'POSITIVE' | 'NEGATIVE';
 
@@ -32,6 +32,7 @@ export class StockOperationComponent implements OnInit {
   readonly selectedProduct = signal<Product | null>(null);
   readonly balance = signal<StockBalance | null>(null);
   readonly movements = signal<StockMovement[]>([]);
+  readonly lots = signal<StockLot[]>([]);
   readonly stockLoading = signal(false);
   readonly movementsPage = signal(0);
   readonly movementsTotalPages = signal(0);
@@ -47,6 +48,9 @@ export class StockOperationComponent implements OnInit {
   readonly form = this.fb.group({
     quantity: [null as number | null, [Validators.required, Validators.min(0.000001)]],
     reason: ['', [Validators.required, Validators.maxLength(500)]],
+    lotCode: [''],
+    manufactureDate: [''],
+    expirationDate: [''],
   });
 
   ngOnInit(): void {
@@ -80,10 +84,12 @@ export class StockOperationComponent implements OnInit {
     forkJoin({
       balance: this.stockService.balance(productId),
       movements: this.stockService.movements(productId, movementsPage, 20),
+      lots: this.stockService.lots(productId),
     }).pipe(finalize(() => this.stockLoading.set(false))).subscribe({
-      next: ({ balance, movements }) => {
+      next: ({ balance, movements, lots }) => {
         this.balance.set(balance);
         this.movements.set(movements.content ?? []);
+        this.lots.set(lots ?? []);
         this.movementsPage.set(movements.number ?? movementsPage);
         this.movementsTotalPages.set(movements.totalPages ?? 0);
       },
@@ -118,7 +124,15 @@ export class StockOperationComponent implements OnInit {
       quantity: Number(value.quantity),
       reason: value.reason!.trim(),
       operationReference: this.operationReference,
+      lotCode: value.lotCode?.trim() || null,
+      manufactureDate: value.manufactureDate || null,
+      expirationDate: value.expirationDate || null,
     };
+
+    if (this.selectedProduct()?.controlsExpiration && kind !== 'NEGATIVE' && (!request.lotCode || !request.expirationDate)) {
+      this.notification.error('Informe o lote e a data de validade.');
+      return;
+    }
 
     this.saving.set(true);
     const call = kind === 'INITIAL'
@@ -146,6 +160,16 @@ export class StockOperationComponent implements OnInit {
     const productId = this.selectedProduct()?.id;
     if (!productId) return;
     this.loadStock(productId, page);
+  }
+
+  lotStatus(expirationDate: string): string {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const expiration = new Date(`${expirationDate}T00:00:00`);
+    const days = Math.ceil((expiration.getTime() - today.getTime()) / 86400000);
+    if (days < 0) return 'Vencido';
+    if (days === 0) return 'Vence hoje';
+    if (days <= 7) return `Vence em ${days} dias`;
+    return 'Dentro da validade';
   }
 
   movementLabel(type: StockMovementType): string {

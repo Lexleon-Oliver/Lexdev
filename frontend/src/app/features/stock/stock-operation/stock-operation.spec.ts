@@ -8,10 +8,11 @@ import { StockOperationComponent } from './stock-operation';
 describe('StockOperationComponent', () => {
   let fixture: ComponentFixture<StockOperationComponent>;
   let component: StockOperationComponent;
-  let stock: { balance: ReturnType<typeof vi.fn>; movements: ReturnType<typeof vi.fn>; initializeBalance: ReturnType<typeof vi.fn>; adjustPositive: ReturnType<typeof vi.fn>; adjustNegative: ReturnType<typeof vi.fn> };
+  let stock: { lots: ReturnType<typeof vi.fn>; balance: ReturnType<typeof vi.fn>; movements: ReturnType<typeof vi.fn>; initializeBalance: ReturnType<typeof vi.fn>; adjustPositive: ReturnType<typeof vi.fn>; adjustNegative: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     stock = {
+      lots: vi.fn().mockReturnValue(of([])),
       balance: vi.fn().mockReturnValue(of({ productId: 1, productCode: 'P1', productName: 'Produto', unitOfMeasure: 'UN', controlsStock: true, initialized: false, quantity: null })),
       movements: vi.fn().mockReturnValue(of({ content: [], totalElements: 0, totalPages: 0, size: 20, number: 0 })),
       initializeBalance: vi.fn().mockReturnValue(of({})),
@@ -24,7 +25,7 @@ describe('StockOperationComponent', () => {
       providers: [
         { provide: ProductService, useValue: { findAll: vi.fn().mockReturnValue(of({ content: [], totalElements: 0, totalPages: 0, size: 20, number: 0 })) } },
         { provide: StockService, useValue: stock },
-        { provide: NotificationService, useValue: { success: vi.fn() } },
+        { provide: NotificationService, useValue: { success: vi.fn(), error: vi.fn() } },
       ],
     }).compileComponents();
 
@@ -34,7 +35,7 @@ describe('StockOperationComponent', () => {
   });
 
   it('distinguishes uninitialized stock from zero balance', () => {
-    component.selectProduct({ id: 1, code: 'P1', name: 'Produto', status: 'ATIVO', unitOfMeasure: 'UN', controlsStock: true, suppliers: [], images: [], active: true });
+    component.selectProduct({ id: 1, code: 'P1', name: 'Produto', status: 'ATIVO', unitOfMeasure: 'UN', controlsStock: true, controlsExpiration: false, suppliers: [], images: [], active: true });
     expect(component.balance()?.initialized).toBe(false);
     expect(component.balance()?.quantity).toBeNull();
     expect(component.canInitialize()).toBe(true);
@@ -42,14 +43,37 @@ describe('StockOperationComponent', () => {
   });
 
   it('keeps the same idempotency reference for retry until operation succeeds', () => {
-    component.selectProduct({ id: 1, code: 'P1', name: 'Produto', status: 'ATIVO', unitOfMeasure: 'UN', controlsStock: true, suppliers: [], images: [], active: true });
+    component.selectProduct({ id: 1, code: 'P1', name: 'Produto', status: 'ATIVO', unitOfMeasure: 'UN', controlsStock: true, controlsExpiration: false, suppliers: [], images: [], active: true });
     component.beginOperation('INITIAL');
-    component.form.setValue({ quantity: 10, reason: 'Contagem inicial' });
+    component.form.setValue({ quantity: 10, reason: 'Contagem inicial', lotCode: '', manufactureDate: '', expirationDate: '' });
     component.submitOperation();
     expect(stock.initializeBalance).toHaveBeenCalledOnce();
     const request = stock.initializeBalance.mock.calls[0][1];
     expect(request.operationReference).toMatch(/^stock-ui:/);
   });
+  it('renders lot and expiration fields for an incoming operation when the product controls expiration', () => {
+    component.selectProduct({ id: 1, code: 'P1', name: 'Produto', status: 'ATIVO', unitOfMeasure: 'UN', controlsStock: true, controlsExpiration: true, suppliers: [], images: [], active: true });
+    component.beginOperation('INITIAL');
+    fixture.detectChanges();
+
+    const element: HTMLElement = fixture.nativeElement;
+    expect(element.querySelector('#lotCode')).not.toBeNull();
+    expect(element.querySelector('#manufactureDate')).not.toBeNull();
+    expect(element.querySelector('#expirationDate')).not.toBeNull();
+  });
+
+  it('does not render lot input fields for a negative adjustment', () => {
+    stock.balance.mockReturnValue(of({ productId: 1, productCode: 'P1', productName: 'Produto', unitOfMeasure: 'UN', controlsStock: true, initialized: true, quantity: 10 }));
+    component.selectProduct({ id: 1, code: 'P1', name: 'Produto', status: 'ATIVO', unitOfMeasure: 'UN', controlsStock: true, controlsExpiration: true, suppliers: [], images: [], active: true });
+    component.beginOperation('NEGATIVE');
+    fixture.detectChanges();
+
+    const element: HTMLElement = fixture.nativeElement;
+    expect(element.querySelector('#lotCode')).toBeNull();
+    expect(element.querySelector('#manufactureDate')).toBeNull();
+    expect(element.querySelector('#expirationDate')).toBeNull();
+  });
+
   it('presents outgoing movements with a negative sign without changing the persisted quantity', () => {
     const movement = { id: 1, productId: 1, movementType: 'SALE_OUT' as const, origin: 'SALE' as const, sourceReference: 'SALE_ITEM:1', quantity: 2, previousBalance: 10, resultingBalance: 8, saleId: 1, saleItemId: 1, reason: null, createdBy: 'user', createdAt: '2026-10-09T10:00:00' };
     expect(component.movementIsEntry(movement.movementType)).toBe(false);

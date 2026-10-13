@@ -20,12 +20,16 @@ import org.springframework.data.domain.Pageable;
 import net.ddns.lexdev.systempro_api.domain.Product;
 import net.ddns.lexdev.systempro_api.repository.ProductRepository;
 import net.ddns.lexdev.systempro_api.repository.SupplierRepository;
+import net.ddns.lexdev.systempro_api.repository.StockBalanceRepository;
+import net.ddns.lexdev.systempro_api.repository.StockLotRepository;
 
 @ExtendWith(MockitoExtension.class)
 class ProductServiceTest {
 
     @Mock ProductRepository productRepository;
     @Mock SupplierRepository supplierRepository;
+    @Mock StockBalanceRepository stockBalanceRepository;
+    @Mock StockLotRepository stockLotRepository;
     @InjectMocks ProductService service;
 
     @Test

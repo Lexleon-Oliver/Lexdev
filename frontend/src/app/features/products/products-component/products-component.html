@@ -280,6 +280,23 @@
               </div>
             </div>
 
+            <div class="form-row">
+              <div>
+                <label>Controla validade por lote</label>
+                <div class="toggle-wrapper">
+                  <button type="button" class="toggle"
+                    [class.active]="form.get('controlsExpiration')?.value"
+                    [disabled]="!form.get('controlsStock')?.value"
+                    (click)="toggleControlsExpiration()"
+                    [attr.aria-pressed]="form.get('controlsExpiration')?.value">
+                    <span class="toggle-slider"></span>
+                  </button>
+                  <span class="toggle-label">{{ form.get('controlsExpiration')?.value ? 'Sim' : 'Não' }}</span>
+                </div>
+                <small>Quando habilitado, entradas exigem lote e validade e saídas usam FEFO.</small>
+              </div>
+            </div>
+
             <div class="form-row three">
               <div>
                 <label for="minimumStock">Estoque Mínimo</label>

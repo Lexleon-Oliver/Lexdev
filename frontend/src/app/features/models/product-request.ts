@@ -21,6 +21,7 @@ export interface ProductRequest {
   unitOfMeasure: string;
 
   controlsStock: boolean;
+  controlsExpiration: boolean;
 
   salePrice?: number | null;
 

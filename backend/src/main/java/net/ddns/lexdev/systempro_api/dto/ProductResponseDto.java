@@ -28,6 +28,8 @@ public record ProductResponseDto(
 
     Boolean controlsStock,
 
+    Boolean controlsExpiration,
+
     BigDecimal salePrice,
 
     BigDecimal minimumSalePrice,
@@ -106,6 +108,7 @@ public record ProductResponseDto(
             product.getStatus(),
             product.getUnitOfMeasure(),
             product.isControlsStock(),
+            product.isControlsExpiration(),
             product.getSalePrice(),
             product.getMinimumSalePrice(),
             product.getMinimumStock(),

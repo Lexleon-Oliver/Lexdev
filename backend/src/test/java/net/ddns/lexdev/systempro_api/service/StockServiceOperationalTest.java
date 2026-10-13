@@ -38,7 +38,7 @@ class StockServiceOperationalTest {
         balanceRepository = mock(StockBalanceRepository.class);
         movementRepository = mock(StockMovementRepository.class);
         service = new StockService(
-            productRepository, balanceRepository, movementRepository, mock(CurrentUserProvider.class)
+            productRepository, balanceRepository, movementRepository, mock(CurrentUserProvider.class), mock(StockLotService.class)
         );
     }
 

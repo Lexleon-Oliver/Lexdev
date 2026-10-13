@@ -55,6 +55,9 @@ public class Product extends AuditableEntity {
     @Column(name = "controls_stock", nullable = false)
     private boolean controlsStock = true;
 
+    @Column(name = "controls_expiration", nullable = false)
+    private boolean controlsExpiration = false;
+
     @Column(name = "sale_price", precision = 19, scale = 4)
     private BigDecimal salePrice;
 
@@ -186,6 +189,10 @@ public class Product extends AuditableEntity {
     public void setControlsStock(boolean controlsStock) {
         this.controlsStock = controlsStock;
     }
+
+    public boolean isControlsExpiration() { return controlsExpiration; }
+
+    public void setControlsExpiration(boolean controlsExpiration) { this.controlsExpiration = controlsExpiration; }
 
     public BigDecimal getSalePrice() {
         return salePrice;

@@ -1,5 +1,5 @@
 export type SaleStatus = 'AGUARDANDO_FISCAL' | 'FISCALIZADA' | 'FISCAL_PENDENTE' | 'FISCAL_REJEITADA' | 'CANCELADA';
-export type FiscalDocumentStatus = 'AGUARDANDO_AUTORIZACAO' | 'PENDENTE_CONSULTA' | 'AUTORIZADA' | 'REJEITADA' | 'CANCELAMENTO_PENDENTE' | 'CANCELADA' | 'CONTINGENCIA';
+export type FiscalDocumentStatus = 'AGUARDANDO_AUTORIZACAO' | 'PENDENTE_CONSULTA' | 'AUTORIZADA' | 'REJEITADA' | 'CANCELAMENTO_PENDENTE' | 'CANCELADA' | 'DESCARTADA' | 'CONTINGENCIA';
 export type FiscalEmissionType = 'NORMAL' | 'CONTINGENCIA_OFFLINE';
 export type PaymentMethod = 'DINHEIRO' | 'CREDITO' | 'DEBITO' | 'PIX' | 'OUTRO';
 
@@ -93,6 +93,7 @@ export interface FiscalActions {
   downloadDanfe: boolean;
   downloadXml: boolean;
   cancel: boolean;
+  cancelCommercial: boolean;
 }
 
 export function fiscalActionsFor(sale: Sale): FiscalActions {
@@ -122,6 +123,9 @@ export function fiscalActionsFor(sale: Sale): FiscalActions {
     downloadDanfe: authorized || offlineContingency,
     downloadXml: Boolean(document.accessKey) && (authorized || offlineContingency || pendingConsultation),
     cancel: authorized && sale.status === 'FISCALIZADA',
+    cancelCommercial:
+      (sale.status === 'AGUARDANDO_FISCAL' && document.status === 'AGUARDANDO_AUTORIZACAO' && !document.protocol)
+      || (sale.status === 'FISCAL_REJEITADA' && document.status === 'REJEITADA' && !document.protocol),
   };
 }
 
@@ -135,5 +139,6 @@ function noFiscalActions(): FiscalActions {
     downloadDanfe: false,
     downloadXml: false,
     cancel: false,
+    cancelCommercial: false,
   };
 }

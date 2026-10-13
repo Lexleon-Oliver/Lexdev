@@ -521,6 +521,20 @@ export class SalesComponent implements OnInit {
     );
   }
 
+  cancelCommercial(sale: Sale): void {
+    if (!this.fiscalActions(sale).cancelCommercial || this.fiscalActionSaleId() !== null) return;
+    const justification = window.prompt(
+      'Justificativa do cancelamento da venda (mínimo de 15 caracteres):',
+      'Venda cancelada pelo estabelecimento',
+    );
+    if (!justification) return;
+    this.runFiscalAction(
+      sale,
+      this.saleService.cancelCommercial(sale.id, justification),
+      'Venda cancelada e estoque estornado.',
+    );
+  }
+
   cancel(sale: Sale): void {
     if (!this.fiscalActions(sale).cancel) return;
     const justification = window.prompt('Justificativa do cancelamento (mínimo de 15 caracteres):', 'Cancelamento solicitado pelo estabelecimento');

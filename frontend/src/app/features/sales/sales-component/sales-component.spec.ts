@@ -292,6 +292,32 @@ describe('SalesComponent', () => {
   });
 
 
+  it('should cancel a non-authorized sale through the commercial cancellation endpoint', () => {
+    const awaiting = fiscalSale('AGUARDANDO_FISCAL', 'AGUARDANDO_AUTORIZACAO', 'NORMAL');
+    const cancelled = fiscalSale('CANCELADA', 'DESCARTADA', 'NORMAL');
+    const saleService = (component as any).saleService;
+    const commercialCancelSpy = vi.spyOn(saleService, 'cancelCommercial').mockReturnValue(of(cancelled));
+    const fiscalCancelSpy = vi.spyOn(saleService, 'cancel');
+    vi.spyOn(window, 'prompt').mockReturnValue('Venda cancelada pelo estabelecimento');
+
+    component.cancelCommercial(awaiting);
+
+    expect(commercialCancelSpy).toHaveBeenCalledWith(awaiting.id, 'Venda cancelada pelo estabelecimento');
+    expect(fiscalCancelSpy).not.toHaveBeenCalled();
+    expect(component.selectedSale()).toEqual(cancelled);
+    expect(component.fiscalActionSaleId()).toBeNull();
+  });
+
+  it('should never expose commercial cancellation for pending fiscal consultation', () => {
+    const pending = fiscalSale('FISCAL_PENDENTE', 'PENDENTE_CONSULTA', 'NORMAL', 'KEY-PENDING');
+    const saleService = (component as any).saleService;
+    const commercialCancelSpy = vi.spyOn(saleService, 'cancelCommercial');
+
+    component.cancelCommercial(pending);
+
+    expect(commercialCancelSpy).not.toHaveBeenCalled();
+  });
+
   it('should recover pending cancellation only through the dedicated endpoint', () => {
     const pendingCancellation = fiscalSale('FISCAL_PENDENTE', 'CANCELAMENTO_PENDENTE', 'NORMAL', 'KEY-AUTH');
     const cancelled = fiscalSale('CANCELADA', 'CANCELADA', 'NORMAL', 'KEY-AUTH');

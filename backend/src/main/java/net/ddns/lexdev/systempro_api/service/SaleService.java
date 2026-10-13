@@ -449,6 +449,50 @@ public class SaleService {
     }
 
     @Transactional
+    public SaleResponseDto cancelCommercial(Long saleId, String justification) {
+        if (justification == null || justification.trim().length() < 15) {
+            throw new BusinessException("A justificativa do cancelamento comercial deve possuir pelo menos 15 caracteres.");
+        }
+
+        Sale sale = saleRepository.findForFiscal(saleId)
+            .orElseThrow(() -> new EntityNotFoundException("Venda não encontrada."));
+        FiscalDocument document = fiscalDocumentRepository.findBySaleId(saleId)
+            .orElseThrow(() -> new EntityNotFoundException("Documento fiscal não encontrado."));
+
+        if (sale.getStatus() == SaleStatus.CANCELADA) {
+            throw new BusinessException("A venda já está cancelada.");
+        }
+        boolean awaitingAuthorization =
+            sale.getStatus() == SaleStatus.AGUARDANDO_FISCAL
+                && document.getStatus() == FiscalDocumentStatus.AGUARDANDO_AUTORIZACAO;
+        boolean rejected =
+            sale.getStatus() == SaleStatus.FISCAL_REJEITADA
+                && document.getStatus() == FiscalDocumentStatus.REJEITADA;
+
+        if (!awaitingAuthorization && !rejected) {
+            throw new BusinessException(
+                "O cancelamento comercial só é permitido antes da autorização fiscal ou após rejeição definitiva. "
+                    + "Documentos transmitidos com resultado pendente, em contingência ou autorizados devem seguir o fluxo fiscal."
+            );
+        }
+        if (document.getProtocol() != null) {
+            throw new BusinessException(
+                "O documento possui protocolo fiscal e não pode ser cancelado pelo fluxo comercial."
+            );
+        }
+
+        String normalizedJustification = justification.trim();
+        stockService.registerSaleCancellationReturn(sale);
+        sale.setStatus(SaleStatus.CANCELADA);
+        sale.setCommercialCanceledAt(Instant.now());
+        sale.setCommercialCancellationReason(normalizedJustification);
+        document.setStatus(FiscalDocumentStatus.DESCARTADA);
+        document.setReason("Venda cancelada comercialmente antes da autorização fiscal: " + normalizedJustification);
+
+        return response(sale, document);
+    }
+
+    @Transactional
     public SaleResponseDto cancel(Long saleId, String justification) {
         if (justification == null || justification.trim().length() < 15) {
             throw new BusinessException("A justificativa do cancelamento deve possuir pelo menos 15 caracteres.");
@@ -533,7 +577,7 @@ public class SaleService {
             case AUTORIZADA -> SaleStatus.FISCALIZADA;
             case REJEITADA -> SaleStatus.FISCAL_REJEITADA;
             case PENDENTE_CONSULTA, AGUARDANDO_AUTORIZACAO, CANCELAMENTO_PENDENTE, CONTINGENCIA -> SaleStatus.FISCAL_PENDENTE;
-            case CANCELADA -> SaleStatus.CANCELADA;
+            case CANCELADA, DESCARTADA -> SaleStatus.CANCELADA;
         };
     }
 

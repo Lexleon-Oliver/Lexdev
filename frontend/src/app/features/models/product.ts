@@ -14,6 +14,7 @@ export interface Product {
   status: ProductStatus;
   unitOfMeasure: string;
   controlsStock: boolean;
+  controlsExpiration?: boolean;
   salePrice?: number | null;
   minimumSalePrice?: number | null;
   minimumStock?: number | null;

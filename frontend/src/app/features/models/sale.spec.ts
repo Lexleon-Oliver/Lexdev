@@ -15,6 +15,7 @@ describe('fiscalActionsFor', () => {
     expect(actions.prepareOfflineContingency).toBe(true);
     expect(actions.transmitOfflineContingency).toBe(false);
     expect(actions.consult).toBe(false);
+    expect(actions.cancelCommercial).toBe(true);
   });
 
   it('allows only contingency transmission and documents for prepared offline NFC-e', () => {
@@ -53,8 +54,8 @@ describe('fiscalActionsFor', () => {
     expect(actions.consult).toBe(false);
   });
 
-  it('offers no fiscal transition for rejected or cancelled documents', () => {
-    expect(Object.values(fiscalActionsFor(sale('FISCAL_REJEITADA', 'REJEITADA', 'NORMAL'))).some(Boolean)).toBe(false);
+  it('allows commercial cancellation after definitive rejection but no action after cancellation', () => {
+    expect(fiscalActionsFor(sale('FISCAL_REJEITADA', 'REJEITADA', 'NORMAL')).cancelCommercial).toBe(true);
     expect(Object.values(fiscalActionsFor(sale('CANCELADA', 'CANCELADA', 'NORMAL', 'KEY'))).some(Boolean)).toBe(false);
   });
 });
@@ -69,11 +70,12 @@ describe('fiscalActionsFor - complete fiscal state matrix', () => {
     downloadDanfe: false,
     downloadXml: false,
     cancel: false,
+    cancelCommercial: false,
   };
 
   it.each([
     ['AGUARDANDO_FISCAL', 'AGUARDANDO_AUTORIZACAO', 'NORMAL', null, {
-      ...none, issueNormal: true, prepareOfflineContingency: true,
+      ...none, issueNormal: true, prepareOfflineContingency: true, cancelCommercial: true,
     }],
     ['FISCAL_PENDENTE', 'PENDENTE_CONSULTA', 'NORMAL', 'KEY', {
       ...none, consult: true, downloadXml: true,
@@ -81,7 +83,7 @@ describe('fiscalActionsFor - complete fiscal state matrix', () => {
     ['FISCALIZADA', 'AUTORIZADA', 'NORMAL', 'KEY', {
       ...none, downloadDanfe: true, downloadXml: true, cancel: true,
     }],
-    ['FISCAL_REJEITADA', 'REJEITADA', 'NORMAL', null, none],
+    ['FISCAL_REJEITADA', 'REJEITADA', 'NORMAL', null, { ...none, cancelCommercial: true }],
     ['FISCAL_PENDENTE', 'CANCELAMENTO_PENDENTE', 'NORMAL', 'KEY', {
       ...none, consultPendingCancellation: true,
     }],

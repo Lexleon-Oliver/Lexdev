@@ -16,19 +16,29 @@ import net.ddns.lexdev.systempro_api.dto.ProductResponseDto;
 import net.ddns.lexdev.systempro_api.dto.ProductSupplierRequestDto;
 import net.ddns.lexdev.systempro_api.repository.ProductRepository;
 import net.ddns.lexdev.systempro_api.repository.SupplierRepository;
+import net.ddns.lexdev.systempro_api.repository.StockBalanceRepository;
+import net.ddns.lexdev.systempro_api.repository.StockLotRepository;
+import net.ddns.lexdev.systempro_api.exception.BusinessException;
+import java.math.BigDecimal;
 
 @Service
 public class ProductService {
 
     private final ProductRepository productRepository;
     private final SupplierRepository supplierRepository;
+    private final StockBalanceRepository stockBalanceRepository;
+    private final StockLotRepository stockLotRepository;
 
     public ProductService(
         ProductRepository productRepository,
-        SupplierRepository supplierRepository
+        SupplierRepository supplierRepository,
+        StockBalanceRepository stockBalanceRepository,
+        StockLotRepository stockLotRepository
     ) {
         this.productRepository = productRepository;
         this.supplierRepository = supplierRepository;
+        this.stockBalanceRepository = stockBalanceRepository;
+        this.stockLotRepository = stockLotRepository;
     }
 
     // ============================================================
@@ -40,6 +50,7 @@ public class ProductService {
 
         validateUniqueCode(dto.code(), null);
         validateUniqueGtin(dto.gtin(), null);
+        validateExpirationControlRequest(dto);
 
         Product product = new Product();
 
@@ -65,6 +76,8 @@ public class ProductService {
 
         validateUniqueCode(dto.code(), id);
         validateUniqueGtin(dto.gtin(), id);
+        validateExpirationControlRequest(dto);
+        validateExpirationControlChange(product, dto);
 
         applyBasicData(product, dto);
         updateSuppliers(product, dto.suppliers());
@@ -159,6 +172,23 @@ public class ProductService {
         productRepository.delete(product);
     }
 
+    private void validateExpirationControlRequest(ProductRequestDto dto) {
+        if (Boolean.TRUE.equals(dto.controlsExpiration()) && !Boolean.TRUE.equals(dto.controlsStock())) {
+            throw new BusinessException("Controle de validade exige controle de estoque habilitado.");
+        }
+    }
+
+    private void validateExpirationControlChange(Product product, ProductRequestDto dto) {
+        boolean requested = Boolean.TRUE.equals(dto.controlsExpiration());
+        if (product.isControlsExpiration() == requested) return;
+        boolean hasBalance = stockBalanceRepository.findByProductId(product.getId())
+            .map(balance -> balance.getQuantity().compareTo(BigDecimal.ZERO) > 0).orElse(false);
+        boolean hasLots = stockLotRepository.existsByProductIdAndQuantityGreaterThan(product.getId(), BigDecimal.ZERO);
+        if (hasBalance || hasLots) {
+            throw new BusinessException("Não é possível alterar o controle de validade enquanto o produto possui saldo em estoque.");
+        }
+    }
+
     // ============================================================
     // BASIC DATA
     // ============================================================
@@ -177,6 +207,7 @@ public class ProductService {
         product.setStatus(dto.status());
         product.setUnitOfMeasure(dto.unitOfMeasure());
         product.setControlsStock(dto.controlsStock());
+        product.setControlsExpiration(Boolean.TRUE.equals(dto.controlsExpiration()));
 
         product.setSalePrice(dto.salePrice());
         product.setMinimumSalePrice(dto.minimumSalePrice());

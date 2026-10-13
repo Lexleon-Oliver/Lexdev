@@ -52,6 +52,10 @@ public class Sale extends AuditableEntity {
     private String consumerCpfCnpj;
     @Column(length = 500)
     private String note;
+    @Column(name = "commercial_canceled_at")
+    private Instant commercialCanceledAt;
+    @Column(name = "commercial_cancellation_reason", length = 500)
+    private String commercialCancellationReason;
 
     @OneToMany(mappedBy = "sale", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SaleItem> items = new ArrayList<>();
@@ -81,6 +85,10 @@ public class Sale extends AuditableEntity {
     public void setConsumerCpfCnpj(String v) { consumerCpfCnpj = v; }
     public String getNote() { return note; }
     public void setNote(String v) { note = v; }
+    public Instant getCommercialCanceledAt() { return commercialCanceledAt; }
+    public void setCommercialCanceledAt(Instant v) { commercialCanceledAt = v; }
+    public String getCommercialCancellationReason() { return commercialCancellationReason; }
+    public void setCommercialCancellationReason(String v) { commercialCancellationReason = v; }
     public List<SaleItem> getItems() { return items; }
     public List<SalePayment> getPayments() { return payments; }
 }

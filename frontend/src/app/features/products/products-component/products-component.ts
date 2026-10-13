@@ -135,6 +135,7 @@ private readonly supplierSearch = new Subject<string>();
     // Estoque
     unitOfMeasure: ['UN', Validators.required],
     controlsStock: [true],
+    controlsExpiration: [false],
     minimumStock: [null as number | null],
     maximumStock: [null as number | null],
     reorderPoint: [null as number | null],
@@ -351,6 +352,7 @@ private readonly supplierSearch = new Subject<string>();
       minimumSalePrice: null,
       unitOfMeasure: 'UN',
       controlsStock: true,
+      controlsExpiration: false,
       minimumStock: null,
       maximumStock: null,
       reorderPoint: null,
@@ -460,6 +462,8 @@ private readonly supplierSearch = new Subject<string>();
         produto.unitOfMeasure ?? 'UN',
       controlsStock:
         produto.controlsStock ?? true,
+      controlsExpiration:
+        produto.controlsExpiration ?? false,
       minimumStock:
         produto.minimumStock ?? null,
       maximumStock:
@@ -685,6 +689,7 @@ private readonly supplierSearch = new Subject<string>();
       status: v.status,
       unitOfMeasure: v.unitOfMeasure,
       controlsStock: !!v.controlsStock,
+      controlsExpiration: !!v.controlsExpiration,
       salePrice: this.toNumberOrNull(v.salePrice),
       minimumSalePrice: this.toNumberOrNull(v.minimumSalePrice),
       minimumStock: this.toNumberOrNull(v.minimumStock),
@@ -826,6 +831,14 @@ private readonly supplierSearch = new Subject<string>();
   /* ==================== Toggle ==================== */
   toggleControlsStock(): void {
     const ctrl = this.form.get('controlsStock');
+    const enabled = !ctrl?.value;
+    ctrl?.setValue(enabled);
+    if (!enabled) this.form.get('controlsExpiration')?.setValue(false);
+  }
+
+  toggleControlsExpiration(): void {
+    if (!this.form.get('controlsStock')?.value) return;
+    const ctrl = this.form.get('controlsExpiration');
     ctrl?.setValue(!ctrl.value);
   }
 

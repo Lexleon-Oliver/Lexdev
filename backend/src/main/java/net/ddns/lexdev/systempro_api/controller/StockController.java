@@ -16,6 +16,8 @@ import jakarta.validation.Valid;
 import net.ddns.lexdev.systempro_api.dto.stock.StockBalanceResponseDto;
 import net.ddns.lexdev.systempro_api.dto.stock.StockMovementResponseDto;
 import net.ddns.lexdev.systempro_api.dto.stock.StockOperationRequestDto;
+import net.ddns.lexdev.systempro_api.dto.stock.StockLotResponseDto;
+import java.util.List;
 import net.ddns.lexdev.systempro_api.service.StockService;
 
 @RestController
@@ -41,6 +43,11 @@ public class StockController {
         return ResponseEntity.ok(service.movements(productId, pageable));
     }
 
+    @GetMapping("/lots")
+    public ResponseEntity<List<StockLotResponseDto>> lots(@PathVariable Long productId) {
+        return ResponseEntity.ok(service.lots(productId));
+    }
+
     @PostMapping("/initial-balance")
     public ResponseEntity<StockMovementResponseDto> initializeBalance(
         @PathVariable Long productId,
@@ -48,7 +55,8 @@ public class StockController {
     ) {
         return ResponseEntity.status(HttpStatus.CREATED).body(
             service.initializeBalanceResponse(
-                productId, request.quantity(), request.reason(), request.operationReference()
+                productId, request.quantity(), request.reason(), request.operationReference(),
+                request.lotCode(), request.manufactureDate(), request.expirationDate()
             )
         );
     }
@@ -60,7 +68,8 @@ public class StockController {
     ) {
         return ResponseEntity.status(HttpStatus.CREATED).body(
             service.adjustPositiveResponse(
-                productId, request.quantity(), request.reason(), request.operationReference()
+                productId, request.quantity(), request.reason(), request.operationReference(),
+                request.lotCode(), request.manufactureDate(), request.expirationDate()
             )
         );
     }

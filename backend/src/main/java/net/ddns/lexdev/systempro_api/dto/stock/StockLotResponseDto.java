@@ -1,0 +1,3 @@
+package net.ddns.lexdev.systempro_api.dto.stock;
+import java.math.BigDecimal; import java.time.LocalDate; import net.ddns.lexdev.systempro_api.domain.StockLot;
+public record StockLotResponseDto(Long id,String lotCode,LocalDate manufactureDate,LocalDate expirationDate,BigDecimal quantity){ public static StockLotResponseDto fromEntity(StockLot l){return new StockLotResponseDto(l.getId(),l.getLotCode(),l.getManufactureDate(),l.getExpirationDate(),l.getQuantity());}}

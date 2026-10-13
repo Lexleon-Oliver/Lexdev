@@ -219,6 +219,51 @@ class SaleServiceCancellationTest {
         verify(gateway, never()).cancel(any(), any(), any());
     }
 
+
+    @Test
+    void deveCancelarComercialmenteVendaAindaNaoTransmitidaERestaurarEstoque() {
+        long saleId = 8L;
+        Sale sale = mock(Sale.class);
+        FiscalDocument document = mock(FiscalDocument.class);
+        FiscalEstablishment establishment = mock(FiscalEstablishment.class);
+        User user = mock(User.class);
+
+        when(saleRepository.findForFiscal(saleId)).thenReturn(Optional.of(sale));
+        when(fiscalDocumentRepository.findBySaleId(saleId)).thenReturn(Optional.of(document));
+        when(sale.getStatus()).thenReturn(SaleStatus.AGUARDANDO_FISCAL);
+        when(document.getStatus()).thenReturn(FiscalDocumentStatus.AGUARDANDO_AUTORIZACAO);
+        when(document.getAccessKey()).thenReturn(null);
+        when(document.getProtocol()).thenReturn(null);
+        lenient().when(sale.getFiscalEstablishment()).thenReturn(establishment);
+        lenient().when(sale.getUser()).thenReturn(user);
+        lenient().when(sale.getItems()).thenReturn(List.of());
+        lenient().when(sale.getPayments()).thenReturn(List.of());
+        lenient().when(sale.getSubtotal()).thenReturn(BigDecimal.ZERO);
+        lenient().when(sale.getDiscount()).thenReturn(BigDecimal.ZERO);
+        lenient().when(sale.getTotal()).thenReturn(BigDecimal.ZERO);
+
+        service.cancelCommercial(saleId, JUSTIFICATION);
+
+        verify(stockService).registerSaleCancellationReturn(sale);
+        verify(sale).setStatus(SaleStatus.CANCELADA);
+        verify(sale).setCommercialCanceledAt(any());
+        verify(sale).setCommercialCancellationReason(JUSTIFICATION);
+        verify(document).setStatus(FiscalDocumentStatus.DESCARTADA);
+        verify(gateway, never()).cancel(any(), any(), any());
+    }
+
+    @Test
+    void deveRecusarCancelamentoComercialQuandoResultadoFiscalPodeSerIndeterminado() {
+        Fixture fixture = fixture(9L, FiscalDocumentStatus.PENDENTE_CONSULTA);
+        when(fixture.sale().getStatus()).thenReturn(SaleStatus.AGUARDANDO_FISCAL);
+
+        assertThatThrownBy(() -> service.cancelCommercial(fixture.saleId(), JUSTIFICATION))
+            .hasMessageContaining("fluxo fiscal");
+
+        verify(stockService, never()).registerSaleCancellationReturn(any());
+        verify(fixture.sale(), never()).setStatus(SaleStatus.CANCELADA);
+    }
+
     private Fixture fixture(long saleId) {
         return fixture(saleId, FiscalDocumentStatus.AUTORIZADA);
     }

@@ -53,6 +53,11 @@ export class SaleService {
     return this.http.post<Sale>(`${this.apiUrl}/${id}/cancel/consult`, {}, { context });
   }
 
+  cancelCommercial(id: number, justification: string): Observable<Sale> {
+    const params = new HttpParams().set('justification', justification);
+    return this.http.post<Sale>(`${this.apiUrl}/${id}/commercial-cancel`, {}, { params });
+  }
+
   cancel(id: number, justification: string): Observable<Sale> {
     const params = new HttpParams().set('justification', justification);
     return this.http.post<Sale>(`${this.apiUrl}/${id}/cancel`, {}, { params });

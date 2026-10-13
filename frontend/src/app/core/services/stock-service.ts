@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { SpringPage } from '../../features/models/spring-page';
-import { StockBalance, StockMovement, StockOperationRequest } from '../../features/stock/models/stock';
+import { StockBalance, StockLot, StockMovement, StockOperationRequest } from '../../features/stock/models/stock';
 
 @Injectable({ providedIn: 'root' })
 export class StockService {
@@ -11,6 +11,10 @@ export class StockService {
 
   balance(productId: number): Observable<StockBalance> {
     return this.http.get<StockBalance>(`${this.apiUrl}/${productId}`);
+  }
+
+  lots(productId: number): Observable<StockLot[]> {
+    return this.http.get<StockLot[]>(`${this.apiUrl}/${productId}/lots`);
   }
 
   movements(productId: number, page = 0, size = 20): Observable<SpringPage<StockMovement>> {

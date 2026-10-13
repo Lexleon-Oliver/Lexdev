@@ -38,6 +38,7 @@ class StockServiceTest {
     @Mock StockBalanceRepository balanceRepository;
     @Mock StockMovementRepository movementRepository;
     @Mock CurrentUserProvider currentUserProvider;
+    @Mock StockLotService stockLotService;
 
     private StockService service;
     private Product product;
@@ -49,7 +50,8 @@ class StockServiceTest {
             productRepository,
             balanceRepository,
             movementRepository,
-            currentUserProvider
+            currentUserProvider,
+            stockLotService
         );
         product = new Product();
         product.setControlsStock(true);

@@ -79,6 +79,11 @@ public class SaleController {
         return ResponseEntity.ok(service.consult(id));
     }
 
+    @PostMapping("/{id}/commercial-cancel")
+    public ResponseEntity<SaleResponseDto> cancelCommercial(@PathVariable Long id, @RequestParam String justification) {
+        return ResponseEntity.ok(service.cancelCommercial(id, justification));
+    }
+
     @PostMapping("/{id}/cancel")
     public ResponseEntity<SaleResponseDto> cancel(@PathVariable Long id, @RequestParam String justification) {
         return ResponseEntity.ok(service.cancel(id, justification));

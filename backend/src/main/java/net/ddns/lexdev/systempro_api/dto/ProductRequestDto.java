@@ -41,6 +41,8 @@ public record ProductRequestDto(
     @NotNull
     Boolean controlsStock,
 
+    Boolean controlsExpiration,
+
     @DecimalMin(value = "0.0")
     BigDecimal salePrice,
 

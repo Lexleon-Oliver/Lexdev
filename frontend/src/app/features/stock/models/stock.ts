@@ -39,8 +39,9 @@ export interface StockMovement {
   createdAt: string;
 }
 
+export interface StockLot { id:number; lotCode:string; manufactureDate:string|null; expirationDate:string; quantity:number; }
+
 export interface StockOperationRequest {
-  quantity: number;
-  reason: string;
-  operationReference: string;
+  quantity: number; reason: string; operationReference: string;
+  lotCode?: string | null; manufactureDate?: string | null; expirationDate?: string | null;
 }

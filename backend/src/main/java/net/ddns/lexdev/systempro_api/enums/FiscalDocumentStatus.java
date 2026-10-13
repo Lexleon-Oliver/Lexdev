@@ -7,5 +7,6 @@ public enum FiscalDocumentStatus {
     REJEITADA,
     CANCELAMENTO_PENDENTE,
     CANCELADA,
+    DESCARTADA,
     CONTINGENCIA
 }
