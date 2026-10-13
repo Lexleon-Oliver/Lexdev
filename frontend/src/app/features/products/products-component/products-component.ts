@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { ProductService } from '../../../core/services/product-service';
 import { SupplierService } from '../../../core/services/supplier-service';
 import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -14,10 +14,11 @@ import { CommonModule } from '@angular/common';
 import { SupplierOption } from '../../models/supplier-option';
 import { ProductImageService } from '../../../core/services/product-image-service';
 import { ProductImageItem } from '../../models/product-image-item';
-import { firstValueFrom } from 'rxjs';
+import { debounceTime, distinctUntilChanged, finalize, firstValueFrom, Subject, switchMap } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ProductFiscalProfileService } from '../../../core/services/product-fiscal-profile-service';
 import { ProductFiscalProfileRequest } from '../../models/product-fiscal-profile';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   imports: [CommonModule, ReactiveFormsModule],
@@ -44,6 +45,10 @@ private readonly notification =
 private readonly fiscalProfileService =
   inject(ProductFiscalProfileService);
 
+private readonly destroyRef = inject(DestroyRef);
+private readonly productSearch = new Subject<string>();
+private readonly supplierSearch = new Subject<string>();
+
   /* ---------- Estado ---------- */
   produtos = signal<Product[]>([]);
   isLoading = signal(false);
@@ -54,61 +59,12 @@ private readonly fiscalProfileService =
   pageSize = signal(10);
   totalElements = signal(0);
 
-  filteredProdutos = computed(() => {
+  totalPages = computed(() =>
+    Math.ceil(this.totalElements() / this.pageSize())
+  );
 
-    const term =
-      this.searchTerm().trim();
-
-    const normalizedTerm =
-      this.normalizeSearchValue(term);
-
-    const list =
-      this.produtos();
-
-    if (!Array.isArray(list)) {
-      return [];
-    }
-
-    if (!term) {
-      return list;
-    }
-
-    return list.filter((produto) => {
-
-      const name =
-        this.normalizeSearchValue(
-          produto.name ?? ''
-        );
-
-      const code =
-        this.normalizeSearchValue(
-          produto.code ?? ''
-        );
-
-      const model =
-        this.normalizeSearchValue(
-          produto.model ?? ''
-        );
-
-      const manufacturerCode =
-        this.normalizeSearchValue(
-          produto.manufacturerCode ?? ''
-        );
-
-      const gtin =
-        this.normalizeSearchValue(
-          produto.gtin ?? ''
-        );
-
-      return (
-        name.includes(normalizedTerm) ||
-        code.includes(normalizedTerm) ||
-        model.includes(normalizedTerm) ||
-        manufacturerCode.includes(normalizedTerm) ||
-        gtin.includes(normalizedTerm)
-      );
-    });
-  });
+  supplierSearchTerm = signal('');
+  supplierSearchLoading = signal(false);
 
   /* ---------- Modais / UI ---------- */
   showFormModal = signal(false);
@@ -226,8 +182,9 @@ private readonly fiscalProfileService =
   });
 
   ngOnInit(): void {
+    this.configureProductSearch();
+    this.configureSupplierSearch();
     this.loadProdutos();
-    this.loadSupplierOptions();
   }
 
   /* ==================== Carregamento ==================== */
@@ -235,51 +192,152 @@ private readonly fiscalProfileService =
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
-    this.produtoService.findAll(this.currentPage(), this.pageSize()).subscribe({
-      next: (page) => {
-        this.produtos.set(page.content || []);
-        this.totalElements.set(page.totalElements ?? 0);
-        this.isLoading.set(false);
-      },
-      error: () => {
-        this.isLoading.set(false);
-      },
-    });
+    this.produtoService
+      .findAll(this.currentPage(), this.pageSize(), this.searchTerm())
+      .pipe(finalize(() => this.isLoading.set(false)))
+      .subscribe({
+        next: (page) => {
+          this.produtos.set(page.content ?? []);
+          this.totalElements.set(page.totalElements ?? 0);
+        },
+        error: (error) => {
+          console.error('Erro ao carregar produtos:', error);
+          this.produtos.set([]);
+          this.totalElements.set(0);
+          this.errorMessage.set('Não foi possível carregar os produtos.');
+        },
+      });
   }
 
-  loadSupplierOptions(): void {
-  this.fornecedorService.findAll(0, 1000).subscribe({
-    next: (page) => {
-      const content = page.content ?? [];
+  private configureProductSearch(): void {
+    this.productSearch
+      .pipe(
+        debounceTime(350),
+        distinctUntilChanged(),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(() => {
+        this.currentPage.set(0);
+        this.loadProdutos();
+      });
+  }
 
-      const options: SupplierOption[] = content
-        .filter((s) => s.id != null)
-        .map((s) => ({
-          id: s.id,
-          name:
-            s.person?.tipoPessoa === 'PJ'
-              ? s.legalEntity?.nomeFantasia?.trim() ||
-                s.person?.name?.trim() ||
-                `Fornecedor #${s.id}`
-              : s.person?.name?.trim() ||
-                `Fornecedor #${s.id}`,
-        }));
+  onSearchChange(value: string): void {
+    this.searchTerm.set(value);
+    this.productSearch.next(value.trim());
+  }
 
-      this.supplierOptions.set(options);
-    },
+  previousPage(): void {
+    if (this.currentPage() <= 0) return;
+    this.currentPage.update((page) => page - 1);
+    this.loadProdutos();
+  }
 
-    error: (error) => {
-      console.error('Erro ao carregar fornecedores:', error);
-      this.supplierOptions.set([]);
-    },
-  });
-}
+  nextPage(): void {
+    if (this.currentPage() + 1 >= this.totalPages()) return;
+    this.currentPage.update((page) => page + 1);
+    this.loadProdutos();
+  }
+
+  private configureSupplierSearch(): void {
+    this.supplierSearch
+      .pipe(
+        debounceTime(350),
+        distinctUntilChanged(),
+        switchMap((query) => {
+          if (query.length < 2) {
+            this.supplierSearchLoading.set(false);
+            this.supplierOptions.set([]);
+            return [];
+          }
+
+          this.supplierSearchLoading.set(true);
+          return this.fornecedorService
+            .findAll(0, 20, query, 'person.name,asc')
+            .pipe(finalize(() => this.supplierSearchLoading.set(false)));
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (page: any) => {
+          const content = page?.content ?? [];
+          this.supplierOptions.set(content
+            .filter((supplier: any) => supplier.id != null)
+            .map((supplier: any) => ({
+              id: supplier.id,
+              name: this.supplierDisplayName(supplier),
+            })));
+        },
+        error: (error) => {
+          console.error('Erro ao pesquisar fornecedores:', error);
+          this.supplierOptions.set([]);
+          this.supplierSearchLoading.set(false);
+        },
+      });
+  }
+
+  onSupplierSearchChange(value: string): void {
+    this.supplierSearchTerm.set(value);
+    this.supplierSearch.next(value.trim());
+  }
+
+  addSupplierOption(option: SupplierOption): void {
+    const alreadyLinked = this.suppliers.controls.some(
+      (control) => Number(control.get('supplierId')?.value) === option.id
+    );
+
+    if (alreadyLinked) {
+      this.notification.error('Este fornecedor já está vinculado ao produto.');
+      return;
+    }
+
+    this.rememberSupplierOption(option);
+    this.suppliers.push(this.buildSupplierGroup({ supplierId: option.id }));
+    this.supplierSearchTerm.set('');
+    this.supplierOptions.set([]);
+  }
+
+  private supplierDisplayName(supplier: any): string {
+    return supplier.person?.tipoPessoa === 'PJ'
+      ? supplier.legalEntity?.nomeFantasia?.trim() || supplier.person?.name?.trim() || `Fornecedor #${supplier.id}`
+      : supplier.person?.name?.trim() || `Fornecedor #${supplier.id}`;
+  }
+
+  private rememberSupplierOption(option: SupplierOption): void {
+    this.supplierOptions.update((options) =>
+      options.some((current) => current.id === option.id)
+        ? options
+        : [...options, option]
+    );
+  }
+
+  private loadLinkedSupplierNames(): void {
+    const ids = this.suppliers.controls
+      .map((control) => Number(control.get('supplierId')?.value))
+      .filter((id) => Number.isFinite(id) && id > 0);
+
+    ids.forEach((id) => {
+      if (this.supplierOptions().some((option) => option.id === id)) return;
+
+      this.fornecedorService.findById(id)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (supplier) => this.rememberSupplierOption({
+            id,
+            name: this.supplierDisplayName(supplier),
+          }),
+          error: (error) => console.error(`Erro ao carregar fornecedor ${id}:`, error),
+        });
+    });
+  }
 
   /* ==================== Abrir / Fechar modais ==================== */
   openCreateModal(): void {
     this.editingProduto.set(null);
     this.suppliers.clear();
     this.clearImageState();
+    this.supplierSearchTerm.set('');
+    this.supplierOptions.set([]);
 
     this.form.reset({
       code: '',
@@ -334,6 +392,7 @@ private readonly fiscalProfileService =
     (produto.suppliers || []).forEach((s) => {
       this.suppliers.push(this.buildSupplierGroup(s));
     });
+    this.loadLinkedSupplierNames();
 
     // Imagens
     const serverImages =

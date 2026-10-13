@@ -10,8 +10,16 @@ export class ProductService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/products';
 
-  findAll(page = 0, size = 10): Observable<SpringPage<Product>> {
-    const params = new HttpParams().set('page', page).set('size', size);
+  findAll(page = 0, size = 10, query = ''): Observable<SpringPage<Product>> {
+    let params = new HttpParams()
+      .set('page', page)
+      .set('size', size);
+
+    const normalizedQuery = query.trim();
+    if (normalizedQuery) {
+      params = params.set('q', normalizedQuery);
+    }
+
     return this.http.get<SpringPage<Product>>(this.apiUrl, { params });
   }
 

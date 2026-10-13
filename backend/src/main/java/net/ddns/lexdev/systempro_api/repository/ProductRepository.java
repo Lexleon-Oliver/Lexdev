@@ -33,12 +33,26 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         """)
     Page<Product> searchForSale(@Param("search") String search, Pageable pageable);
 
-    @Query("""
-        SELECT p
-        FROM Product p
-        WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))
-           OR LOWER(p.code) LIKE LOWER(CONCAT('%', :search, '%'))
-        """)
+    @Query(
+        value = """
+            SELECT p
+            FROM Product p
+            WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(p.code) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(COALESCE(p.model, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(COALESCE(p.manufacturerCode, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(COALESCE(p.gtin, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+            """,
+        countQuery = """
+            SELECT COUNT(p)
+            FROM Product p
+            WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(p.code) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(COALESCE(p.model, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(COALESCE(p.manufacturerCode, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(COALESCE(p.gtin, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+            """
+    )
     Page<Product> search(
         @Param("search") String search,
         Pageable pageable

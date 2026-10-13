@@ -12,7 +12,7 @@
           type="text"
           placeholder="Buscar produtos..."
           [value]="searchTerm()"
-          (input)="searchTerm.set($any($event.target).value)"
+          (input)="onSearchChange($any($event.target).value)"
         />
       </div>
       <button class="btn-primary" (click)="openCreateModal()">
@@ -33,7 +33,7 @@
   @if (isLoading()) {
     <div class="loading"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>
   } @else {
-    @if (filteredProdutos().length === 0) {
+    @if (produtos().length === 0) {
       <div class="empty-state">
         <i class="fas fa-box-open"></i>
         <p>Nenhum produto encontrado.</p>
@@ -53,7 +53,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (produto of filteredProdutos(); track produto.id) {
+            @for (produto of produtos(); track produto.id) {
               <tr>
                 <td data-label="Código">{{ produto.code || '—' }}</td>
                 <td data-label="Nome">{{ produto.name }}</td>
@@ -81,6 +81,18 @@
           </tbody>
         </table>
       </div>
+
+      @if (totalPages() > 1) {
+        <div class="pagination">
+          <button type="button" (click)="previousPage()" [disabled]="currentPage() === 0">
+            <i class="fas fa-chevron-left"></i> Anterior
+          </button>
+          <span>Página {{ currentPage() + 1 }} de {{ totalPages() }} · {{ totalElements() }} produtos</span>
+          <button type="button" (click)="nextPage()" [disabled]="currentPage() + 1 >= totalPages()">
+            Próxima <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      }
     }
   }
 
@@ -464,9 +476,29 @@
               <span class="hint">
                 Fornecedores vinculados a este produto. Marque apenas um como principal.
               </span>
-              <button type="button" class="btn-add-contact" (click)="addSupplier()">
-                <i class="fas fa-plus"></i> Adicionar Fornecedor
-              </button>
+              <div class="supplier-remote-search">
+                <div class="search-box">
+                  <i class="fas fa-search"></i>
+                  <input
+                    type="text"
+                    placeholder="Buscar fornecedor por nome, CPF/CNPJ, e-mail ou telefone..."
+                    [value]="supplierSearchTerm()"
+                    (input)="onSupplierSearchChange($any($event.target).value)"
+                  />
+                </div>
+
+                @if (supplierSearchLoading()) {
+                  <small>Pesquisando fornecedores...</small>
+                } @else if (supplierSearchTerm().trim().length >= 2 && supplierOptions().length > 0) {
+                  <div class="supplier-search-results">
+                    @for (f of supplierOptions(); track f.id) {
+                      <button type="button" (click)="addSupplierOption(f)">
+                        <i class="fas fa-plus"></i> {{ f.name }}
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
             </div>
 
             <div formArrayName="suppliers">
@@ -494,15 +526,10 @@
                   <div class="form-row">
                     <div>
                       <label>Fornecedor</label>
-                      <select formControlName="supplierId">
-                        <option [ngValue]="null">Selecione</option>
-                        @for (f of supplierOptions(); track f.id) {
-                          <option [ngValue]="f.id">{{ f.name }}</option>
-                        }
-                      </select>
-                      @if (item.get('supplierId')?.invalid && item.get('supplierId')?.touched) {
-                        <small class="field-error">Campo obrigatório.</small>
-                      }
+                      <input type="hidden" formControlName="supplierId" />
+                      <div class="supplier-selected">
+                        {{ supplierName(item.get('supplierId')?.value) }}
+                      </div>
                     </div>
                     <div>
                       <label>Código no Fornecedor</label>
