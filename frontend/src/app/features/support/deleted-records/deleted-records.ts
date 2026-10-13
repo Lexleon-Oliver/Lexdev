@@ -59,7 +59,6 @@ export class DeletedRecordsComponent implements OnInit {
   ngOnInit(): void {
     this.load();
   }
-
   load(): void {
     this.loading = true;
     this.error = '';
@@ -70,19 +69,27 @@ export class DeletedRecordsComponent implements OnInit {
       .set('page', this.currentPage)
       .set('size', this.pageSize);
 
-    this.http.get<DeletedRecordPage>('/api/support/deleted-records', { params }).subscribe({
-      next: response => {
-        this.records = response.content;
-        this.currentPage = response.page;
-        this.totalElements = response.totalElements;
-        this.totalPages = response.totalPages;
-        this.loading = false;
-      },
-      error: error => {
-        this.error = error?.error?.message || 'Não foi possível carregar os registros excluídos.';
-        this.loading = false;
-      }
-    });
+    this.http
+      .get<DeletedRecordPage>('/api/support/deleted-records', { params })
+      .pipe(
+        finalize(() => {
+          this.loading = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: response => {
+          this.records = response.content;
+          this.currentPage = response.page;
+          this.totalElements = response.totalElements;
+          this.totalPages = response.totalPages;
+        },
+        error: error => {
+          this.error =
+            error?.error?.message ||
+            'Não foi possível carregar os registros excluídos.';
+        }
+      });
   }
 
   searchRecords(): void {
