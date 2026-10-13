@@ -34,6 +34,7 @@ import jakarta.persistence.EntityNotFoundException;
 import net.ddns.lexdev.systempro_api.config.JwtTokenProvider;
 import net.ddns.lexdev.systempro_api.dto.ClientRequestDto;
 import net.ddns.lexdev.systempro_api.dto.ClientResponseDto;
+import net.ddns.lexdev.systempro_api.dto.ClientSummaryResponseDto;
 import net.ddns.lexdev.systempro_api.dto.IndividualPersonResponseDto;
 import net.ddns.lexdev.systempro_api.dto.PersonAddressResponseDto;
 import net.ddns.lexdev.systempro_api.dto.PersonContactResponseDto;
@@ -116,13 +117,23 @@ class ClientControllerTest {
         );
     }
 
+    private ClientSummaryResponseDto createClientSummaryResponse() {
+        return new ClientSummaryResponseDto(
+            1L,
+            new PersonResponseDto(10L, "PF", "João da Silva", "12345678900"),
+            "joao@email.com",
+            "31999999999",
+            true
+        );
+    }
+
     @Test
     @DisplayName("Deve retornar lista paginada de clientes")
     void deveRetornarListaPaginadaDeClientes() throws Exception {
 
-        ClientResponseDto client = createClientResponse();
+        ClientSummaryResponseDto client = createClientSummaryResponse();
 
-        PageImpl<ClientResponseDto> page = new PageImpl<>(
+        PageImpl<ClientSummaryResponseDto> page = new PageImpl<>(
             List.of(client),
             PageRequest.of(0, 10),
             1
@@ -147,20 +158,12 @@ class ClientControllerTest {
             .andExpect(jsonPath("$.content[0].person.cpfCnpj")
                 .value("12345678900"))
 
-            .andExpect(jsonPath("$.content[0].individual.id").value(20))
-            .andExpect(jsonPath("$.content[0].individual.rg")
-                .value("495493478"))
-
-            .andExpect(jsonPath("$.content[0].legalEntity")
-                .value(Matchers.nullValue()))
-
-            .andExpect(jsonPath("$.content[0].contacts").isArray())
-            .andExpect(jsonPath("$.content[0].contacts.length()").value(2))
-
-            .andExpect(jsonPath("$.content[0].addresses").isArray())
-            .andExpect(jsonPath("$.content[0].addresses.length()").value(1))
-
-            .andExpect(jsonPath("$.content[0].active").value(true));
+            .andExpect(jsonPath("$.content[0].email").value("joao@email.com"))
+            .andExpect(jsonPath("$.content[0].phone").value("31999999999"))
+            .andExpect(jsonPath("$.content[0].active").value(true))
+            .andExpect(jsonPath("$.content[0].individual").doesNotExist())
+            .andExpect(jsonPath("$.content[0].contacts").doesNotExist())
+            .andExpect(jsonPath("$.content[0].addresses").doesNotExist());
 
         verify(service).findAll(any(Pageable.class), eq(""));
     }
@@ -169,7 +172,7 @@ class ClientControllerTest {
     @DisplayName("Deve encaminhar parâmetros de paginação ao service")
     void deveEncaminharParametrosDePaginacaoAoService() throws Exception {
 
-        PageImpl<ClientResponseDto> page = new PageImpl<>(
+        PageImpl<ClientSummaryResponseDto> page = new PageImpl<>(
             List.of(),
             PageRequest.of(1, 5),
             0
@@ -199,7 +202,7 @@ class ClientControllerTest {
     @DisplayName("Deve encaminhar termo de pesquisa ao service")
     void deveEncaminharTermoDePesquisaAoService() throws Exception {
 
-        PageImpl<ClientResponseDto> page = new PageImpl<>(List.of());
+        PageImpl<ClientSummaryResponseDto> page = new PageImpl<>(List.of());
 
         when(service.findAll(any(Pageable.class), eq("joao")))
             .thenReturn(page);

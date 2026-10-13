@@ -18,6 +18,7 @@ import net.ddns.lexdev.systempro_api.domain.PersonAddress;
 import net.ddns.lexdev.systempro_api.domain.PersonContact;
 import net.ddns.lexdev.systempro_api.dto.ClientRequestDto;
 import net.ddns.lexdev.systempro_api.dto.ClientResponseDto;
+import net.ddns.lexdev.systempro_api.dto.ClientSummaryResponseDto;
 import net.ddns.lexdev.systempro_api.dto.IndividualPersonRequestDto;
 import net.ddns.lexdev.systempro_api.dto.PersonAddressRequestDto;
 import net.ddns.lexdev.systempro_api.dto.PersonContactRequestDto;
@@ -1359,7 +1360,7 @@ class ClientServiceIntegrationTest extends IntegrationTestBase {
         // Consulta paginada
         // ============================================================
 
-        Page<ClientResponseDto> resultado =
+        Page<ClientSummaryResponseDto> resultado =
             clientService.findAll(PageRequest.of(0, 10), "");
 
         // ============================================================

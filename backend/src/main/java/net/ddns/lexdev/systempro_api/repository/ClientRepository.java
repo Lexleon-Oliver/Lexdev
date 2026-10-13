@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import net.ddns.lexdev.systempro_api.domain.Client;
+import net.ddns.lexdev.systempro_api.repository.projection.ClientSummaryProjection;
 
 public interface ClientRepository extends JpaRepository<Client, Long> {
     boolean existsByPersonCpfCnpj(String cpfCnpj);
@@ -18,41 +19,81 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
 
     @Query(
         value = """
-            SELECT c
-            FROM Client c
-            JOIN FETCH c.person p
-        WHERE :term = ''
-           OR LOWER(p.name) LIKE CONCAT('%', :term, '%')
-           OR (:digits <> '' AND p.cpfCnpj LIKE CONCAT('%', :digits, '%'))
-           OR EXISTS (
-               SELECT pc.id
-               FROM PersonContact pc
-               WHERE pc.person = p
-                 AND (
-                     LOWER(pc.value) LIKE CONCAT('%', :term, '%')
-                     OR (:digits <> '' AND pc.value LIKE CONCAT('%', :digits, '%'))
-                 )
-           )
+            SELECT
+                c.id AS id,
+                p.id AS "personId",
+                p.tipo_pessoa AS "tipoPessoa",
+                p.name AS name,
+                p.cpf_cnpj AS "cpfCnpj",
+                (
+                    SELECT pc.value
+                    FROM tb_person_contact pc
+                    WHERE pc.person_id = p.id
+                      AND pc.type = 'EMAIL'
+                    ORDER BY pc.id
+                    LIMIT 1
+                ) AS email,
+                (
+                    SELECT pc.value
+                    FROM tb_person_contact pc
+                    WHERE pc.person_id = p.id
+                      AND pc.type <> 'EMAIL'
+                    ORDER BY
+                        CASE WHEN pc.principal THEN 0 ELSE 1 END,
+                        CASE pc.type
+                            WHEN 'CELULAR' THEN 0
+                            WHEN 'WHATSAPP' THEN 1
+                            WHEN 'TELEFONE' THEN 2
+                            ELSE 3
+                        END,
+                        pc.id
+                    LIMIT 1
+                ) AS phone,
+                c.active AS active
+            FROM tb_client c
+            JOIN tb_person p ON p.id = c.person_id
+            WHERE c.active = true
+              AND p.active = true
+              AND (
+                  :term = ''
+                  OR LOWER(p.name) LIKE CONCAT('%', :term, '%')
+                  OR (:digits <> '' AND p.cpf_cnpj LIKE CONCAT('%', :digits, '%'))
+                  OR EXISTS (
+                      SELECT 1
+                      FROM tb_person_contact pc
+                      WHERE pc.person_id = p.id
+                        AND (
+                            LOWER(pc.value) LIKE CONCAT('%', :term, '%')
+                            OR (:digits <> '' AND pc.value LIKE CONCAT('%', :digits, '%'))
+                        )
+                  )
+              )
+            ORDER BY LOWER(p.name), c.id
             """,
         countQuery = """
-            SELECT COUNT(c)
-            FROM Client c
-            JOIN c.person p
-        WHERE :term = ''
-           OR LOWER(p.name) LIKE CONCAT('%', :term, '%')
-           OR (:digits <> '' AND p.cpfCnpj LIKE CONCAT('%', :digits, '%'))
-           OR EXISTS (
-               SELECT pc.id
-               FROM PersonContact pc
-               WHERE pc.person = p
-                 AND (
-                     LOWER(pc.value) LIKE CONCAT('%', :term, '%')
-                     OR (:digits <> '' AND pc.value LIKE CONCAT('%', :digits, '%'))
-                 )
-           )
-            """
+            SELECT COUNT(*)
+            FROM tb_client c
+            JOIN tb_person p ON p.id = c.person_id
+            WHERE c.active = true
+              AND p.active = true
+              AND (
+                  :term = ''
+                  OR LOWER(p.name) LIKE CONCAT('%', :term, '%')
+                  OR (:digits <> '' AND p.cpf_cnpj LIKE CONCAT('%', :digits, '%'))
+                  OR EXISTS (
+                      SELECT 1
+                      FROM tb_person_contact pc
+                      WHERE pc.person_id = p.id
+                        AND (
+                            LOWER(pc.value) LIKE CONCAT('%', :term, '%')
+                            OR (:digits <> '' AND pc.value LIKE CONCAT('%', :digits, '%'))
+                        )
+                  )
+              )
+            """,
+        nativeQuery = true
     )
-    Page<Client> search(
+    Page<ClientSummaryProjection> searchSummary(
         @Param("term") String term,
         @Param("digits") String digits,
         Pageable pageable

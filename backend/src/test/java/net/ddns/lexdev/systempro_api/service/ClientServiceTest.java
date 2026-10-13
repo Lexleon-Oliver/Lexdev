@@ -34,6 +34,7 @@ import net.ddns.lexdev.systempro_api.domain.PersonAddress;
 import net.ddns.lexdev.systempro_api.domain.PersonContact;
 import net.ddns.lexdev.systempro_api.dto.ClientRequestDto;
 import net.ddns.lexdev.systempro_api.dto.ClientResponseDto;
+import net.ddns.lexdev.systempro_api.dto.ClientSummaryResponseDto;
 import net.ddns.lexdev.systempro_api.dto.IndividualPersonRequestDto;
 import net.ddns.lexdev.systempro_api.dto.LegalEntityRequestDto;
 import net.ddns.lexdev.systempro_api.dto.PersonAddressRequestDto;
@@ -44,6 +45,7 @@ import net.ddns.lexdev.systempro_api.enums.ContactType;
 import net.ddns.lexdev.systempro_api.enums.TipoPessoa;
 import net.ddns.lexdev.systempro_api.exception.BusinessException;
 import net.ddns.lexdev.systempro_api.repository.ClientRepository;
+import net.ddns.lexdev.systempro_api.repository.projection.ClientSummaryProjection;
 
 
 
@@ -836,153 +838,53 @@ class ClientServiceTest {
     }
 
     @Test
-    @DisplayName("Deve retornar clientes paginados")
+    @DisplayName("Deve retornar clientes paginados como resumo")
     void deveRetornarClientesPaginados() {
 
-        Person person1 =
-            buildPerson(
-                10L,
-                "12345678900"
-            );
+        Pageable pageable = PageRequest.of(0, 10);
 
-        Client client1 =
-            buildClient(
-                1L,
-                person1
-            );
-
-        Person person2 =
-            buildPerson(
-                20L,
-                "12345678000199"
-            );
-
-        person2.setTipoPessoa(
-            TipoPessoa.PJ
+        ClientSummaryProjection client1 = summaryProjection(
+            1L, 10L, "PF", "João da Silva", "12345678900",
+            "joao@email.com", "31999999999", true
+        );
+        ClientSummaryProjection client2 = summaryProjection(
+            2L, 20L, "PJ", "Empresa Teste", "12345678000199",
+            null, "3233334444", true
         );
 
-        Client client2 =
-            buildClient(
-                2L,
-                person2
-            );
+        when(clientRepository.searchSummary("", "", pageable))
+            .thenReturn(new PageImpl<>(List.of(client1, client2), pageable, 2));
 
-        Pageable pageable =
-            PageRequest.of(0, 10);
+        Page<ClientSummaryResponseDto> result = service.findAll(pageable, "");
 
-        Page<Client> clientPage =
-            new PageImpl<>(
-                List.of(
-                    client1,
-                    client2
-                ),
-                pageable,
-                2
-            );
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getContent().get(0).id()).isEqualTo(1L);
+        assertThat(result.getContent().get(0).person().tipoPessoa()).isEqualTo("PF");
+        assertThat(result.getContent().get(0).person().name()).isEqualTo("João da Silva");
+        assertThat(result.getContent().get(0).email()).isEqualTo("joao@email.com");
+        assertThat(result.getContent().get(0).phone()).isEqualTo("31999999999");
+        assertThat(result.getContent().get(1).person().tipoPessoa()).isEqualTo("PJ");
+        assertThat(result.getContent().get(1).person().cpfCnpj()).isEqualTo("12345678000199");
+        assertThat(result.getTotalElements()).isEqualTo(2);
 
-        when(
-            clientRepository.search(
-                "",
-                "",
-                pageable
-            )
-        )
-            .thenReturn(clientPage);
-
-        Page<ClientResponseDto> result =
-            service.findAll(pageable, "");
-
-        assertThat(result)
-            .isNotNull();
-
-        assertThat(result.getContent())
-            .hasSize(2);
-
-        assertThat(
-            result.getContent()
-                .get(0)
-                .id()
-        )
-            .isEqualTo(1L);
-
-        assertThat(
-            result.getContent()
-                .get(1)
-                .id()
-        )
-            .isEqualTo(2L);
-
-        assertThat(
-            result.getContent()
-                .get(0)
-                .person()
-                .tipoPessoa()
-        )
-            .isEqualTo("PF");
-
-        assertThat(
-            result.getContent()
-                .get(1)
-                .person()
-                .tipoPessoa()
-        )
-            .isEqualTo("PJ");
-
-        assertThat(
-            result.getContent()
-                .get(0)
-                .person()
-                .name()
-        )
-            .isEqualTo("João da Silva");
-
-        assertThat(
-            result.getContent()
-                .get(1)
-                .person()
-                .cpfCnpj()
-        )
-            .isEqualTo("12345678000199");
-
-        assertThat(result.getTotalElements())
-            .isEqualTo(2);
-
-        verify(clientRepository)
-            .search("", "", pageable);
+        verify(clientRepository).searchSummary("", "", pageable);
     }
 
     @Test
     @DisplayName("Deve retornar página vazia quando não houver clientes")
     void deveRetornarPaginaVaziaQuandoNaoHouverClientes() {
 
-        Pageable pageable =
-            PageRequest.of(0, 10);
+        Pageable pageable = PageRequest.of(0, 10);
 
-        when(
-            clientRepository.search(
-                "",
-                "",
-                pageable
-            )
-        )
-            .thenReturn(
-                Page.empty(pageable)
-            );
+        when(clientRepository.searchSummary("", "", pageable))
+            .thenReturn(Page.empty(pageable));
 
-        Page<ClientResponseDto> result =
-            service.findAll(pageable, "");
+        Page<ClientSummaryResponseDto> result = service.findAll(pageable, "");
 
-        assertThat(result)
-            .isNotNull();
+        assertThat(result.getContent()).isEmpty();
+        assertThat(result.getTotalElements()).isZero();
 
-        assertThat(result.getContent())
-            .isEmpty();
-
-        assertThat(result.getTotalElements())
-            .isZero();
-
-        verify(clientRepository)
-            .search("", "", pageable);
+        verify(clientRepository).searchSummary("", "", pageable);
     }
 
     @Test
@@ -1736,6 +1638,29 @@ class ClientServiceTest {
             .save(
                 any(Client.class)
             );
+    }
+
+
+    private ClientSummaryProjection summaryProjection(
+        Long id,
+        Long personId,
+        String tipoPessoa,
+        String name,
+        String cpfCnpj,
+        String email,
+        String phone,
+        Boolean active
+    ) {
+        ClientSummaryProjection projection = org.mockito.Mockito.mock(ClientSummaryProjection.class);
+        when(projection.getId()).thenReturn(id);
+        when(projection.getPersonId()).thenReturn(personId);
+        when(projection.getTipoPessoa()).thenReturn(tipoPessoa);
+        when(projection.getName()).thenReturn(name);
+        when(projection.getCpfCnpj()).thenReturn(cpfCnpj);
+        when(projection.getEmail()).thenReturn(email);
+        when(projection.getPhone()).thenReturn(phone);
+        when(projection.getActive()).thenReturn(active);
+        return projection;
     }
 
 }

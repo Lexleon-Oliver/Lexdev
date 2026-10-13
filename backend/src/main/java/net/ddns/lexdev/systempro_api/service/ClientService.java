@@ -11,6 +11,7 @@ import net.ddns.lexdev.systempro_api.domain.Client;
 import net.ddns.lexdev.systempro_api.domain.Person;
 import net.ddns.lexdev.systempro_api.dto.ClientRequestDto;
 import net.ddns.lexdev.systempro_api.dto.ClientResponseDto;
+import net.ddns.lexdev.systempro_api.dto.ClientSummaryResponseDto;
 import net.ddns.lexdev.systempro_api.exception.BusinessException;
 import net.ddns.lexdev.systempro_api.repository.ClientRepository;
 
@@ -35,12 +36,12 @@ public class ClientService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ClientResponseDto> findAll(Pageable pageable, String query) {
+    public Page<ClientSummaryResponseDto> findAll(Pageable pageable, String query) {
         String term = query == null ? "" : query.trim().toLowerCase();
         String digits = term.replaceAll("\\D", "");
 
-        return clientRepository.search(term, digits, pageable)
-            .map(ClientResponseDto::fromEntity);
+        return clientRepository.searchSummary(term, digits, pageable)
+            .map(ClientSummaryResponseDto::fromProjection);
     }
 
     @Transactional(readOnly = true)

@@ -19,6 +19,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import jakarta.validation.Valid;
 import net.ddns.lexdev.systempro_api.dto.ClientRequestDto;
 import net.ddns.lexdev.systempro_api.dto.ClientResponseDto;
+import net.ddns.lexdev.systempro_api.dto.ClientSummaryResponseDto;
 import net.ddns.lexdev.systempro_api.service.ClientService;
 
 @RestController
@@ -32,7 +33,7 @@ public class ClientController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<ClientResponseDto>> findAll(
+    public ResponseEntity<Page<ClientSummaryResponseDto>> findAll(
             Pageable pageable,
             @RequestParam(required = false, defaultValue = "") String q) {
         return ResponseEntity.ok(service.findAll(pageable, q));
