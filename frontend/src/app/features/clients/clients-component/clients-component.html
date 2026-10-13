@@ -56,8 +56,18 @@
                 <td data-label="Telefone">{{ getPhone(client) }}</td>
                 <td data-label="Ações">
                   <div class="action-buttons">
-                    <button class="btn-edit" (click)="openEditModal(client)" title="Editar">
-                      <i class="fas fa-edit"></i>
+                    <button
+                      class="btn-edit"
+                      [disabled]="loadingClientDetailId() !== null"
+                      (click)="openEditModal(client)"
+                      title="Editar"
+                    >
+                      <i
+                        class="fas"
+                        [class.fa-edit]="loadingClientDetailId() !== client.id"
+                        [class.fa-spinner]="loadingClientDetailId() === client.id"
+                        [class.fa-spin]="loadingClientDetailId() === client.id"
+                      ></i>
                     </button>
                     <button class="btn-delete" (click)="confirmDelete(client)" title="Excluir">
                       <i class="fas fa-trash-alt"></i>

@@ -4,6 +4,7 @@ import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } fr
 import { NotificationService } from '../../../core/services/notification-service';
 import { cpfCnpjValidator } from '../../../core/validators/cpf-cnpj.validator';
 import { Client } from '../../models/client';
+import { ClientSummary } from '../../models/client-summary';
 import { ClientService } from '../../../core/services/client-service';
 import { CepService } from '../../../core/services/cep-service';
 import { PersonContactResponseDto } from '../../models/person-contact-response-dto';
@@ -24,7 +25,7 @@ export class ClientsComponent implements OnInit {
   private readonly notification = inject(NotificationService);
 
   // Estado
-  clients = signal<Client[]>([]);
+  clients = signal<ClientSummary[]>([]);
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
   searchTerm = signal('');
@@ -42,7 +43,8 @@ export class ClientsComponent implements OnInit {
   showFormModal = signal(false);
   showDeleteModal = signal(false);
   editingClient = signal<Client | null>(null);
-  deletingClient = signal<Client | null>(null);
+  deletingClient = signal<ClientSummary | null>(null);
+  loadingClientDetailId = signal<number | null>(null);
   isSaving = signal(false);
   activeTab = signal<'identification' | 'contact' | 'address'>('identification');
 
@@ -116,22 +118,13 @@ export class ClientsComponent implements OnInit {
 
   /* ==================== Helpers de exibição ==================== */
 
-  getEmail(client: Client): string {
-    return client.contacts?.find((c) => c.type === 'EMAIL')?.value ?? '—';
+  getEmail(client: ClientSummary): string {
+    return client.email ?? '—';
   }
 
-  getPhone(client: Client): string {
-    const c = client.contacts ?? [];
-    const preferred =
-      c.find((x) => x.principal && x.type !== 'EMAIL') ??
-      c.find((x) => x.type === 'CELULAR') ??
-      c.find((x) => x.type === 'WHATSAPP') ??
-      c.find((x) => x.type === 'TELEFONE');
-
-    if (!preferred?.value) return '—';
-
-    // Reutiliza o applyPhoneMask que já existe no seu componente
-    return this.applyPhoneMask(preferred.value);
+  getPhone(client: ClientSummary): string {
+    if (!client.phone) return '—';
+    return this.applyPhoneMask(client.phone);
   }
 
   /* ==================== FormArray factories ==================== */
@@ -199,29 +192,42 @@ export class ClientsComponent implements OnInit {
     this.showFormModal.set(true);
   }
 
-  openEditModal(client: Client): void {
-    this.editingClient.set(client);
+  openEditModal(client: ClientSummary): void {
+    if (this.loadingClientDetailId() !== null) return;
 
-    this.form.patchValue({
-      tipoPessoa: client.person.tipoPessoa,
-      name: client.person.name,
-      cpfCnpj: this.applyCpfCnpjMask(
-        client.person.cpfCnpj,
-        client.person.tipoPessoa
-      ),
-      rg: client.individual?.rg ?? '',
-      nomeFantasia: client.legalEntity?.nomeFantasia ?? '',
-      inscricaoEstadual: client.legalEntity?.inscricaoEstadual ?? '',
+    this.loadingClientDetailId.set(client.id);
+
+    this.clientService.findById(client.id).subscribe({
+      next: (detail) => {
+        this.editingClient.set(detail);
+
+        this.form.patchValue({
+          tipoPessoa: detail.person.tipoPessoa,
+          name: detail.person.name,
+          cpfCnpj: this.applyCpfCnpjMask(
+            detail.person.cpfCnpj,
+            detail.person.tipoPessoa
+          ),
+          rg: detail.individual?.rg ?? '',
+          nomeFantasia: detail.legalEntity?.nomeFantasia ?? '',
+          inscricaoEstadual: detail.legalEntity?.inscricaoEstadual ?? '',
+        });
+
+        this.contacts.clear();
+        (detail.contacts ?? []).forEach((c) => this.addContact(c));
+
+        this.addresses.clear();
+        (detail.addresses ?? []).forEach((a) => this.addAddress(a));
+
+        this.activeTab.set('identification');
+        this.showFormModal.set(true);
+        this.loadingClientDetailId.set(null);
+      },
+      error: () => {
+        this.loadingClientDetailId.set(null);
+        this.notification.error('Erro ao carregar os dados do cliente.');
+      },
     });
-
-    this.contacts.clear();
-    (client.contacts ?? []).forEach((c) => this.addContact(c));
-
-    this.addresses.clear();
-    (client.addresses ?? []).forEach((a) => this.addAddress(a));
-
-    this.activeTab.set('identification');
-    this.showFormModal.set(true);
   }
 
   closeFormModal(): void {
@@ -313,7 +319,7 @@ export class ClientsComponent implements OnInit {
 
   /* ==================== Exclusão ==================== */
 
-  confirmDelete(client: Client): void {
+  confirmDelete(client: ClientSummary): void {
     this.deletingClient.set(client);
     this.showDeleteModal.set(true);
   }

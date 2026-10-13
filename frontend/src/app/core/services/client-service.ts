@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { Client } from '../../features/models/client';
+import { ClientSummary } from '../../features/models/client-summary';
 import { SpringPage } from '../../features/models/spring-page';
 
 
@@ -10,7 +11,7 @@ export class ClientService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/clients';
 
-  findAll(page = 0, size = 10, query = ''): Observable<SpringPage<Client>> {
+  findAll(page = 0, size = 10, query = ''): Observable<SpringPage<ClientSummary>> {
     let params = new HttpParams()
       .set('page', page.toString())
       .set('size', size.toString());
@@ -20,7 +21,7 @@ export class ClientService {
       params = params.set('q', normalizedQuery);
     }
 
-    return this.http.get<SpringPage<Client>>(this.apiUrl, { params });
+    return this.http.get<SpringPage<ClientSummary>>(this.apiUrl, { params });
   }
 
   findByDocument(document: string): Observable<Client> {
