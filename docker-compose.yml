@@ -28,6 +28,13 @@ services:
       - JWT_EXPIRATION=${JWT_EXPIRATION}
       - JWT_REFRESH_EXPIRATION=${JWT_REFRESH_EXPIRATION}
       - FISCAL_ENABLED=true
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - FISCAL_ENCRYPTION_KEY=${FISCAL_ENCRYPTION_KEY}
+      - BACKUP_STORAGE_LOCATION=/data/backups
 
     depends_on:
       db:
@@ -39,6 +46,7 @@ services:
     volumes:
       - systempro_product_images:/data/product-images
       - systempro_supplier_documents:/data/supplier-documents
+      - systempro_backups:/data/backups
 
     restart: unless-stopped
   frontend:
@@ -66,4 +74,5 @@ services:
 volumes:
   systempro_product_images:
   systempro_supplier_documents:
+  systempro_backups:
   pgdata:

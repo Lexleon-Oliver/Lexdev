@@ -44,6 +44,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/support/**").hasRole("SUPPORT")
+                .requestMatchers("/backups", "/backups/**").hasAnyRole("ADMIN", "SUPPORT")
                 .requestMatchers(
                     "/auth/**",
                     "/error",

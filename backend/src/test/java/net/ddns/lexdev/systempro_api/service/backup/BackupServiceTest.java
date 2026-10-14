@@ -1,0 +1,155 @@
+package net.ddns.lexdev.systempro_api.service.backup;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.springframework.core.io.Resource;
+
+import net.ddns.lexdev.systempro_api.config.BackupProperties;
+import net.ddns.lexdev.systempro_api.exception.BusinessException;
+
+class BackupServiceTest {
+
+    @TempDir
+    Path tempDir;
+
+    @Test
+    void deveGerarListarECarregarBackupLocal() throws Exception {
+        Path images = Files.createDirectories(tempDir.resolve("images"));
+        Path documents = Files.createDirectories(tempDir.resolve("documents"));
+        Path backups = tempDir.resolve("backups");
+
+        BackupProperties properties = properties(backups, images, documents, "local");
+        PostgreSqlDumpExecutor dumpExecutor = mock(PostgreSqlDumpExecutor.class);
+        doAnswer(invocation -> {
+            Files.writeString(invocation.getArgument(0), "dump");
+            return null;
+        }).when(dumpExecutor).dump(any(Path.class));
+
+        BackupPackageService packageService = mock(BackupPackageService.class);
+        doAnswer(invocation -> {
+            Files.writeString(invocation.getArgument(0), "package");
+            return null;
+        }).when(packageService).createPackage(any(), any(), any(), any(), any());
+
+        BackupPackageVerifier packageVerifier = mock(BackupPackageVerifier.class);
+        BackupService service = new BackupService(
+            properties,
+            dumpExecutor,
+            packageService,
+            packageVerifier,
+            Clock.fixed(Instant.parse("2026-10-14T02:14:53Z"), ZoneOffset.UTC)
+        );
+
+        var generated = service.generate();
+        verify(packageVerifier).verify(any(Path.class));
+        assertThat(generated.fileName()).isEqualTo("systempro-backup-20261014T021453Z.spbackup");
+        assertThat(service.list()).hasSize(1);
+
+        Resource resource = service.load(generated.fileName());
+        assertThat(resource.exists()).isTrue();
+    }
+
+    @Test
+    void naoDevePublicarPacoteQuandoAutoverificacaoFalhar() throws Exception {
+        Path images = Files.createDirectories(tempDir.resolve("images-failure"));
+        Path documents = Files.createDirectories(tempDir.resolve("documents-failure"));
+        Path backups = tempDir.resolve("backups-failure");
+
+        BackupProperties properties = properties(backups, images, documents, "local");
+        PostgreSqlDumpExecutor dumpExecutor = mock(PostgreSqlDumpExecutor.class);
+        doAnswer(invocation -> {
+            Files.writeString(invocation.getArgument(0), "dump");
+            return null;
+        }).when(dumpExecutor).dump(any(Path.class));
+
+        BackupPackageService packageService = mock(BackupPackageService.class);
+        doAnswer(invocation -> {
+            Files.writeString(invocation.getArgument(0), "package-corrompido");
+            return null;
+        }).when(packageService).createPackage(any(), any(), any(), any(), any());
+
+        BackupPackageVerifier packageVerifier = mock(BackupPackageVerifier.class);
+        doThrow(new java.io.IOException("checksum inválido"))
+            .when(packageVerifier).verify(any(Path.class));
+
+        BackupService service = new BackupService(
+            properties,
+            dumpExecutor,
+            packageService,
+            packageVerifier,
+            Clock.fixed(Instant.parse("2026-10-14T02:14:53Z"), ZoneOffset.UTC)
+        );
+
+        assertThatThrownBy(service::generate)
+            .isInstanceOf(BusinessException.class)
+            .hasMessageContaining("checksum inválido");
+
+        if (Files.exists(backups)) {
+            try (var files = Files.list(backups)) {
+                assertThat(files.filter(path -> path.getFileName().toString().endsWith(".spbackup")))
+                    .isEmpty();
+            }
+        }
+    }
+
+    @Test
+    void deveRecusarProviderS3NaFaseUm() throws Exception {
+        Path images = Files.createDirectories(tempDir.resolve("images"));
+        Path documents = Files.createDirectories(tempDir.resolve("documents"));
+        BackupService service = new BackupService(
+            properties(tempDir.resolve("backups"), images, documents, "s3"),
+            mock(PostgreSqlDumpExecutor.class),
+            mock(BackupPackageService.class),
+            mock(BackupPackageVerifier.class)
+        );
+
+        assertThatThrownBy(service::generate)
+            .isInstanceOf(BusinessException.class)
+            .hasMessageContaining("provider=local");
+    }
+
+    @Test
+    void deveRecusarNomeDeArquivoManipulado() throws Exception {
+        Path images = Files.createDirectories(tempDir.resolve("images"));
+        Path documents = Files.createDirectories(tempDir.resolve("documents"));
+        BackupService service = new BackupService(
+            properties(tempDir.resolve("backups"), images, documents, "local"),
+            mock(PostgreSqlDumpExecutor.class),
+            mock(BackupPackageService.class),
+            mock(BackupPackageVerifier.class)
+        );
+
+        assertThatThrownBy(() -> service.load("../../etc/passwd"))
+            .isInstanceOf(BusinessException.class)
+            .hasMessageContaining("inválido");
+    }
+
+    private BackupProperties properties(Path backups, Path images, Path documents, String provider) {
+        return new BackupProperties(
+            backups.toString(),
+            images.toString(),
+            documents.toString(),
+            provider,
+            "db",
+            5432,
+            "systempro",
+            "systempro",
+            "secret",
+            600
+        );
+    }
+}

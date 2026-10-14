@@ -26,6 +26,9 @@ FROM eclipse-temurin:26-jdk-alpine
 
 WORKDIR /app
 
+# Cliente PostgreSQL necessário para gerar dumps consistentes do banco.
+RUN apk add --no-cache postgresql16-client
+
 # Cria grupo e usuário não-root com UID/GID fixos
 RUN addgroup -S -g 101 spring \
     && adduser -S -D -H -u 100 -G spring spring
@@ -35,7 +38,10 @@ RUN mkdir -p /data/product-images \
     && chmod 770 /data/product-images \
     && mkdir -p /data/supplier-documents \
     && chown spring:spring /data/supplier-documents \
-    && chmod 770 /data/supplier-documents
+    && chmod 770 /data/supplier-documents \
+    && mkdir -p /data/backups \
+    && chown spring:spring /data/backups \
+    && chmod 770 /data/backups
 
 # Copia o JAR compilado no estágio build
 COPY --from=build --chown=spring:spring /app/target/*.jar app.jar

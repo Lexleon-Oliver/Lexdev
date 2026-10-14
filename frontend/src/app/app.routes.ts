@@ -3,6 +3,7 @@ import { authGuard } from './core/guards/auth.guard';
 import { ErrorPageComponent } from './core/pages/error-page-component/error-page-component';
 import { ChangePasswordComponent } from './core/pages/change-password-component/change-password-component';
 import { supportGuard } from './core/guards/support.guard';
+import { backupGuard } from './core/guards/backup.guard';
 
 
 export const routes: Routes = [
@@ -111,6 +112,13 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/stock/stock-settings/stock-settings')
             .then(m => m.StockSettingsComponent)
+      },
+      {
+        path: 'administracao/backups',
+        canActivate: [backupGuard],
+        loadComponent: () =>
+          import('./features/backup/backup-component/backup-component')
+            .then(m => m.BackupComponent)
       }
     ]
   },

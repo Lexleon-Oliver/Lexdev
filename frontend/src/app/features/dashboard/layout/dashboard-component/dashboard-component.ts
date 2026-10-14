@@ -144,6 +144,12 @@ export class DashboardComponent implements OnInit {
             label: 'Gerenciar Usuários',
             icon: '',
             route: ['/usuarios']
+          },
+          {
+            key: 'backups',
+            label: 'Backups',
+            icon: '',
+            route: ['/administracao/backups']
           }
         ]
       });

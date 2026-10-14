@@ -1,0 +1,107 @@
+<!-- ============================================================
+     backup-component.html
+     ============================================================ -->
+<div class="backup-page">
+  <!-- Cabeçalho -->
+  <div class="page-header">
+    <div class="page-header-title">
+      <h2>Backups</h2>
+      <p class="page-subtitle">
+        Gere, acompanhe e baixe cópias de segurança do sistema.
+      </p>
+    </div>
+
+    <div class="header-actions">
+      <button
+        type="button"
+        class="btn-secondary"
+        (click)="loadBackups()"
+        [disabled]="isLoading() || isCreating()"
+      >
+        @if (isLoading()) {
+          <i class="fas fa-spinner fa-spin"></i>
+        } @else {
+          <i class="fas fa-rotate"></i>
+        }
+        Atualizar
+      </button>
+
+      <button
+        type="button"
+        class="btn-primary"
+        (click)="createBackup()"
+        [disabled]="isCreating() || isLoading()"
+      >
+        @if (isCreating()) {
+          <i class="fas fa-spinner fa-spin"></i> Gerando...
+        } @else {
+          <i class="fas fa-plus"></i> Novo Backup
+        }
+      </button>
+    </div>
+  </div>
+
+  <!-- Erro -->
+  @if (errorMessage()) {
+    <div class="alert-error">
+      <i class="fas fa-exclamation-circle"></i>
+      {{ errorMessage() }}
+    </div>
+  }
+
+  <!-- Loading / Lista -->
+  @if (isLoading() && backups().length === 0) {
+    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>
+  } @else if (backups().length === 0) {
+    <div class="empty-state">
+      <i class="fas fa-database"></i>
+      <p>Nenhum backup disponível.</p>
+      <small>Clique em <strong>Novo Backup</strong> para gerar o primeiro.</small>
+    </div>
+  } @else {
+    <div class="backup-list">
+      @for (backup of backups(); track backup.fileName) {
+        <div class="backup-card">
+          <div class="backup-icon">
+            <i class="fas fa-file-zipper"></i>
+          </div>
+
+          <div class="backup-body">
+            <div class="backup-name" [title]="backup.fileName">
+              {{ backup.fileName }}
+            </div>
+
+            <div class="backup-meta">
+              <span class="meta-item">
+                <i class="fas fa-weight-hanging"></i>
+                {{ formatSize(backup.sizeBytes) }}
+              </span>
+              <span class="meta-item">
+                <i class="fas fa-clock"></i>
+                {{ backup.createdAt | date:'dd/MM/yyyy HH:mm' }}
+              </span>
+            </div>
+          </div>
+
+          <div class="backup-actions">
+            <button
+              type="button"
+              class="btn-download"
+              (click)="downloadBackup(backup)"
+              [disabled]="downloadingFile() !== null"
+              [title]="'Baixar ' + backup.fileName"
+            >
+              @if (downloadingFile() === backup.fileName) {
+                <i class="fas fa-spinner fa-spin"></i>
+                Baixando...
+              } @else {
+                <i class="fas fa-download"></i>
+                Baixar
+              }
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>
