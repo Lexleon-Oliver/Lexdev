@@ -13,6 +13,7 @@ import net.ddns.lexdev.systempro_api.domain.Supplier;
 import net.ddns.lexdev.systempro_api.domain.SupplierContact;
 import net.ddns.lexdev.systempro_api.dto.SupplierRequestDto;
 import net.ddns.lexdev.systempro_api.dto.SupplierResponseDto;
+import net.ddns.lexdev.systempro_api.dto.SupplierSummaryResponseDto;
 import net.ddns.lexdev.systempro_api.enums.TipoContaBancaria;
 import net.ddns.lexdev.systempro_api.exception.BusinessException;
 import net.ddns.lexdev.systempro_api.repository.SupplierRepository;
@@ -38,12 +39,12 @@ public class SupplierService {
     }
 
     @Transactional(readOnly = true)
-    public Page<SupplierResponseDto> findAll(Pageable pageable, String query) {
+    public Page<SupplierSummaryResponseDto> findAll(Pageable pageable, String query) {
         String term = query == null ? "" : query.trim().toLowerCase();
         String digits = term.replaceAll("\\D", "");
 
         return supplierRepository.search(term, digits, pageable)
-            .map(SupplierResponseDto::fromEntity);
+            .map(SupplierSummaryResponseDto::fromProjection);
     }
 
     @Transactional(readOnly = true)

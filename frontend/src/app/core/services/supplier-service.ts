@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { SpringPage } from '../../features/models/spring-page';
 import { SupplierResponseDto } from '../../features/models/supplier-response-dto';
 import { SupplierRequestDto } from '../../features/models/supplier-request-dto';
+import { SupplierSummary } from '../../features/models/supplier-summary';
 import { ViaCepResponse } from '../../features/models/via-cep';
 
 
@@ -14,14 +15,14 @@ export class SupplierService {
 
   constructor(private http: HttpClient) {}
 
-  findAll(page = 0, size = 10, query = '', sort?: string): Observable<SpringPage<SupplierResponseDto>> {
+  findAll(page = 0, size = 10, query = '', sort?: string): Observable<SpringPage<SupplierSummary>> {
     let params = new HttpParams()
       .set('page', page.toString())
       .set('size', size.toString());
     const normalizedQuery = query.trim();
     if (normalizedQuery) params = params.set('q', normalizedQuery);
     if (sort) params = params.set('sort', sort);
-    return this.http.get<SpringPage<SupplierResponseDto>>(this.apiUrl, { params });
+    return this.http.get<SpringPage<SupplierSummary>>(this.apiUrl, { params });
   }
 
   findById(id: number): Observable<SupplierResponseDto> {

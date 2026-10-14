@@ -19,6 +19,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import jakarta.validation.Valid;
 import net.ddns.lexdev.systempro_api.dto.SupplierRequestDto;
 import net.ddns.lexdev.systempro_api.dto.SupplierResponseDto;
+import net.ddns.lexdev.systempro_api.dto.SupplierSummaryResponseDto;
 import net.ddns.lexdev.systempro_api.service.SupplierService;
 
 @RestController
@@ -32,7 +33,7 @@ public class SupplierController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<SupplierResponseDto>> findAll(
+    public ResponseEntity<Page<SupplierSummaryResponseDto>> findAll(
             Pageable pageable,
             @RequestParam(required = false, defaultValue = "") String q) {
         return ResponseEntity.ok(service.findAll(pageable, q));

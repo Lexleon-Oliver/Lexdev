@@ -65,13 +65,13 @@
                 </td>
 
                 <td data-label="E-mail">
-                  {{ getPrimaryContactValue(supplier, 'EMAIL') }}
+                  {{ getSummaryContactValue(supplier, 'EMAIL') }}
                 </td>
 
                 <td data-label="Telefone">
                   {{
                     applyPhoneMask(
-                      getPrimaryContactValue(
+                      getSummaryContactValue(
                         supplier,
                         'TELEFONE'
                       )

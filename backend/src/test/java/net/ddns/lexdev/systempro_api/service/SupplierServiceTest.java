@@ -43,6 +43,8 @@ import net.ddns.lexdev.systempro_api.dto.PersonRequestDto;
 import net.ddns.lexdev.systempro_api.dto.SupplierContactDto;
 import net.ddns.lexdev.systempro_api.dto.SupplierRequestDto;
 import net.ddns.lexdev.systempro_api.dto.SupplierResponseDto;
+import net.ddns.lexdev.systempro_api.dto.SupplierSummaryResponseDto;
+import net.ddns.lexdev.systempro_api.repository.projection.SupplierSummaryProjection;
 import net.ddns.lexdev.systempro_api.enums.AddressType;
 import net.ddns.lexdev.systempro_api.enums.ContactType;
 import net.ddns.lexdev.systempro_api.enums.TipoPessoa;
@@ -806,90 +808,39 @@ class SupplierServiceTest {
     @DisplayName("Deve retornar fornecedores paginados")
     void deveRetornarFornecedoresPaginados() {
 
-        Person person1 =
-            buildPerson(
-                10L,
-                "12345678000195"
-            );
+        Pageable pageable = PageRequest.of(0, 10);
 
-        Supplier supplier1 =
-            buildSupplier(
-                1L,
-                person1
-            );
+        SupplierSummaryProjection supplier1 = summaryProjection(
+            1L, 10L, "PJ", "Fornecedor 1", "12345678000195",
+            "contato1@teste.com", "31999999999", "Tecnologia"
+        );
+        SupplierSummaryProjection supplier2 = summaryProjection(
+            2L, 20L, "PJ", "Fornecedor 2", "98765432000110",
+            "contato2@teste.com", "31888888888", "Serviços"
+        );
 
-        Person person2 =
-            buildPerson(
-                20L,
-                "98765432000110"
-            );
-
-        Supplier supplier2 =
-            buildSupplier(
-                2L,
-                person2
-            );
-
-        Pageable pageable =
-            PageRequest.of(0, 10);
-
-        Page<Supplier> supplierPage =
-            new PageImpl<>(
-                List.of(
-                    supplier1,
-                    supplier2
-                ),
-                pageable,
-                2
-            );
+        Page<SupplierSummaryProjection> supplierPage = new PageImpl<>(
+            List.of(supplier1, supplier2), pageable, 2
+        );
 
         when(supplierRepository.search("", "", pageable))
             .thenReturn(supplierPage);
 
-        Page<SupplierResponseDto> result =
-            service.findAll(pageable, "");
+        Page<SupplierSummaryResponseDto> result = service.findAll(pageable, "");
 
-        assertThat(result)
-            .isNotNull();
-
-        assertThat(result.getContent())
-            .hasSize(2);
-
-        assertThat(
-            result.getContent()
-                .get(0)
-                .id()
-        )
-            .isEqualTo(1L);
-
-        assertThat(
-            result.getContent()
-                .get(0)
-                .person()
-                .cpfCnpj()
-        )
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getContent().get(0).id()).isEqualTo(1L);
+        assertThat(result.getContent().get(0).person().cpfCnpj())
             .isEqualTo("12345678000195");
-
-        assertThat(
-            result.getContent()
-                .get(1)
-                .id()
-        )
-            .isEqualTo(2L);
-
-        assertThat(
-            result.getContent()
-                .get(1)
-                .person()
-                .cpfCnpj()
-        )
+        assertThat(result.getContent().get(0).email())
+            .isEqualTo("contato1@teste.com");
+        assertThat(result.getContent().get(1).id()).isEqualTo(2L);
+        assertThat(result.getContent().get(1).person().cpfCnpj())
             .isEqualTo("98765432000110");
+        assertThat(result.getTotalElements()).isEqualTo(2);
 
-        assertThat(result.getTotalElements())
-            .isEqualTo(2);
-
-        verify(supplierRepository)
-            .search("", "", pageable);
+        verify(supplierRepository).search("", "", pageable);
     }
 
     @Test
@@ -904,7 +855,7 @@ class SupplierServiceTest {
         when(supplierRepository.search("", "", pageable))
             .thenReturn(Page.empty(pageable));
 
-        Page<SupplierResponseDto> result =
+        Page<SupplierSummaryResponseDto> result =
             service.findAll(pageable, "");
 
         assertThat(result)
@@ -928,13 +879,37 @@ class SupplierServiceTest {
         when(supplierRepository.search("fornecedor 123.456", "123456", pageable))
             .thenReturn(Page.empty(pageable));
 
-        Page<SupplierResponseDto> result =
+        Page<SupplierSummaryResponseDto> result =
             service.findAll(pageable, "  Fornecedor 123.456  ");
 
         assertThat(result).isEmpty();
 
         verify(supplierRepository)
             .search("fornecedor 123.456", "123456", pageable);
+    }
+
+
+    private SupplierSummaryProjection summaryProjection(
+        Long id,
+        Long personId,
+        String tipoPessoa,
+        String name,
+        String cpfCnpj,
+        String email,
+        String phone,
+        String categoria
+    ) {
+        SupplierSummaryProjection projection =
+            org.mockito.Mockito.mock(SupplierSummaryProjection.class);
+        when(projection.getId()).thenReturn(id);
+        when(projection.getPersonId()).thenReturn(personId);
+        when(projection.getTipoPessoa()).thenReturn(tipoPessoa);
+        when(projection.getName()).thenReturn(name);
+        when(projection.getCpfCnpj()).thenReturn(cpfCnpj);
+        when(projection.getEmail()).thenReturn(email);
+        when(projection.getPhone()).thenReturn(phone);
+        when(projection.getCategoria()).thenReturn(categoria);
+        return projection;
     }
 
 }

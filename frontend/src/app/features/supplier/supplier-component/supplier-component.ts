@@ -9,6 +9,7 @@ import { PersonAddressResponseDto } from '../../models/person-address-response-d
 import { PersonContactResponseDto } from '../../models/person-contact-response-dto';
 import { SupplierRequestDto } from '../../models/supplier-request-dto';
 import { RouterLink } from '@angular/router';
+import { SupplierSummary } from '../../models/supplier-summary';
 
 
 @Component({
@@ -23,7 +24,7 @@ export class SupplierComponent implements OnInit {
   private readonly notification = inject(NotificationService);
 
   /* ===================== Estado ===================== */
-  suppliers = signal<SupplierResponseDto[]>([]);
+  suppliers = signal<SupplierSummary[]>([]);
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
   searchTerm = signal('');
@@ -40,7 +41,7 @@ export class SupplierComponent implements OnInit {
   showFormModal = signal(false);
   showDeleteModal = signal(false);
   editingSupplier = signal<SupplierResponseDto | null>(null);
-  deletingSupplier = signal<SupplierResponseDto | null>(null);
+  deletingSupplier = signal<SupplierSummary | null>(null);
   isSaving = signal(false);
 
   activeTab = signal<
@@ -110,11 +111,14 @@ export class SupplierComponent implements OnInit {
   }
 
   /* ===================== Helpers de apresentação ===================== */
-/** Extrai o valor do contato principal (ou primeiro) por tipo. */
+/** Valor resumido de contato já resolvido pelo backend para a listagem. */
+  getSummaryContactValue(supplier: SupplierSummary, type: 'EMAIL' | 'TELEFONE'): string {
+    return (type === 'EMAIL' ? supplier.email : supplier.phone) ?? '—';
+  }
+
+  /** Extrai o valor do contato principal (ou primeiro) no detalhe completo. */
   getPrimaryContactValue(supplier: SupplierResponseDto, type: string): string {
     const contacts = supplier.contacts ?? [];
-
-    // Tipagem explícita no parâmetro 'c' para evitar o erro 7006
     const principal = contacts.find((c: PersonContactResponseDto) => c.type === type && c.principal);
     return (principal ?? contacts.find((c: PersonContactResponseDto) => c.type === type))?.value ?? '—';
   }
@@ -177,7 +181,14 @@ export class SupplierComponent implements OnInit {
     this.showFormModal.set(true);
   }
 
-  openEditModal(supplier: SupplierResponseDto): void {
+  openEditModal(supplier: SupplierSummary): void {
+    this.supplierService.findById(supplier.id).subscribe({
+      next: (detail) => this.populateEditForm(detail),
+      error: () => this.notification.error('Não foi possível carregar os dados do fornecedor.')
+    });
+  }
+
+  private populateEditForm(supplier: SupplierResponseDto): void {
     this.editingSupplier.set(supplier);
     this.contatos.clear();
 
@@ -280,7 +291,7 @@ export class SupplierComponent implements OnInit {
     }
   }
 
-  confirmDelete(supplier: SupplierResponseDto): void {
+  confirmDelete(supplier: SupplierSummary): void {
     this.deletingSupplier.set(supplier);
     this.showDeleteModal.set(true);
   }

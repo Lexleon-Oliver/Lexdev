@@ -29,6 +29,7 @@ import net.ddns.lexdev.systempro_api.dto.PersonRequestDto;
 import net.ddns.lexdev.systempro_api.dto.SupplierContactDto;
 import net.ddns.lexdev.systempro_api.dto.SupplierRequestDto;
 import net.ddns.lexdev.systempro_api.dto.SupplierResponseDto;
+import net.ddns.lexdev.systempro_api.dto.SupplierSummaryResponseDto;
 import net.ddns.lexdev.systempro_api.enums.TipoContaBancaria;
 import net.ddns.lexdev.systempro_api.enums.TipoPessoa;
 import net.ddns.lexdev.systempro_api.exception.BusinessException;
@@ -760,7 +761,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
         // 6. Consulta somente fornecedores ativos
         // ============================================================
 
-        Page<SupplierResponseDto> resultado =
+        Page<SupplierSummaryResponseDto> resultado =
             supplierService.findAll(
                 PageRequest.of(0, 10),
                 ""
@@ -774,7 +775,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
             .hasSize(1);
 
         assertThat(resultado.getContent())
-            .extracting(SupplierResponseDto::id)
+            .extracting(SupplierSummaryResponseDto::id)
             .containsExactly(fornecedorAtivo.id());
 
         // ============================================================
@@ -782,7 +783,7 @@ class SupplierServiceIntegrationTest extends IntegrationTestBase {
         // ============================================================
 
         assertThat(resultado.getContent())
-            .extracting(SupplierResponseDto::id)
+            .extracting(SupplierSummaryResponseDto::id)
             .doesNotContain(fornecedorInativo.id());
 
         // ============================================================

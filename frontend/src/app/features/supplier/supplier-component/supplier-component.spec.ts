@@ -10,6 +10,7 @@ describe('SupplierComponent', () => {
   let fixture: ComponentFixture<SupplierComponent>;
   let supplierService: {
     findAll: ReturnType<typeof vi.fn>;
+    findById: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
     delete: ReturnType<typeof vi.fn>;
@@ -27,6 +28,7 @@ describe('SupplierComponent', () => {
   beforeEach(async () => {
     supplierService = {
       findAll: vi.fn().mockReturnValue(of(emptyPage)),
+      findById: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),

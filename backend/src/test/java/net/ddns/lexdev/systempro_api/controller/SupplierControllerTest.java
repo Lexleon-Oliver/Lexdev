@@ -40,6 +40,7 @@ import net.ddns.lexdev.systempro_api.dto.PersonResponseDto;
 import net.ddns.lexdev.systempro_api.dto.SupplierContactDto;
 import net.ddns.lexdev.systempro_api.dto.SupplierRequestDto;
 import net.ddns.lexdev.systempro_api.dto.SupplierResponseDto;
+import net.ddns.lexdev.systempro_api.dto.SupplierSummaryResponseDto;
 import net.ddns.lexdev.systempro_api.exception.BusinessException;
 import net.ddns.lexdev.systempro_api.repository.UserRepository;
 import net.ddns.lexdev.systempro_api.service.SupplierService;
@@ -211,9 +212,17 @@ class SupplierControllerTest {
     @DisplayName("Deve retornar lista paginada de fornecedores")
     void deveRetornarListaPaginadaDeFornecedores() throws Exception {
 
-        SupplierResponseDto supplier = buildSupplierResponseDto();
+        SupplierSummaryResponseDto supplier = new SupplierSummaryResponseDto(
+            1L,
+            new net.ddns.lexdev.systempro_api.dto.PersonResponseDto(
+                10L, "PJ", "Fornecedor Tech Ltda", "12345678000195"
+            ),
+            "contato@techfornecimentos.com",
+            "31999999999",
+            "Tecnologia"
+        );
 
-        PageImpl<SupplierResponseDto> page = new PageImpl<>(
+        PageImpl<SupplierSummaryResponseDto> page = new PageImpl<>(
             List.of(supplier),
             PageRequest.of(0, 10),
             1
@@ -234,30 +243,12 @@ class SupplierControllerTest {
             .andExpect(jsonPath("$.content[0].person.cpfCnpj")
                 .value("12345678000195"))
 
-            .andExpect(jsonPath("$.content[0].legalEntity.id").value(20))
-            .andExpect(jsonPath("$.content[0].legalEntity.nomeFantasia")
-                .value("Tech Fornecimentos"))
-            .andExpect(jsonPath("$.content[0].legalEntity.inscricaoEstadual")
-                .value("123456789"))
-
-            .andExpect(jsonPath("$.content[0].contacts").isArray())
-            .andExpect(jsonPath("$.content[0].contacts.length()").value(2))
-            .andExpect(jsonPath("$.content[0].contacts[0].type")
-                .value("EMAIL"))
-            .andExpect(jsonPath("$.content[0].contacts[0].value")
+            .andExpect(jsonPath("$.content[0].email")
                 .value("contato@techfornecimentos.com"))
-
-            .andExpect(jsonPath("$.content[0].addresses").isArray())
-            .andExpect(jsonPath("$.content[0].addresses.length()").value(1))
-            .andExpect(jsonPath("$.content[0].addresses[0].cidade")
-                .value("Belo Horizonte"))
-
-            .andExpect(jsonPath("$.content[0].condicaoPagamentoPadrao")
-                .value("30 DIAS"))
-            .andExpect(jsonPath("$.content[0].prazoEntregaDias").value(5))
-            .andExpect(jsonPath("$.content[0].valorMinimoPedido")
-                .value(1000.00))
-            .andExpect(jsonPath("$.content[0].active").value(true));
+            .andExpect(jsonPath("$.content[0].phone")
+                .value("31999999999"))
+            .andExpect(jsonPath("$.content[0].categoria")
+                .value("Tecnologia"));
 
         verify(service).findAll(any(Pageable.class), eq(""));
     }
@@ -266,7 +257,7 @@ class SupplierControllerTest {
     @DisplayName("Deve encaminhar parâmetros de paginação ao service")
     void deveEncaminharParametrosDePaginacaoAoService() throws Exception {
 
-        PageImpl<SupplierResponseDto> page = new PageImpl<>(
+        PageImpl<SupplierSummaryResponseDto> page = new PageImpl<>(
             List.of(),
             PageRequest.of(1, 5),
             0
@@ -294,7 +285,7 @@ class SupplierControllerTest {
     @DisplayName("Deve encaminhar termo de pesquisa ao service")
     void deveEncaminharTermoDePesquisaAoService() throws Exception {
 
-        PageImpl<SupplierResponseDto> page = new PageImpl<>(
+        PageImpl<SupplierSummaryResponseDto> page = new PageImpl<>(
             List.of(),
             PageRequest.of(0, 10),
             0
