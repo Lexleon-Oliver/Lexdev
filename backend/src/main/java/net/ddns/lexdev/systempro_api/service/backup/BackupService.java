@@ -12,6 +12,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 import net.ddns.lexdev.systempro_api.config.BackupProperties;
 import net.ddns.lexdev.systempro_api.dto.backup.BackupManifest;
 import net.ddns.lexdev.systempro_api.dto.backup.BackupResponseDto;
+import net.ddns.lexdev.systempro_api.dto.backup.BackupTrigger;
 import net.ddns.lexdev.systempro_api.exception.BusinessException;
 
 @Service
@@ -62,9 +64,20 @@ public class BackupService {
     }
 
     public BackupResponseDto generate() {
+        return generate(BackupTrigger.MANUAL, true).orElseThrow();
+    }
+
+    public Optional<BackupResponseDto> generateScheduled() {
+        return generate(BackupTrigger.SCHEDULED, false);
+    }
+
+    private Optional<BackupResponseDto> generate(BackupTrigger trigger, boolean failWhenBusy) {
         validateConfiguration();
         if (!generationLock.tryLock()) {
-            throw new BusinessException("Já existe um backup em geração. Aguarde a conclusão antes de iniciar outro.");
+            if (failWhenBusy) {
+                throw new BusinessException("Já existe um backup em geração. Aguarde a conclusão antes de iniciar outro.");
+            }
+            return Optional.empty();
         }
 
         Path workspace = null;
@@ -85,7 +98,8 @@ public class BackupService {
                 "PostgreSQL",
                 properties.databaseName(),
                 properties.storageProvider(),
-                List.of("database", "product-images", "supplier-documents")
+                List.of("database", "product-images", "supplier-documents"),
+                trigger
             );
 
             String fileName = "systempro-backup-" + FILE_TIMESTAMP.format(startedAt) + ".spbackup";
@@ -101,7 +115,7 @@ public class BackupService {
 
             Path finalPackage = backupDirectory.resolve(fileName);
             moveCompletedPackage(temporaryPackage, finalPackage);
-            return toResponse(finalPackage);
+            return Optional.of(toResponse(finalPackage));
         } catch (IOException ex) {
             throw new BusinessException("Não foi possível gerar o pacote de backup: " + ex.getMessage());
         } finally {

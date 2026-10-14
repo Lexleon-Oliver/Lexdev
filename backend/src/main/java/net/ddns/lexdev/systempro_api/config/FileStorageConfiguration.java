@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties({
     StorageProperties.class,
     BackupProperties.class,
+    BackupSchedulingProperties.class,
     ClamAvProperties.class,
     FiscalProperties.class,
     NfceSchemaProperties.class
