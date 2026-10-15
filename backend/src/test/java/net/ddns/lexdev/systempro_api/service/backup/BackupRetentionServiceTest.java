@@ -37,8 +37,14 @@ class BackupRetentionServiceTest {
         when(reader.readManifest(legacy)).thenReturn(manifest("2026-09-01T04:00:00Z", null));
 
         BackupRetentionService service = new BackupRetentionService(
-            backupProperties(tempDir),
-            new BackupSchedulingProperties(true, "0 0 2 * * *", "America/Sao_Paulo", 30),
+                    backupProperties(tempDir),
+                    new BackupSchedulingProperties(
+            true,
+            24,
+            3_600_000,
+            60_000,
+            30
+        ),
             mock(BackupPackageVerifier.class),
             reader,
             Clock.fixed(Instant.parse("2026-10-14T12:00:00Z"), ZoneOffset.UTC)
@@ -58,8 +64,14 @@ class BackupRetentionServiceTest {
         org.mockito.Mockito.doThrow(new java.io.IOException("inválido")).when(verifier).verify(candidate);
 
         BackupRetentionService service = new BackupRetentionService(
-            backupProperties(tempDir),
-            new BackupSchedulingProperties(true, "0 0 2 * * *", "America/Sao_Paulo", 30),
+                    backupProperties(tempDir),
+                    new BackupSchedulingProperties(
+            true,
+            24,
+            3_600_000,
+            60_000,
+            30
+        ),
             verifier,
             mock(BackupPackageMetadataReader.class),
             Clock.fixed(Instant.parse("2026-10-14T12:00:00Z"), ZoneOffset.UTC)

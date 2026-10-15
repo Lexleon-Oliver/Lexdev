@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import net.ddns.lexdev.systempro_api.config.BackupSchedulingProperties;
 import net.ddns.lexdev.systempro_api.service.backup.BackupRetentionService;
+import net.ddns.lexdev.systempro_api.service.backup.BackupScheduleDueService;
 import net.ddns.lexdev.systempro_api.service.backup.BackupService;
 
 @Component
@@ -16,24 +17,27 @@ public class BackupScheduler {
 
     private final BackupService backupService;
     private final BackupRetentionService retentionService;
+    private final BackupScheduleDueService dueService;
     private final BackupSchedulingProperties properties;
 
     public BackupScheduler(
         BackupService backupService,
         BackupRetentionService retentionService,
+        BackupScheduleDueService dueService,
         BackupSchedulingProperties properties
     ) {
         this.backupService = backupService;
         this.retentionService = retentionService;
+        this.dueService = dueService;
         this.properties = properties;
     }
 
     @Scheduled(
-        cron = "${systempro.backup.scheduling.cron:0 0 2 * * *}",
-        zone = "${systempro.backup.scheduling.zone:America/Sao_Paulo}"
+        fixedDelayString = "${systempro.backup.scheduling.check-interval-millis:3600000}",
+        initialDelayString = "${systempro.backup.scheduling.initial-delay-millis:60000}"
     )
-    public void runScheduledBackup() {
-        if (!properties.enabled()) {
+    public void checkScheduledBackup() {
+        if (!properties.enabled() || !dueService.isScheduledBackupDue()) {
             return;
         }
 

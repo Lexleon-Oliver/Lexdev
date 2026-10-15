@@ -7,6 +7,7 @@ import java.util.zip.ZipFile;
 
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import net.ddns.lexdev.systempro_api.dto.backup.BackupManifest;
@@ -14,7 +15,9 @@ import net.ddns.lexdev.systempro_api.dto.backup.BackupManifest;
 @Service
 public class BackupPackageMetadataReader {
 
-    private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+    private final ObjectMapper objectMapper = new ObjectMapper()
+        .findAndRegisterModules()
+        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     public BackupManifest readManifest(Path packageFile) throws IOException {
         try (ZipFile zip = new ZipFile(packageFile.toFile())) {

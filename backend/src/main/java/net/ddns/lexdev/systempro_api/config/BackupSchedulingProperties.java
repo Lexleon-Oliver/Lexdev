@@ -5,7 +5,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "systempro.backup.scheduling")
 public record BackupSchedulingProperties(
     boolean enabled,
-    String cron,
-    String zone,
+    long maxAgeHours,
+    long checkIntervalMillis,
+    long initialDelayMillis,
     int retentionScheduledDays
 ) {}
