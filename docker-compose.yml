@@ -49,8 +49,36 @@ services:
       - systempro_backups:/data/backups
 
     restart: unless-stopped
+
+  restore:
+    profiles:
+      - maintenance
+    build:
+      context: ./backend/restore
+      dockerfile: Dockerfile
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - PRODUCT_IMAGES_PATH=/data/product-images
+      - DOCUMENTS_PATH=/data/supplier-documents
+      - RESTORE_WORK_PATH=/restore-work
+      - RESTORE_STORAGE_UID=100
+      - RESTORE_STORAGE_GID=101
+    depends_on:
+      db:
+        condition: service_started
+    volumes:
+      - systempro_product_images:/data/product-images
+      - systempro_supplier_documents:/data/supplier-documents
+      - systempro_backups:/data/backups:ro
+      - systempro_restore_work:/restore-work
+    restart: "no"
+
   frontend:
-    build: 
+    build:
       context: ./frontend
       dockerfile: Dockerfile
     restart: unless-stopped
@@ -67,6 +95,7 @@ services:
       - backend
       - frontend
     restart: unless-stopped
+
   clamav:
     image: clamav/clamav:stable
     restart: unless-stopped
@@ -75,4 +104,5 @@ volumes:
   systempro_product_images:
   systempro_supplier_documents:
   systempro_backups:
+  systempro_restore_work:
   pgdata:
