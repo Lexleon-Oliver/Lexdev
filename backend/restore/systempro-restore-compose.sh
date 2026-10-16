@@ -44,6 +44,47 @@ normalize_operation() {
     esac
 }
 
+
+preflight_rollback_operation() {
+    operation=$1
+
+    compose run --rm --no-deps --entrypoint sh restore -c '
+        set -eu
+        operation=$1
+
+        if [ ! -d "$operation" ]; then
+            echo "ERRO: diretório da operação não existe: $operation" >&2
+            exit 20
+        fi
+
+        if [ ! -f "$operation/restore-journal.json" ]; then
+            echo "ERRO: restore-journal.json ausente em: $operation" >&2
+            exit 21
+        fi
+
+        for required in \
+            "$operation/rollback/database-current.dump" \
+            "$operation/rollback/product-images-current.tar.gz" \
+            "$operation/rollback/supplier-documents-current.tar.gz"
+        do
+            if [ ! -s "$required" ]; then
+                echo "ERRO: artefato de rollback ausente/vazio: $required" >&2
+                exit 22
+            fi
+        done
+
+        status=$(python3 -c '"'"'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as stream:
+    data = json.load(stream)
+print(data.get("status", "UNKNOWN"))
+'"'"' "$operation/restore-journal.json")
+
+        printf "ROLLBACK_PREFLIGHT=OK operation=%s status=%s\n" \
+            "$(basename "$operation")" "$status"
+    ' sh "$operation"
+}
+
 target_db_name() {
     compose run --rm --no-deps --entrypoint sh restore \
         -c 'printf "%s\n" "$DB_NAME"' \
@@ -172,6 +213,9 @@ rollback_operation() {
     build_restore
     operation=$(normalize_operation "$1")
 
+    printf '%s\n' "== Validando operação e artefatos de rollback =="
+    preflight_rollback_operation "$operation"
+
     printf '%s\n' "== Confirmação do banco alvo =="
     confirm_database
     db_name=$CONFIRMED_DB_NAME
@@ -213,6 +257,8 @@ O restore:
   3. para somente o backend;
   4. executa restore + rollback automático em caso de falha;
   5. só religa o backend após RESTORE=OK.
+
+O rollback valida diretório, journal e os 3 artefatos antes de parar o backend.
 EOF
 }
 

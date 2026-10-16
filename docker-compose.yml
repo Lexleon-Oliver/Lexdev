@@ -77,6 +77,20 @@ services:
       - systempro_restore_work:/restore-work
     restart: "no"
 
+
+  recovery:
+    profiles:
+      - maintenance
+    build:
+      context: ./backend/recovery
+      dockerfile: Dockerfile
+    environment:
+      - FISCAL_ENCRYPTION_KEY=${FISCAL_ENCRYPTION_KEY:-}
+      - SYSTEMPRO_INSTANCE_DIR=/data/systempro-instance
+    volumes:
+      - systempro_instance:/data/systempro-instance:ro
+    restart: "no"
+
   frontend:
     build:
       context: ./frontend
@@ -105,4 +119,5 @@ volumes:
   systempro_supplier_documents:
   systempro_backups:
   systempro_restore_work:
+  systempro_instance:
   pgdata:
