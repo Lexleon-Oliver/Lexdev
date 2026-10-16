@@ -91,4 +91,70 @@ class BackupRetentionServiceTest {
         return new BackupProperties(backups.toString(), "/images", "/documents", "local", "db", 5432,
             "systempro", "systempro", "secret", 600);
     }
+
+    @Test
+    void deveIgnorarArquivoQueNaoSejaSpbackup() throws Exception {
+        Path unrelated = Files.writeString(
+            tempDir.resolve("arquivo-qualquer.txt"),
+            "não é backup"
+        );
+
+        BackupPackageVerifier verifier = mock(BackupPackageVerifier.class);
+        BackupPackageMetadataReader reader = mock(BackupPackageMetadataReader.class);
+
+        BackupRetentionService service = new BackupRetentionService(
+            backupProperties(tempDir),
+            new BackupSchedulingProperties(
+                true,
+                24,
+                3_600_000,
+                60_000,
+                30
+            ),
+            verifier,
+            reader,
+            Clock.fixed(
+                Instant.parse("2026-10-14T12:00:00Z"),
+                ZoneOffset.UTC
+            )
+        );
+
+        assertThat(service.applyScheduledRetention()).isZero();
+        assertThat(unrelated).exists();
+
+        org.mockito.Mockito.verifyNoInteractions(verifier, reader);
+    }
+
+    @Test
+    void deveIgnorarRetencaoQuandoDiasForMenorOuIgualAZero() throws Exception {
+        Path candidate = Files.writeString(
+            tempDir.resolve("systempro-backup-20260901T020000Z.spbackup"),
+            "x"
+        );
+
+        BackupPackageVerifier verifier = mock(BackupPackageVerifier.class);
+        BackupPackageMetadataReader reader = mock(BackupPackageMetadataReader.class);
+
+        BackupRetentionService service = new BackupRetentionService(
+            backupProperties(tempDir),
+            new BackupSchedulingProperties(
+                true,
+                24,
+                3_600_000,
+                60_000,
+                0
+            ),
+            verifier,
+            reader,
+            Clock.fixed(
+                Instant.parse("2026-10-14T12:00:00Z"),
+                ZoneOffset.UTC
+            )
+        );
+
+        assertThat(service.applyScheduledRetention()).isZero();
+        assertThat(candidate).exists();
+
+        org.mockito.Mockito.verifyNoInteractions(verifier, reader);
+    }
 }
