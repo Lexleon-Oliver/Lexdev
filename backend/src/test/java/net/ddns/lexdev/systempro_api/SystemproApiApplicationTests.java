@@ -1,13 +1,12 @@
 package net.ddns.lexdev.systempro_api;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class SystemproApiApplicationTests {
+import net.ddns.lexdev.systempro_api.integration.IntegrationTestBase;
 
-	@Test
-	void contextLoads() {
-	}
+class SystemproApiApplicationTests extends IntegrationTestBase {
 
+    @Test
+    void contextLoads() {
+    }
 }

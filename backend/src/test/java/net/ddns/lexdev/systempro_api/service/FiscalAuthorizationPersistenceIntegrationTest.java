@@ -10,6 +10,7 @@ import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -33,6 +34,7 @@ import net.ddns.lexdev.systempro_api.repository.FiscalDocumentRepository;
 import net.ddns.lexdev.systempro_api.repository.FiscalEstablishmentRepository;
 import net.ddns.lexdev.systempro_api.repository.SaleRepository;
 
+@TestPropertySource(properties = "systempro.fiscal.enabled=true")
 class FiscalAuthorizationPersistenceIntegrationTest extends IntegrationTestBase {
 
     private static final String ACCESS_KEY = "31261012345678000199650010000001231000000017";
