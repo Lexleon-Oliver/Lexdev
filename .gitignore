@@ -5,3 +5,6 @@ target/
 *.log
 .idea/
 .vscode/
+
+# IA local / credenciais
+.env.ai.local
