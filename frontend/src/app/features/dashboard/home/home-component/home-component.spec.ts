@@ -9,11 +9,20 @@ import { Dashboard } from '../../../models/dashboard';
 describe('HomeComponent', () => {
   let component: HomeComponent;
   let fixture: ComponentFixture<HomeComponent>;
-  let dashboardService: { load: ReturnType<typeof vi.fn> };
+  let dashboardService: {
+    load: ReturnType<typeof vi.fn>;
+    loadInsight: ReturnType<typeof vi.fn>;
+  };
   let notificationService: { error: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
-    dashboardService = { load: vi.fn().mockReturnValue(of(dashboardFixture())) };
+    dashboardService = {
+      load: vi.fn().mockReturnValue(of(dashboardFixture())),
+      loadInsight: vi.fn().mockReturnValue(of({
+        status: 'GENERATED',
+        insight: 'As vendas permaneceram estáveis.',
+      })),
+    };
     notificationService = { error: vi.fn() };
 
     await TestBed.configureTestingModule({
@@ -33,9 +42,59 @@ describe('HomeComponent', () => {
     fixture.detectChanges();
 
     expect(dashboardService.load).toHaveBeenCalledTimes(1);
+    expect(dashboardService.loadInsight).toHaveBeenCalledTimes(1);
     expect(component.dashboard()).toEqual(dashboardFixture());
+    expect(component.insight()).toBe('As vendas permaneceram estáveis.');
     expect(component.loading()).toBe(false);
+    expect(component.insightLoading()).toBe(false);
     expect(component.hasFiscalPending()).toBe(true);
+  });
+
+  it('should render only a generated AI insight', () => {
+    fixture.detectChanges();
+
+    const card = fixture.nativeElement.querySelector('.insight-card') as HTMLElement | null;
+
+    expect(card).not.toBeNull();
+    expect(card?.textContent).toContain('Insight inteligente');
+    expect(card?.textContent).toContain('As vendas permaneceram estáveis.');
+    expect(card?.textContent).toContain('Gerado por IA');
+  });
+
+  it('should hide disabled and unavailable AI responses', () => {
+    dashboardService.loadInsight.mockReturnValue(of({
+      status: 'DISABLED',
+      insight: 'IA desativada.',
+    }));
+
+    fixture.detectChanges();
+
+    expect(component.insight()).toBeNull();
+    expect(fixture.nativeElement.querySelector('.insight-card')).toBeNull();
+
+    dashboardService.loadInsight.mockReturnValue(of({
+      status: 'UNAVAILABLE',
+      insight: 'IA indisponível.',
+    }));
+
+    component.refresh();
+    fixture.detectChanges();
+
+    expect(component.insight()).toBeNull();
+    expect(fixture.nativeElement.querySelector('.insight-card')).toBeNull();
+  });
+
+  it('should keep the dashboard available when loading the AI insight fails', () => {
+    dashboardService.loadInsight.mockReturnValue(
+      throwError(() => new Error('provider unavailable'))
+    );
+
+    fixture.detectChanges();
+
+    expect(component.dashboard()).toEqual(dashboardFixture());
+    expect(component.insight()).toBeNull();
+    expect(component.error()).toBeNull();
+    expect(notificationService.error).not.toHaveBeenCalled();
   });
 
   it('should expose presentation helpers without recalculating business values', () => {
@@ -56,6 +115,7 @@ describe('HomeComponent', () => {
     expect(component.dashboard()).toBeNull();
     expect(component.error()).toBe('Não foi possível carregar o dashboard.');
     expect(notificationService.error).toHaveBeenCalledWith('Não foi possível carregar o dashboard.');
+    expect(dashboardService.loadInsight).not.toHaveBeenCalled();
     expect(component.loading()).toBe(false);
   });
 });

@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { DashboardService } from './dashboard-service';
 import { Dashboard } from '../../features/models/dashboard';
+import { DashboardInsight } from '../../features/models/dashboard-insight';
 
 describe('DashboardService', () => {
   let service: DashboardService;
@@ -24,6 +25,19 @@ describe('DashboardService', () => {
     service.load().subscribe(result => expect(result).toEqual(response));
 
     const request = http.expectOne('/api/dashboard');
+    expect(request.request.method).toBe('GET');
+    request.flush(response);
+  });
+
+  it('should load the AI insight from the dedicated endpoint', () => {
+    const response: DashboardInsight = {
+      status: 'GENERATED',
+      insight: 'As vendas permaneceram estáveis.',
+    };
+
+    service.loadInsight().subscribe(result => expect(result).toEqual(response));
+
+    const request = http.expectOne('/api/dashboard/insights');
     expect(request.request.method).toBe('GET');
     request.flush(response);
   });

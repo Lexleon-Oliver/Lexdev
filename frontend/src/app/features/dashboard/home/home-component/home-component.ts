@@ -21,7 +21,9 @@ export class HomeComponent implements OnInit {
   private readonly notificationService = inject(NotificationService);
 
   readonly loading = signal(false);
+  readonly insightLoading = signal(false);
   readonly dashboard = signal<Dashboard | null>(null);
+  readonly insight = signal<string | null>(null);
   readonly error = signal<string | null>(null);
 
   readonly hasFiscalPending = computed(() => (this.dashboard()?.fiscal.pending ?? 0) > 0);
@@ -33,17 +35,21 @@ export class HomeComponent implements OnInit {
   }
 
   load(): void {
-    if (this.loading()) {
+    if (this.loading() || this.insightLoading()) {
       return;
     }
 
     this.loading.set(true);
     this.error.set(null);
+    this.insight.set(null);
 
     this.dashboardService.load()
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
-        next: dashboard => this.dashboard.set(dashboard),
+        next: dashboard => {
+          this.dashboard.set(dashboard);
+          this.loadInsight();
+        },
         error: () => {
           const message = 'Não foi possível carregar o dashboard.';
           this.error.set(message);
@@ -54,6 +60,35 @@ export class HomeComponent implements OnInit {
 
   refresh(): void {
     this.load();
+  }
+
+  private loadInsight(): void {
+    if (this.insightLoading()) {
+      return;
+    }
+
+    this.insightLoading.set(true);
+
+    this.dashboardService.loadInsight()
+      .pipe(finalize(() => this.insightLoading.set(false)))
+      .subscribe({
+        next: response => {
+          const insight = response.insight?.trim() ?? '';
+
+          this.insight.set(
+            response.status === 'GENERATED' && insight
+              ? insight
+              : null
+          );
+        },
+        error: () => {
+          /*
+           * A IA é complementar.
+           * Falha do provider nunca deve afetar o dashboard principal.
+           */
+          this.insight.set(null);
+        },
+      });
   }
 
   paymentLabel(method: PaymentMethod): string {
