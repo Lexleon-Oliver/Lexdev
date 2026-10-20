@@ -120,10 +120,41 @@ public class DashboardInsightService {
                 objectMapper.valueToTree(dashboard.dailyPerformance())
             );
 
-            return "Analise os indicadores operacionais abaixo e destaque "
-                + "o ponto mais relevante para o gestor neste momento.\n"
-                + "Dados do dashboard:\n"
-                + data;
+            return """
+                Analise os indicadores operacionais abaixo e destaque os fatos
+                mais relevantes para o gestor neste momento.
+
+                Regras obrigatórias para a resposta:
+                - Responda em português do Brasil, de forma objetiva e profissional.
+                - Use no máximo quatro frases curtas.
+                - Na resposta final, apresente datas no formato dd/MM/yyyy.
+                  Os dados de entrada podem estar em formato ISO, mas não reproduza
+                  esse formato para o usuário.
+                - Apresente valores monetários no padrão brasileiro, como R$ 18,00.
+                - Diferencie claramente indicadores de hoje do histórico recente.
+                - Não atribua a data do dashboard a eventos, pendências ou estados que
+                  não possuam data própria nos dados fornecidos. A data do dashboard
+                  representa apenas a data de referência da consulta.
+                - Não transforme ausência ou baixo volume de vendas em diagnóstico
+                  de crise, estagnação, deterioração ou problema operacional.
+                - Só descreva tendência de alta, queda ou estabilidade quando houver
+                  pelo menos três dias com movimentação que sustentem essa conclusão.
+                  Caso contrário, apenas descreva os registros disponíveis.
+                - Não invente causas, projeções ou comparações com períodos que não
+                  foram fornecidos.
+                - Não use palavras como urgente, crítico, grave, risco ou atenção
+                  imediata sem evidência explícita nos dados fornecidos.
+                - Não conte a mesma pendência fiscal duas vezes. Se todas as
+                  pendências estiverem na mesma categoria, consolide a informação
+                  em uma única frase.
+                - Para pendências fiscais, prefira linguagem neutra, como
+                  "merecem acompanhamento" ou "estão aguardando tratamento".
+                - Evite simplesmente repetir todos os KPIs. Priorize o que realmente
+                  acrescenta contexto para o gestor.
+                - Não forneça aconselhamento jurídico, contábil ou fiscal.
+
+                Dados do dashboard:
+                """ + data;
 
         } catch (JacksonException ex) {
             throw new IllegalStateException(
@@ -143,24 +174,8 @@ public class DashboardInsightService {
             );
     }
 
-    private boolean configurationAvailable() {
-        if (!"openai".equalsIgnoreCase(safe(properties.provider()))) {
-            return false;
-        }
-
-        AiProperties.OpenAi openAi = properties.openai();
-
-        return openAi != null
-            && !isBlank(openAi.apiKey())
-            && !isBlank(openAi.baseUrl())
-            && !isBlank(openAi.model());
-    }
-
     private static String safe(String value) {
         return value == null ? "" : value.trim();
     }
 
-    private static boolean isBlank(String value) {
-        return value == null || value.isBlank();
-    }
 }

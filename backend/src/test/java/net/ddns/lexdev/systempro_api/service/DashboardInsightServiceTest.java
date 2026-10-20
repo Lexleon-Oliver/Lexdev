@@ -81,6 +81,17 @@ class DashboardInsightServiceTest {
 
         assertThat(prompt.getValue())
             .contains("2026-10-19")
+            .contains("português do Brasil")
+            .contains("dd/MM/yyyy")
+            .contains("R$ 18,00")
+            .contains("pelo menos três dias com movimentação")
+            .contains("Não atribua a data do dashboard")
+            .contains("data de referência da consulta")
+            .contains("Não transforme ausência ou baixo volume de vendas")
+            .contains("Não invente causas")
+            .contains("Não conte a mesma pendência fiscal duas vezes")
+            .contains("merecem acompanhamento")
+            .contains("Não forneça aconselhamento jurídico, contábil ou fiscal")
             .doesNotContain("recentSales");
     }
 
