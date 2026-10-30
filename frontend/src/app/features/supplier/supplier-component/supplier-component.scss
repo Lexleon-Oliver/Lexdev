@@ -388,6 +388,96 @@
   letter-spacing: 0.3px;
 }
 
+/* ===== Combobox de Banco ===== */
+.bank-combobox {
+  position: relative;
+  width: 100%;
+
+  input {
+    padding-right: 36px;
+  }
+
+  &::after {
+    content: '\f0d7';
+    font-family: 'Font Awesome 6 Free', 'Font Awesome 5 Free';
+    font-weight: 900;
+    position: absolute;
+    right: 12px;
+    top: 20px;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.8rem;
+    transition: color 0.2s;
+  }
+
+  &:focus-within::after {
+    color: #23a2f6;
+  }
+}
+
+.bank-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background-color: #0d0b18;
+  border: 1px solid rgba(35, 162, 246, 0.4);
+  border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  max-height: 240px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 8px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    color: #ffffff;
+    transition: background-color 0.15s, color 0.15s;
+
+    &:hover {
+      background-color: rgba(35, 162, 246, 0.18);
+      color: #23a2f6;
+    }
+  }
+
+  .bank-code {
+    flex: 0 0 48px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.8rem;
+  }
+
+  .bank-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &.bank-dropdown-empty li.bank-empty {
+    cursor: default;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.45);
+    font-style: italic;
+
+    &:hover {
+      background: transparent;
+      color: rgba(255, 255, 255, 0.45);
+    }
+  }
+}
+
 /* CEP group */
 .cep-group {
   display: flex;

@@ -5,11 +5,13 @@ import { SupplierResponseDto } from '../../models/supplier-response-dto';
 import { cpfCnpjValidator } from '../../../core/validators/cpf-cnpj.validator';
 import { SupplierContactDto } from '../../models/supplier-contact-dto';
 import { SupplierService } from '../../../core/services/supplier-service';
+import { BankService } from '../../../core/services/bank-service';
 import { PersonAddressResponseDto } from '../../models/person-address-response-dto';
 import { PersonContactResponseDto } from '../../models/person-contact-response-dto';
 import { SupplierRequestDto } from '../../models/supplier-request-dto';
 import { RouterLink } from '@angular/router';
 import { SupplierSummary } from '../../models/supplier-summary';
+import { Bank } from '../../models/bank';
 
 
 @Component({
@@ -22,6 +24,7 @@ export class SupplierComponent implements OnInit {
   private readonly supplierService = inject(SupplierService);
   private readonly fb = inject(FormBuilder);
   private readonly notification = inject(NotificationService);
+  private readonly bankService = inject(BankService);
 
   /* ===================== Estado ===================== */
   suppliers = signal<SupplierSummary[]>([]);
@@ -29,6 +32,13 @@ export class SupplierComponent implements OnInit {
   errorMessage = signal<string | null>(null);
   searchTerm = signal('');
   isSearchingCep = signal(false);
+
+  banks = signal<Bank[]>([]);
+  filteredBanks = signal<Bank[]>([]);
+  isLoadingBanks = signal(false);
+  bankDropdownOpen = signal(false);
+
+  private readonly BANK_RESULT_LIMIT = 50;
 
   currentPage = signal(0);
   pageSize = signal(10);
@@ -105,6 +115,115 @@ export class SupplierComponent implements OnInit {
     return this.form.get('contatos') as FormArray;
   }
 
+  /* ===================== Bancos (BrasilAPI) ===================== */
+  openBankTab(): void {
+    this.activeTab.set('bank');
+    this.loadBanks();
+  }
+
+  private loadBanks(): void {
+    if (this.banks().length > 0 || this.isLoadingBanks()) {
+      return;
+    }
+
+    this.isLoadingBanks.set(true);
+
+    this.bankService.getBanks().subscribe({
+      next: (list) => {
+        this.banks.set(list);
+        this.filteredBanks.set(list.slice(0, this.BANK_RESULT_LIMIT));
+        this.isLoadingBanks.set(false);
+      },
+      error: () => {
+        this.isLoadingBanks.set(false);
+      }
+    });
+  }
+
+  openBankDropdown(): void {
+    this.loadBanks();
+
+    const value = String(this.form.get('banco')?.value ?? '');
+    this.filterBanks(value);
+    this.bankDropdownOpen.set(true);
+  }
+
+  onBankInput(value: string): void {
+    this.filterBanks(value);
+    this.bankDropdownOpen.set(true);
+  }
+
+  selectBank(bank: Bank): void {
+    this.form.get('banco')?.setValue(bank.label);
+    this.filteredBanks.set(
+      this.banks().slice(0, this.BANK_RESULT_LIMIT)
+    );
+    this.bankDropdownOpen.set(false);
+  }
+
+  onBankBlur(): void {
+    this.completeBankOnBlur();
+    this.bankDropdownOpen.set(false);
+  }
+
+  private filterBanks(value: string): void {
+    const search = this.normalizeSearchValue(value);
+    const banks = this.banks();
+
+    if (!search) {
+      this.filteredBanks.set(
+        banks.slice(0, this.BANK_RESULT_LIMIT)
+      );
+      return;
+    }
+
+    const filtered = banks.filter(bank => {
+      const code = this.normalizeSearchValue(bank.code);
+      const name = this.normalizeSearchValue(bank.name);
+      const fullName = this.normalizeSearchValue(bank.fullName);
+      const label = this.normalizeSearchValue(bank.label);
+
+      return (
+        code.includes(search) ||
+        name.includes(search) ||
+        fullName.includes(search) ||
+        label.includes(search)
+      );
+    });
+
+    this.filteredBanks.set(
+      filtered.slice(0, this.BANK_RESULT_LIMIT)
+    );
+  }
+
+  completeBankOnBlur(): void {
+    const ctrl = this.form.get('banco');
+    const typed = String(ctrl?.value ?? '').trim();
+
+    if (!typed) {
+      return;
+    }
+
+    const normalizedTyped = this.normalizeSearchValue(typed);
+
+    const bank = this.banks().find(item => {
+      const normalizedLabel =
+        this.normalizeSearchValue(item.label);
+
+      return (
+        normalizedLabel === normalizedTyped ||
+        (
+          /^\d{1,3}$/.test(typed) &&
+          item.code === typed.padStart(3, '0')
+        )
+      );
+    });
+
+    if (bank) {
+      ctrl?.setValue(bank.label);
+    }
+  }
+
   /* ===================== Lifecycle ===================== */
   ngOnInit(): void {
     this.loadSuppliers();
@@ -177,6 +296,7 @@ export class SupplierComponent implements OnInit {
       ativo: true,
       tipoConta: ''
     });
+    this.bankDropdownOpen.set(false);
     this.activeTab.set('identification');
     this.showFormModal.set(true);
   }
@@ -244,11 +364,13 @@ export class SupplierComponent implements OnInit {
       chavePix: supplier.bankDetails?.chavePix ?? ''
     });
 
+    this.bankDropdownOpen.set(false);
     this.activeTab.set('identification');
     this.showFormModal.set(true);
   }
 
   closeFormModal(): void {
+    this.bankDropdownOpen.set(false);
     this.showFormModal.set(false);
   }
 
@@ -272,7 +394,6 @@ export class SupplierComponent implements OnInit {
           this.loadSuppliers(this.currentPage());
         },
         error: () => {
-          this.notification.error('Erro ao atualizar fornecedor.');
           this.isSaving.set(false);
         }
       });
@@ -316,7 +437,6 @@ export class SupplierComponent implements OnInit {
         this.closeDeleteModal();
         this.loadSuppliers(targetPage);
       },
-      error: () => this.notification.error('Erro ao excluir fornecedor.')
     });
   }
 

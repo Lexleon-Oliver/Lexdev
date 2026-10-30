@@ -160,7 +160,6 @@ export class UsersComponent implements OnInit {
             this.showFormModal.set(false);
             this.loadUsers();
           },
-          error: () => this.notification.error('Erro ao atualizar usuário.'),
         });
       return;
     }
@@ -183,7 +182,6 @@ export class UsersComponent implements OnInit {
           this.currentPage.set(0);
           this.loadUsers();
         },
-        error: () => this.notification.error('Erro ao criar usuário.'),
       });
   }
 
@@ -212,7 +210,6 @@ export class UsersComponent implements OnInit {
           this.deletingUser.set(null);
           this.loadUsers();
         },
-        error: () => this.notification.error('Erro ao excluir usuário.'),
       });
   }
 }

@@ -309,9 +309,6 @@ export class ClientsComponent implements OnInit {
         this.loadClients(editing?.id ? this.currentPage() : 0);
       },
       error: () => {
-        this.notification.error(
-          editing?.id ? 'Erro ao atualizar cliente.' : 'Erro ao criar cliente.'
-        );
         this.isSaving.set(false);
       },
     });
@@ -344,7 +341,9 @@ export class ClientsComponent implements OnInit {
         this.closeDeleteModal();
         this.loadClients(targetPage);
       },
-      error: () => this.notification.error('Erro ao excluir cliente.'),
+      error: () => {
+        // A mensagem de erro é tratada globalmente pelo errorInterceptor.
+      },
     });
   }
 

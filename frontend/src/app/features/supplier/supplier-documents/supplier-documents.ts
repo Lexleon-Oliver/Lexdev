@@ -205,11 +205,6 @@ export class SupplierDocuments implements OnInit {
       },
       error: () => {
         this.isUploading.set(false);
-        this.notification.error(
-          documentId == null
-            ? 'Erro ao enviar o documento.'
-            : 'Erro ao enviar a nova versão.'
-        );
       },
     });
   }
@@ -236,9 +231,6 @@ export class SupplierDocuments implements OnInit {
         );
         this.deletingDocument.set(null);
         this.notification.success('Documento excluído com sucesso.');
-      },
-      error: () => {
-        this.notification.error('Erro ao excluir o documento.');
       },
     });
   }

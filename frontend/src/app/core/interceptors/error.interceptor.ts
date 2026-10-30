@@ -3,6 +3,7 @@ import { catchError, throwError } from 'rxjs';
 import { inject } from '@angular/core';
 import { ApiErrorResponse } from '../../features/models/api-error';
 import { NotificationService } from '../services/notification-service';
+import { getLicenseHttpError } from '../licensing/license-http-error';
 
 export const SKIP_ERROR_NOTIFICATION = new HttpContextToken<boolean>(() => false);
 
@@ -13,6 +14,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
     catchError((error: HttpErrorResponse) => {
 
       const apiError = error.error as ApiErrorResponse;
+      const licenseError = getLicenseHttpError(error);
 
       const fallbackMessage =
         'Ocorreu um erro inesperado no servidor.';
@@ -20,10 +22,18 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       const errorMessage =
         apiError?.message || fallbackMessage;
 
-      // 401 é responsabilidade exclusiva do authInterceptor.
-      // 403 também é tratado pelo authInterceptor.
-      if (!req.context.get(SKIP_ERROR_NOTIFICATION) && error.status !== 401 && error.status !== 403) {
-        notificationService.error(errorMessage);
+      if (!req.context.get(SKIP_ERROR_NOTIFICATION)) {
+
+        if (licenseError) {
+          notificationService.error(
+            `Operação bloqueada pela licença. ${licenseError.message}`
+          );
+        } else if (
+          error.status !== 401 &&
+          error.status !== 403
+        ) {
+          notificationService.error(errorMessage);
+        }
       }
 
       return throwError(() => error);

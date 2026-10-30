@@ -177,7 +177,7 @@
           <button
             class="tab-btn"
             [class.active]="activeTab() === 'bank'"
-            (click)="activeTab.set('bank')"
+            (click)="openBankTab()"
           >
             <i class="fas fa-university"></i>
             Bancário
@@ -430,7 +430,42 @@
 
             <div class="form-row full-width">
               <label for="banco">Banco</label>
-              <input id="banco" type="text" formControlName="banco" placeholder="Ex.: 341 - Itaú" />
+              <div class="bank-combobox">
+                <input
+                  id="banco"
+                  type="text"
+                  formControlName="banco"
+                  autocomplete="off"
+                  [placeholder]="isLoadingBanks() ? 'Carregando bancos...' : 'Digite o código ou nome do banco. Ex.: 341 ou Itaú'"
+                  (focus)="openBankDropdown()"
+                  (input)="onBankInput($any($event.target).value)"
+                  (blur)="onBankBlur()"
+                />
+
+                @if (bankDropdownOpen() && filteredBanks().length > 0) {
+                  <ul class="bank-dropdown" role="listbox">
+                    @for (bank of filteredBanks(); track bank.code) {
+                      <li
+                        role="option"
+                        (mousedown)="$event.preventDefault(); selectBank(bank)"
+                      >
+                        <span class="bank-code">{{ bank.code }}</span>
+                        <span class="bank-name">{{ bank.fullName }}</span>
+                      </li>
+                    }
+                  </ul>
+                }
+
+                @if (
+                  bankDropdownOpen() &&
+                  filteredBanks().length === 0 &&
+                  !isLoadingBanks()
+                ) {
+                  <ul class="bank-dropdown bank-dropdown-empty">
+                    <li class="bank-empty">Nenhum banco encontrado.</li>
+                  </ul>
+                }
+              </div>
             </div>
 
             <div class="form-row">
