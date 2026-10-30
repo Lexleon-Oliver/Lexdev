@@ -5,6 +5,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { debounceTime, distinctUntilChanged, finalize, Subject } from 'rxjs';
 import { NotificationService } from '../../../core/services/notification-service';
 import { UserService } from '../../../core/services/user-service';
+import { AuthService } from '../../../core/services/auth-service';
 import { User, UserCreateRequest, UserUpdateRequest } from '../../models/user';
 
 @Component({
@@ -15,6 +16,7 @@ import { User, UserCreateRequest, UserUpdateRequest } from '../../models/user';
 })
 export class UsersComponent implements OnInit {
   private readonly userService = inject(UserService);
+  readonly authService = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly notification = inject(NotificationService);
   private readonly destroyRef = inject(DestroyRef);
@@ -115,6 +117,14 @@ export class UsersComponent implements OnInit {
   }
 
   openEditModal(user: User): void {
+    if (!this.canManageUser(user)) {
+      this.notification.show(
+        'Somente o perfil Suporte pode gerenciar usuários de suporte.',
+        'warning'
+      );
+      return;
+    }
+
     this.editingUser.set(user);
     this.form.reset({
       name: user.fullName,
@@ -141,9 +151,18 @@ export class UsersComponent implements OnInit {
       return;
     }
 
-    this.isSaving.set(true);
     const formVal = this.form.getRawValue();
     const editing = this.editingUser();
+
+    if (formVal.role === 'ROLE_SUPPORT' && !this.authService.isSupport()) {
+      this.notification.show(
+        'Somente o perfil Suporte pode atribuir o perfil de suporte.',
+        'warning'
+      );
+      return;
+    }
+
+    this.isSaving.set(true);
 
     if (editing) {
       const payload: UserUpdateRequest = {
@@ -186,6 +205,14 @@ export class UsersComponent implements OnInit {
   }
 
   confirmDelete(user: User): void {
+    if (!this.canManageUser(user)) {
+      this.notification.show(
+        'Somente o perfil Suporte pode gerenciar usuários de suporte.',
+        'warning'
+      );
+      return;
+    }
+
     this.deletingUser.set(user);
     this.showDeleteModal.set(true);
   }
@@ -194,6 +221,10 @@ export class UsersComponent implements OnInit {
     if (this.isDeleting()) return;
     this.showDeleteModal.set(false);
     this.deletingUser.set(null);
+  }
+
+  canManageUser(user: User): boolean {
+    return this.authService.isSupport() || user.role !== 'ROLE_SUPPORT';
   }
 
   deleteUser(): void {

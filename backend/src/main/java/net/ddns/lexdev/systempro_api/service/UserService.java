@@ -2,7 +2,9 @@ package net.ddns.lexdev.systempro_api.service;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +21,9 @@ import net.ddns.lexdev.systempro_api.repository.UserRepository;
 @Service
 public class UserService {
 
+    private static final String ROLE_ADMIN = "ROLE_ADMIN";
+    private static final String ROLE_SUPPORT = "ROLE_SUPPORT";
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
@@ -28,20 +33,24 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponseDto register(UserCreateDto dto) {
+    public UserResponseDto register(UserCreateDto dto, Authentication authentication) {
+        assertCanManageUsers(authentication);
+        assertCanAssignRole(authentication, dto.role());
+
         if (userRepository.existsByUsername(dto.username())) {
             throw new BusinessException("Nome de usuário já existe.");
         }
         if (userRepository.existsByEmail(dto.email())) {
             throw new BusinessException("Email já existe.");
         }
+
         User user = new User();
         user.setUsername(dto.username());
         user.setName(dto.name());
         user.setEmail(dto.email());
         user.setPassword(passwordEncoder.encode(dto.password()));
         user.setRole(dto.role());
-        
+
         return UserResponseDto.fromEntity(userRepository.save(user));
     }
 
@@ -66,9 +75,14 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponseDto update(Long id, UserUpdateDto dto) {
+    public UserResponseDto update(Long id, UserUpdateDto dto, Authentication authentication) {
+        assertCanManageUsers(authentication);
+
         User user = userRepository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado: " + id));
+
+        assertCanManageTarget(authentication, user);
+        assertCanAssignRole(authentication, dto.role());
 
         user.setName(dto.name());
         user.setEmail(dto.email());
@@ -95,11 +109,41 @@ public class UserService {
     }
 
     @Transactional
-    public void delete(Long id) {
+    public void delete(Long id, Authentication authentication) {
+        assertCanManageUsers(authentication);
+
         User user = userRepository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado: " + id));
 
+        assertCanManageTarget(authentication, user);
+
         user.setActive(false);
         userRepository.save(user);
+    }
+
+    private void assertCanManageUsers(Authentication authentication) {
+        if (!hasRole(authentication, ROLE_ADMIN) && !hasRole(authentication, ROLE_SUPPORT)) {
+            throw new AccessDeniedException("Somente administradores ou suporte podem gerenciar usuários.");
+        }
+    }
+
+    private void assertCanAssignRole(Authentication authentication, String requestedRole) {
+        if (ROLE_SUPPORT.equals(requestedRole) && !hasRole(authentication, ROLE_SUPPORT)) {
+            throw new AccessDeniedException("Somente o perfil Suporte pode atribuir ROLE_SUPPORT.");
+        }
+    }
+
+    private void assertCanManageTarget(Authentication authentication, User target) {
+        if (ROLE_SUPPORT.equals(target.getRole()) && !hasRole(authentication, ROLE_SUPPORT)) {
+            throw new AccessDeniedException(
+                    "Somente o perfil Suporte pode alterar ou excluir usuários de suporte.");
+        }
+    }
+
+    private boolean hasRole(Authentication authentication, String role) {
+        return authentication != null
+                && authentication.isAuthenticated()
+                && authentication.getAuthorities().stream()
+                    .anyMatch(authority -> role.equals(authority.getAuthority()));
     }
 }

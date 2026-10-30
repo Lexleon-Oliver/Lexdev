@@ -1,6 +1,5 @@
 package net.ddns.lexdev.systempro_api.controller;
 
-
 import java.net.URI;
 
 import org.springframework.data.domain.Page;
@@ -55,8 +54,10 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<UserResponseDto> create(@Valid @RequestBody UserCreateDto dto) {
-        UserResponseDto created = userService.register(dto);
+    public ResponseEntity<UserResponseDto> create(
+            Authentication authentication,
+            @Valid @RequestBody UserCreateDto dto) {
+        UserResponseDto created = userService.register(dto, authentication);
         URI uri = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(created.id())
@@ -66,9 +67,10 @@ public class UserController {
 
     @PutMapping("/{id}")
     public ResponseEntity<UserResponseDto> update(
-            @PathVariable Long id, 
+            Authentication authentication,
+            @PathVariable Long id,
             @Valid @RequestBody UserUpdateDto dto) {
-        return ResponseEntity.ok(userService.update(id, dto));
+        return ResponseEntity.ok(userService.update(id, dto, authentication));
     }
 
     @PatchMapping("/me/password")
@@ -80,8 +82,10 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        userService.delete(id);
+    public ResponseEntity<Void> delete(
+            Authentication authentication,
+            @PathVariable Long id) {
+        userService.delete(id, authentication);
         return ResponseEntity.noContent().build();
     }
 }

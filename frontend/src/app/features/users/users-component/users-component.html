@@ -72,12 +72,19 @@
                 </td>
                 <td data-label="Ações">
                   <div class="action-buttons">
-                    <button class="btn-edit" (click)="openEditModal(user)" title="Editar">
-                      <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-delete" (click)="confirmDelete(user)" title="Excluir">
-                      <i class="fas fa-trash-alt"></i>
-                    </button>
+                    @if (canManageUser(user)) {
+                      <button class="btn-edit" (click)="openEditModal(user)" title="Editar">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                      <button class="btn-delete" (click)="confirmDelete(user)" title="Excluir">
+                        <i class="fas fa-trash-alt"></i>
+                      </button>
+                    } @else {
+                      <i
+                        class="fas fa-lock"
+                        title="Usuário protegido: somente o perfil Suporte pode gerenciá-lo"
+                      ></i>
+                    }
                   </div>
                 </td>
               </tr>
@@ -154,7 +161,9 @@
           <label for="role">Perfil</label>
           <select formControlName="role" class="form-control">
             <option value="ROLE_USER">Usuário</option>
-            <option value="ROLE_SUPPORT">Suporte</option>
+            @if (authService.isSupport()) {
+              <option value="ROLE_SUPPORT">Suporte</option>
+            }
             <option value="ROLE_ADMIN">Administrador</option>
           </select>
 

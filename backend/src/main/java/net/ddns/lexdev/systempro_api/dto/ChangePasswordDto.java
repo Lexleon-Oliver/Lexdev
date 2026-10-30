@@ -10,4 +10,9 @@ public record ChangePasswordDto(
     @NotBlank(message = "A nova senha é obrigatória")
     @Size(min = 6, message = "A nova senha deve ter no mínimo 6 caracteres")
     String newPassword
-) {}
+) {
+    @Override
+    public String toString() {
+        return "ChangePasswordDto[currentPassword=[PROTECTED], newPassword=[PROTECTED]]";
+    }
+}

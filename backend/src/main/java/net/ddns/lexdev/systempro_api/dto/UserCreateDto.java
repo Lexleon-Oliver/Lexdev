@@ -11,4 +11,15 @@ public record UserCreateDto(
     @NotBlank @Email String email,
     @NotBlank @Size(min = 6) String password,
     @NotBlank String role
-) {}
+) {
+    @Override
+    public String toString() {
+        return "UserCreateDto[username=" + username
+                + ", name=" + name
+                + ", fullName=" + fullName
+                + ", email=" + email
+                + ", password=[PROTECTED]"
+                + ", role=" + role
+                + "]";
+    }
+}
