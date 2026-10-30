@@ -26,6 +26,8 @@ import net.ddns.lexdev.systempro_api.config.JwtAuthenticationFilter;
 import net.ddns.lexdev.systempro_api.config.JwtTokenProvider;
 import net.ddns.lexdev.systempro_api.config.SecurityConfig;
 import net.ddns.lexdev.systempro_api.dto.backup.BackupResponseDto;
+import net.ddns.lexdev.systempro_api.licensing.LicenseEnforcementConfiguration;
+import net.ddns.lexdev.systempro_api.licensing.LicenseStateService;
 import net.ddns.lexdev.systempro_api.repository.UserRepository;
 import net.ddns.lexdev.systempro_api.service.backup.BackupService;
 
@@ -33,7 +35,8 @@ import net.ddns.lexdev.systempro_api.service.backup.BackupService;
 @Import({
     SecurityConfig.class,
     JwtAuthenticationFilter.class,
-    JwtAuthenticationEntryPoint.class
+    JwtAuthenticationEntryPoint.class,
+    LicenseEnforcementConfiguration.class
 })
 class BackupSecurityTest {
     private static final String FILE_NAME = "systempro-backup-20261014T020000Z.spbackup";
@@ -49,6 +52,9 @@ class BackupSecurityTest {
 
     @MockitoBean
     private UserRepository userRepository;
+
+    @MockitoBean
+    private LicenseStateService licenseStateService;
 
     @TempDir
     Path tempDir;

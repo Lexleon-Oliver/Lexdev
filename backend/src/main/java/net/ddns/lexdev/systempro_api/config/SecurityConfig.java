@@ -12,6 +12,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import net.ddns.lexdev.systempro_api.licensing.LicenseEnforcementFilter;
 
 
 @Configuration
@@ -20,10 +21,16 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
+    private final LicenseEnforcementFilter licenseEnforcementFilter;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter, JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint) {
+    public SecurityConfig(
+        JwtAuthenticationFilter jwtAuthFilter,
+        JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
+        LicenseEnforcementFilter licenseEnforcementFilter
+    ) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.authenticationEntryPoint = jwtAuthenticationEntryPoint;
+        this.licenseEnforcementFilter = licenseEnforcementFilter;
     }
 
     @Bean
@@ -62,6 +69,10 @@ public class SecurityConfig {
             .addFilterBefore(
                 jwtAuthFilter,
                 UsernamePasswordAuthenticationFilter.class
+            )
+            .addFilterAfter(
+                licenseEnforcementFilter,
+                JwtAuthenticationFilter.class
             );
 
         return http.build();
