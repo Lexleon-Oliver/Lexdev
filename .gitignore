@@ -8,3 +8,7 @@ target/
 
 # IA local / credenciais
 .env.ai.local
+
+# Artefatos gerados de release
+.systempro-release/
+dist-release/

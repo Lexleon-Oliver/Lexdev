@@ -1,0 +1,55 @@
+name: systempro
+
+services:
+  recovery:
+    image: systempro/recovery:${SYSTEMPRO_VERSION}
+    profiles: ["maintenance"]
+    environment:
+      FISCAL_ENCRYPTION_KEY: ${FISCAL_ENCRYPTION_KEY}
+      SYSTEMPRO_INSTANCE_DIR: /data/systempro-instance
+    volumes:
+      - type: bind
+        source: ${SYSTEMPRO_INSTANCE_DIR}
+        target: /data/systempro-instance
+        read_only: true
+
+  restore:
+    image: systempro/restore:${SYSTEMPRO_VERSION}
+    profiles: ["maintenance"]
+    environment:
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_MAINTENANCE_DB: postgres
+      PRODUCT_IMAGES_PATH: /data/product-images
+      DOCUMENTS_PATH: /data/supplier-documents
+      RESTORE_WORK_PATH: /restore-work
+      RESTORE_STORAGE_UID: "100"
+      RESTORE_STORAGE_GID: "101"
+    volumes:
+      - systempro_product_images:/data/product-images
+      - systempro_supplier_documents:/data/supplier-documents
+      - systempro_backups:/data/backups:ro
+      - systempro_restore_work:/restore-work
+    networks:
+      - systempro_internal
+
+networks:
+  systempro_internal:
+    external: true
+    name: systempro_internal
+
+volumes:
+  systempro_product_images:
+    external: true
+    name: systempro_product_images
+  systempro_supplier_documents:
+    external: true
+    name: systempro_supplier_documents
+  systempro_backups:
+    external: true
+    name: systempro_backups
+  systempro_restore_work:
+    name: systempro_restore_work

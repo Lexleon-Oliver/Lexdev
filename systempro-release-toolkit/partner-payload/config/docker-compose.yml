@@ -1,0 +1,144 @@
+name: systempro
+
+services:
+  db:
+    image: systempro/postgres:16-alpine
+    container_name: systempro_db
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    networks:
+      - systempro_internal
+
+  clamav:
+    image: systempro/clamav:stable
+    container_name: systempro_clamav
+    restart: unless-stopped
+    networks:
+      - systempro_internal
+
+  backend:
+    image: systempro/backend:${SYSTEMPRO_VERSION}
+    container_name: systempro_backend
+    environment:
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      SECRET_KEY: ${SECRET_KEY}
+      SECRET_REFRESH_KEY: ${SECRET_REFRESH_KEY}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION}
+
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-local}
+      STORAGE_LOCAL_STORAGE_LOCATION: ${STORAGE_LOCAL_STORAGE_LOCATION:-/data/supplier-documents}
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-}
+      STORAGE_REGION: ${STORAGE_REGION:-us-east-1}
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-}
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-systempro-documents}
+      STORAGE_PATH_STYLE_ACCESS: ${STORAGE_PATH_STYLE_ACCESS:-false}
+      STORAGE_MAX_FILE_SIZE_BYTES: ${STORAGE_MAX_FILE_SIZE_BYTES:-15728640}
+      SYSTEMPRO_IMAGES_STORAGE_LOCATION: ${SYSTEMPRO_IMAGES_STORAGE_LOCATION:-/data/product-images}
+
+      CLAMAV_HOST: ${CLAMAV_HOST:-clamav}
+      CLAMAV_PORT: ${CLAMAV_PORT:-3310}
+      CLAMAV_TIMEOUT_SECONDS: ${CLAMAV_TIMEOUT_SECONDS:-30}
+
+      FISCAL_ENABLED: ${FISCAL_ENABLED:-true}
+      FISCAL_PRODUCTION_READY: ${FISCAL_PRODUCTION_READY:-false}
+      FISCAL_ENCRYPTION_KEY: ${FISCAL_ENCRYPTION_KEY}
+      FISCAL_CONNECT_TIMEOUT_SECONDS: ${FISCAL_CONNECT_TIMEOUT_SECONDS:-10}
+      FISCAL_REQUEST_TIMEOUT_SECONDS: ${FISCAL_REQUEST_TIMEOUT_SECONDS:-30}
+      FISCAL_SCHEMA_VERSION: ${FISCAL_SCHEMA_VERSION:-4.00}
+      FISCAL_PRODUCT_VERSION: ${FISCAL_PRODUCT_VERSION:-SystemPro}
+      FISCAL_TRUST_STORE_PATH: ${FISCAL_TRUST_STORE_PATH:-}
+      FISCAL_TRUST_STORE_PASSWORD: ${FISCAL_TRUST_STORE_PASSWORD:-}
+      FISCAL_SCHEMA_LOCATION: ${FISCAL_SCHEMA_LOCATION:-classpath:/fiscal/nfce/PL_010f/nfe_v4.00.xsd}
+
+      AI_ENABLED: ${AI_ENABLED:-false}
+      AI_PROVIDER: ${AI_PROVIDER:-openai}
+      AI_MAX_OUTPUT_TOKENS: ${AI_MAX_OUTPUT_TOKENS:-600}
+      AI_CONNECT_TIMEOUT_SECONDS: ${AI_CONNECT_TIMEOUT_SECONDS:-10}
+      AI_REQUEST_TIMEOUT_SECONDS: ${AI_REQUEST_TIMEOUT_SECONDS:-30}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-6-luna}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_BASE_URL: ${GEMINI_BASE_URL:-https://generativelanguage.googleapis.com/v1}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+
+      BACKUP_STORAGE_LOCATION: ${BACKUP_STORAGE_LOCATION:-/data/backups}
+      BACKUP_PG_DUMP_TIMEOUT_SECONDS: ${BACKUP_PG_DUMP_TIMEOUT_SECONDS:-600}
+      BACKUP_SCHEDULING_ENABLED: ${BACKUP_SCHEDULING_ENABLED:-true}
+      BACKUP_SCHEDULING_CRON: ${BACKUP_SCHEDULING_CRON:-0 0 2 * * *}
+      BACKUP_SCHEDULING_ZONE: ${BACKUP_SCHEDULING_ZONE:-America/Sao_Paulo}
+      BACKUP_SCHEDULING_MAX_AGE_HOURS: ${BACKUP_SCHEDULING_MAX_AGE_HOURS:-24}
+      BACKUP_SCHEDULING_CHECK_INTERVAL_MILLIS: ${BACKUP_SCHEDULING_CHECK_INTERVAL_MILLIS:-3600000}
+      BACKUP_SCHEDULING_INITIAL_DELAY_MILLIS: ${BACKUP_SCHEDULING_INITIAL_DELAY_MILLIS:-60000}
+      BACKUP_RETENTION_SCHEDULED_DAYS: ${BACKUP_RETENTION_SCHEDULED_DAYS:-30}
+
+      LICENSE_ENFORCEMENT_ENABLED: "true"
+      LICENSE_INSTANCE_DIR: /data/instance
+      LICENSE_CACHE_MILLIS: ${LICENSE_CACHE_MILLIS:-5000}
+    depends_on:
+      db:
+        condition: service_healthy
+      clamav:
+        condition: service_started
+    volumes:
+      - systempro_product_images:/data/product-images
+      - systempro_supplier_documents:/data/supplier-documents
+      - systempro_backups:/data/backups
+      - type: bind
+        source: ${SYSTEMPRO_INSTANCE_DIR}/public
+        target: /data/instance
+        read_only: true
+    restart: unless-stopped
+    networks:
+      - systempro_internal
+
+  frontend:
+    image: systempro/frontend:${SYSTEMPRO_VERSION}
+    container_name: systempro_frontend
+    restart: unless-stopped
+    networks:
+      - systempro_internal
+
+  proxy:
+    image: systempro/proxy:${SYSTEMPRO_VERSION}
+    container_name: systempro_proxy
+    ports:
+      - "${SYSTEMPRO_HTTP_PORT}:80"
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+    networks:
+      - systempro_internal
+
+networks:
+  systempro_internal:
+    name: systempro_internal
+
+volumes:
+  pgdata:
+    name: systempro_pgdata
+  systempro_product_images:
+    name: systempro_product_images
+  systempro_supplier_documents:
+    name: systempro_supplier_documents
+  systempro_backups:
+    name: systempro_backups
