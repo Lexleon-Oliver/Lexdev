@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 $BaseDir = if ($env:SYSTEMPRO_HOME) { $env:SYSTEMPRO_HOME } else { Join-Path $env:ProgramData "SystemPro" }
 $Compose = Join-Path $BaseDir "docker-compose.yml"
 $EnvFile = Join-Path $BaseDir ".env"

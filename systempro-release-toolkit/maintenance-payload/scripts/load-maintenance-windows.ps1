@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 $MediaDir = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $Archive = Join-Path $MediaDir "images\systempro-maintenance-images.tar"
 if (-not (Test-Path $Archive)) { throw "Arquivo não encontrado: $Archive" }
