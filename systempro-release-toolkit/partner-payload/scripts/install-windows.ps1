@@ -15,6 +15,7 @@ $RootPublicSource = Join-Path $MediaDir "agent\trust\root-public.json"
 $Version = (Get-Content (Join-Path $MediaDir "VERSION") -Raw).Trim()
 $EnvFile = Join-Path $InstallDir ".env"
 $ServiceName = "SystemProLicenseAgent"
+$EnvUtf8 = [System.Text.UTF8Encoding]::new($false, $true)
 
 function New-RandomBase64([int]$Count) {
     # Compatível com Windows PowerShell 5.1 / .NET Framework e PowerShell 7+.
@@ -32,7 +33,7 @@ function New-RandomBase64([int]$Count) {
 function Read-EnvFile([string]$Path) {
     $map = @{}
     if (Test-Path $Path) {
-        foreach ($line in Get-Content $Path) {
+        foreach ($line in [System.IO.File]::ReadAllLines($Path, $EnvUtf8)) {
             if ($line -match '^\s*#' -or $line -notmatch '=') { continue }
             $pair = $line.Split('=',2)
             $value = $pair[1]
@@ -48,7 +49,14 @@ function Read-EnvFile([string]$Path) {
 function Ensure-Env([string]$Name, [string]$Value) {
     $current = Read-EnvFile $EnvFile
     if (-not $current.ContainsKey($Name)) {
-        Add-Content -Path $EnvFile -Encoding ascii -Value ("{0}={1}" -f $Name,$Value)
+        $text = [System.IO.File]::ReadAllText($EnvFile, $EnvUtf8)
+        $newline = if ($text.Contains("`r`n")) { "`r`n" } else { "`n" }
+        $prefix = if ($text.Length -gt 0 -and -not $text.EndsWith("`n")) { $newline } else { "" }
+        [System.IO.File]::AppendAllText(
+            $EnvFile,
+            $prefix + ("{0}={1}" -f $Name,$Value) + $newline,
+            $EnvUtf8
+        )
     }
 }
 
@@ -92,7 +100,7 @@ if ($FirstInstall) {
     $HeartbeatPath = if ($env:SYSTEMPRO_LICENSE_HEARTBEAT_PATH) { $env:SYSTEMPRO_LICENSE_HEARTBEAT_PATH } else { "/api/v1/heartbeats" }
     $RenewalPath = if ($env:SYSTEMPRO_LICENSE_RENEWAL_PATH) { $env:SYSTEMPRO_LICENSE_RENEWAL_PATH } else { "/api/v1/leases/renewals" }
 
-    @"
+    $InitialEnv = @"
 # SystemPro - configuração persistente da instalação
 SYSTEMPRO_VERSION=$Version
 SYSTEMPRO_HTTP_PORT=$Port
@@ -176,15 +184,16 @@ SYSTEMPRO_LICENSE_HEARTBEAT_INTERVAL_SECONDS=21600
 SYSTEMPRO_LICENSE_RENEWAL_INTERVAL_SECONDS=86400
 SYSTEMPRO_LICENSE_JITTER_SECONDS=900
 LICENSE_CACHE_MILLIS=5000
-"@ | Set-Content -Path $EnvFile -Encoding ascii
+"@
+    [System.IO.File]::WriteAllText($EnvFile, $InitialEnv + [Environment]::NewLine, $EnvUtf8)
 } else {
-    $lines = Get-Content $EnvFile
+    $lines = [System.IO.File]::ReadAllLines($EnvFile, $EnvUtf8)
     $found = $false
     $updated = foreach ($line in $lines) {
         if ($line -match '^SYSTEMPRO_VERSION=') { $found = $true; "SYSTEMPRO_VERSION=$Version" } else { $line }
     }
     if (-not $found) { $updated += "SYSTEMPRO_VERSION=$Version" }
-    $updated | Set-Content -Path $EnvFile -Encoding ascii
+    [System.IO.File]::WriteAllLines($EnvFile, [string[]]$updated, $EnvUtf8)
 
     $DefaultInstance = (Join-Path $InstallDir "instance") -replace '\\','/'
     Ensure-Env "SYSTEMPRO_INSTANCE_DIR" $DefaultInstance
