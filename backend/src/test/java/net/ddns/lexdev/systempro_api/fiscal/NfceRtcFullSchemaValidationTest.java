@@ -68,7 +68,7 @@ class NfceRtcFullSchemaValidationTest {
     Path tempDir;
 
     @Test
-    void deveValidarNfceRtcCompletaComMultiplosItensEDescontoNoPl010f() throws Exception {
+    void deveValidarNfceRtcCompletaComMultiplosItensEDescontoNosPl010fEPl010g() throws Exception {
         FiscalEstablishment establishment = establishment();
         Sale sale = new Sale();
         sale.setFiscalEstablishment(establishment);
@@ -127,6 +127,79 @@ class NfceRtcFullSchemaValidationTest {
 
         String signedXml = signForSchemaValidation(xml);
         assertDoesNotThrow(() -> validator.validate(signedXml));
+
+        NfceSchemaValidator validatorPl010g = new NfceSchemaValidator(
+            new DefaultResourceLoader(),
+            new NfceSchemaProperties(
+                "classpath:/fiscal/nfce/PL_010g/nfe_v4.00.xsd"
+            )
+        );
+        assertDoesNotThrow(() -> validatorPl010g.validate(signedXml),
+            "A mesma NFC-e assinada precisa continuar válida no PL_010g.");
+    }
+
+    @Test
+    void deveValidarNfceDeDoisItensPesaveisComDescontoETrocoNoPl010g() throws Exception {
+        FiscalEstablishment establishment = establishment();
+        Sale sale = new Sale();
+        sale.setFiscalEstablishment(establishment);
+        sale.setSubtotal(new BigDecimal("2.66"));
+        sale.setDiscount(BigDecimal.ZERO);
+        sale.setTotal(new BigDecimal("2.56"));
+
+        SaleItem first = item(1, "KG1", "10.60", "0.10", "1.23",
+            "1.23", "0.00", "0.00", "0.00", "0.01");
+        first.setUnitSnapshot("KG");
+        first.setQuantity(new BigDecimal("0.125"));
+        SaleItem second = item(2, "KG2", "10.60", "0.00", "1.33",
+            "1.33", "0.00", "0.00", "0.00", "0.01");
+        second.setUnitSnapshot("KG");
+        second.setQuantity(new BigDecimal("0.125"));
+        sale.addItem(first);
+        sale.addItem(second);
+
+        SalePayment cash = new SalePayment();
+        cash.setPaymentMethod(PaymentMethod.DINHEIRO);
+        cash.setAmount(new BigDecimal("5.00"));
+        sale.addPayment(cash);
+
+        FiscalDocument document = new FiscalDocument();
+        document.setSale(sale);
+        document.setEstablishment(establishment);
+        document.setSeries(1);
+        document.setNumber(2L);
+        setId(document, 2L);
+
+        String accessKey = "31261012345678000195650010000000021000000010";
+        String qrCodeUrl = new NfceQrCodeGenerator().onlineUrl(
+            accessKey,
+            FiscalEnvironment.HOMOLOGACAO
+        );
+        String xml = SefazMgNfceGateway.NfceXmlBuilder.build(
+            establishment, sale, document,
+            accessKey, "00000002", 1,
+            "2026-10-08T00:00:00-03:00", "4.00", "SystemPro 1.0",
+            qrCodeUrl,
+            "https://portalsped.fazenda.mg.gov.br/portalnfce/sistema/consultaarg.xhtml"
+        );
+        assertTrue(xml.contains("<qCom>0.1250</qCom>"));
+        assertTrue(xml.contains("<vDesc>0.10</vDesc>"));
+        assertTrue(xml.contains("<vProd>2.66</vProd>"));
+        assertTrue(xml.contains("<vNF>2.56</vNF>"));
+        assertTrue(xml.contains("<vPag>5.00</vPag>"));
+        assertTrue(xml.contains("<vTroco>2.44</vTroco>"));
+
+        String signedXml = signForSchemaValidation(xml);
+        for (String pacote : List.of("PL_010f", "PL_010g")) {
+            NfceSchemaValidator validator = new NfceSchemaValidator(
+                new DefaultResourceLoader(),
+                new NfceSchemaProperties(
+                    "classpath:/fiscal/nfce/" + pacote + "/nfe_v4.00.xsd"
+                )
+            );
+            assertDoesNotThrow(() -> validator.validate(signedXml),
+                "XML assinado de venda por KG precisa validar no " + pacote);
+        }
     }
 
     private String signForSchemaValidation(String xml) throws Exception {
