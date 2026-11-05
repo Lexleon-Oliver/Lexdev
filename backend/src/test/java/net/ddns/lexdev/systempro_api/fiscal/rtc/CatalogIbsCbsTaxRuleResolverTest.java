@@ -56,6 +56,28 @@ class CatalogIbsCbsTaxRuleResolverTest {
     }
 
     @Test
+    void cestaBasicaReduzAliquotasOficiaisDe2026ParaZero() {
+        var classification = new IbsCbsTaxClassification(
+            "200003", "200", "Cesta Básica Nacional - Anexo I",
+            IbsCbsTaxationMode.REGULAR, true,
+            new BigDecimal("100.0000"), new BigDecimal("100.0000"),
+            LocalDate.of(2026, 1, 1), null, "IT 2025.002 v1.70"
+        );
+        when(repository.findApplicable("200", "200003", date)).thenReturn(Optional.of(classification));
+        when(rateProvider.resolve(date)).thenReturn(
+            new LegislatedIbsCbsRateProvider().resolve(date));
+
+        IbsCbsTaxRule rule = resolver.resolve("200", "200003", date, 65);
+        assertTrue(rule.nfceAllowed());
+        assertEquals(0, BigDecimal.ZERO.compareTo(rule.ibsUfRate()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(rule.ibsMunicipalRate()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(rule.cbsRate()));
+        IbsCbsCalculation result = IbsCbsCalculator.calculateRegular(new BigDecimal("100.00"), rule);
+        assertEquals(0, BigDecimal.ZERO.compareTo(result.ibsUf().amount()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(result.cbs().amount()));
+    }
+
+    @Test
     void preservesNfceRestrictionFromOfficialCatalogSnapshot() {
         var classification = classification(false, BigDecimal.ZERO, BigDecimal.ZERO);
         when(repository.findApplicable("000", "000001", date)).thenReturn(Optional.of(classification));

@@ -2,9 +2,12 @@ package net.ddns.lexdev.systempro_api.fiscal;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -12,6 +15,7 @@ import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
 import java.util.List;
+import java.util.Map;
 
 import javax.xml.crypto.dsig.DigestMethod;
 import javax.xml.crypto.dsig.Reference;
@@ -59,6 +63,7 @@ import net.ddns.lexdev.systempro_api.enums.TipoPessoa;
 import net.ddns.lexdev.systempro_api.fiscal.rtc.IbsCbsCalculation;
 import net.ddns.lexdev.systempro_api.fiscal.rtc.IbsCbsJurisdictionCalculation;
 import net.ddns.lexdev.systempro_api.fiscal.validation.NfceSchemaValidator;
+import net.ddns.lexdev.systempro_api.exception.FiscalIntegrationException;
 
 class NfceRtcFullSchemaValidationTest {
 
@@ -188,6 +193,8 @@ class NfceRtcFullSchemaValidationTest {
         assertTrue(xml.contains("<vNF>2.56</vNF>"));
         assertTrue(xml.contains("<vPag>5.00</vPag>"));
         assertTrue(xml.contains("<vTroco>2.44</vTroco>"));
+        assertFalse(xml.contains("<vProdLiq>"), "O emissor atual não pode deduzir valor sem tributos do desconto.");
+        assertFalse(xml.contains("<vProdLiqTot>"), "A totalização líquida só pode existir com valores fiscais confiáveis.");
 
         String signedXml = signForSchemaValidation(xml);
         for (String pacote : List.of("PL_010f", "PL_010g")) {
@@ -200,6 +207,121 @@ class NfceRtcFullSchemaValidationTest {
             assertDoesNotThrow(() -> validator.validate(signedXml),
                 "XML assinado de venda por KG precisa validar no " + pacote);
         }
+
+        // Contrato novo da NT 2026.008: valores SEM tributos são fornecidos
+        // explicitamente pelo cálculo fiscal de teste, nunca deduzidos do PDV.
+        // Este cenário não altera a emissão padrão, que permanece sem as tags.
+        first.setNfceLiquidSnapshot(
+            new NfceLiquidProductValues(new BigDecimal("8.00"), new BigDecimal("1.00")),
+            "RTC-AUDIT:v1"
+        );
+        second.setNfceLiquidSnapshot(
+            new NfceLiquidProductValues(new BigDecimal("7.20"), new BigDecimal("0.90")),
+            "RTC-AUDIT:v1"
+        );
+        // Integração real: seleciona os snapshots PERSISTIDOS para o XML sob opt-in,
+        // sem inferir valores sem tributos do subtotal comercial.
+        Map<Integer, NfceLiquidProductValues> fiscallyCalculated = NfceLiquidEmissionPolicy.forXml(
+            sale, new NfceSchemaProperties("classpath:/fiscal/nfce/PL_010g/nfe_v4.00.xsd", true)
+        );
+        String withLiquid = SefazMgNfceGateway.NfceXmlBuilder.build(
+            establishment, sale, document,
+            accessKey, "00000002", 1,
+            "2026-10-08T00:00:00-03:00", "4.00", "SystemPro 1.0",
+            qrCodeUrl,
+            "https://portalsped.fazenda.mg.gov.br/portalnfce/sistema/consultaarg.xhtml",
+            null, null, fiscallyCalculated
+        );
+        assertTrue(withLiquid.contains("<qCom>0.1250</qCom>"));
+        assertTrue(withLiquid.contains("<vUnComLiq>8.0000000000</vUnComLiq><vProdLiq>1.00</vProdLiq>"));
+        assertTrue(withLiquid.contains("<vUnComLiq>7.2000000000</vUnComLiq><vProdLiq>0.90</vProdLiq>"));
+        assertTrue(withLiquid.contains("<total><vProdLiqTot>1.90</vProdLiqTot><ICMSTot>"));
+        assertTrue(withLiquid.contains("<vNF>2.56</vNF>"));
+        assertTrue(withLiquid.contains("<vTroco>2.44</vTroco>"));
+
+        NfceSchemaValidator pl010g = new NfceSchemaValidator(
+            new DefaultResourceLoader(),
+            new NfceSchemaProperties("classpath:/fiscal/nfce/PL_010g/nfe_v4.00.xsd")
+        );
+        String signedWithLiquid = signForSchemaValidation(withLiquid);
+        assertDoesNotThrow(() -> pl010g.validate(signedWithLiquid));
+
+        assertThrows(FiscalIntegrationException.class, () -> SefazMgNfceGateway.NfceXmlBuilder.build(
+            establishment, sale, document,
+            accessKey, "00000002", 1,
+            "2026-10-08T00:00:00-03:00", "4.00", "SystemPro 1.0",
+            qrCodeUrl,
+            "https://portalsped.fazenda.mg.gov.br/portalnfce/sistema/consultaarg.xhtml",
+            null, null, Map.of(1, fiscallyCalculated.get(1))
+        ), "Não pode emitir campos líquidos apenas para parte dos itens.");
+    }
+
+    @Test
+    void devePersistirZeroTributoEValidarXmlAssinadoNoPl010g() throws Exception {
+        FiscalEstablishment establishment = establishment();
+        Sale sale = new Sale();
+        sale.setFiscalEstablishment(establishment);
+        sale.setSubtotal(new BigDecimal("11.33"));
+        sale.setDiscount(BigDecimal.ZERO);
+        sale.setTotal(new BigDecimal("11.33"));
+        sale.setSaleAt(java.time.Instant.parse("2026-11-05T15:00:00Z"));
+
+        SaleItem first = item(1, "A1", "10.00", "0.00", "10.00",
+            "10.00", "0.00", "0.00", "0.00", "0.00");
+        SaleItem second = item(2, "KG2", "1.33", "0.00", "1.33",
+            "1.33", "0.00", "0.00", "0.00", "0.00");
+        second.setQuantity(new BigDecimal("0.125"));
+        second.setUnitPrice(new BigDecimal("10.60"));
+        second.setUnitSnapshot("KG");
+        for (SaleItem item : List.of(first, second)) {
+            item.setNcmSnapshot("10063021");
+            item.setIcmsCstCsosnSnapshot("40");
+            item.setIcmsRate(BigDecimal.ZERO);
+            item.setIbsCbsCalculation(new IbsCbsCalculation(
+                "200", "200003", item.getTotal(),
+                new IbsCbsJurisdictionCalculation(BigDecimal.ZERO, BigDecimal.ZERO),
+                new IbsCbsJurisdictionCalculation(BigDecimal.ZERO, BigDecimal.ZERO),
+                BigDecimal.ZERO,
+                new IbsCbsJurisdictionCalculation(BigDecimal.ZERO, BigDecimal.ZERO)
+            ));
+            sale.addItem(item);
+        }
+        SalePayment payment = new SalePayment();
+        payment.setPaymentMethod(PaymentMethod.DINHEIRO);
+        payment.setAmount(new BigDecimal("11.33"));
+        sale.addPayment(payment);
+        FiscalDocument document = new FiscalDocument();
+        document.setSale(sale);
+        document.setEstablishment(establishment);
+        document.setSeries(1);
+        document.setNumber(3L);
+        setId(document, 3L);
+
+        NfceZeroTaxSnapshotProducer.apply(establishment, sale, LocalDate.of(2026, 11, 5));
+        Map<Integer, NfceLiquidProductValues> snapshots = NfceLiquidEmissionPolicy.forXml(
+            sale, new NfceSchemaProperties("classpath:/fiscal/nfce/PL_010g/nfe_v4.00.xsd", true)
+        );
+        String accessKey = "31261112345678000195650010000000031000000010";
+        String xml = SefazMgNfceGateway.NfceXmlBuilder.build(
+            establishment, sale, document,
+            accessKey, "00000003", 1,
+            "2026-11-05T00:00:00-03:00", "4.00", "SystemPro 1.0",
+            new NfceQrCodeGenerator().onlineUrl(accessKey, FiscalEnvironment.HOMOLOGACAO),
+            "https://portalsped.fazenda.mg.gov.br/portalnfce/sistema/consultaarg.xhtml",
+            null, null, snapshots
+        );
+        assertTrue(xml.contains("<vUnComLiq>10.6000000000</vUnComLiq>"));
+        assertTrue(xml.contains("<vProdLiq>1.33</vProdLiq>"));
+        assertTrue(xml.contains("<vProdLiqTot>11.33</vProdLiqTot>"));
+        assertTrue(xml.contains("<CST>200</CST><cClassTrib>200003</cClassTrib>"));
+        assertTrue(xml.contains("<pIBSUF>0.1000</pIBSUF><gRed><pRedAliq>100.0000</pRedAliq>"));
+        assertTrue(xml.contains("<pCBS>0.9000</pCBS><gRed><pRedAliq>100.0000</pRedAliq>"));
+        String signed = signForSchemaValidation(xml);
+        NfceSchemaValidator validator = new NfceSchemaValidator(
+            new DefaultResourceLoader(),
+            new NfceSchemaProperties("classpath:/fiscal/nfce/PL_010g/nfe_v4.00.xsd")
+        );
+        assertDoesNotThrow(() -> validator.validate(signed));
     }
 
     private String signForSchemaValidation(String xml) throws Exception {
@@ -276,6 +398,9 @@ class NfceRtcFullSchemaValidationTest {
 
     private Path generateCertificate() throws Exception {
         Path output = tempDir.resolve("nfce-schema-test.p12");
+        if (Files.exists(output)) {
+            return output; // Reutiliza o certificado do mesmo teste para assinar os dois XMLs.
+        }
         Path keytool = Path.of(
             System.getProperty("java.home"),
             "bin",

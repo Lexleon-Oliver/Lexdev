@@ -13,5 +13,6 @@ public record FiscalProperties(
     String trustStorePath,
     String trustStorePassword,
     String certificateContentType,
-    boolean productionReady
+    boolean productionReady,
+    boolean liquidZeroTaxProducerEnabled
 ) {}

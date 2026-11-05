@@ -43,6 +43,7 @@ import net.ddns.lexdev.systempro_api.enums.SaleStatus;
 import net.ddns.lexdev.systempro_api.exception.BusinessException;
 import net.ddns.lexdev.systempro_api.exception.FiscalConfigurationException;
 import net.ddns.lexdev.systempro_api.fiscal.NfceIssueResult;
+import net.ddns.lexdev.systempro_api.fiscal.NfceZeroTaxSnapshotProducer;
 import net.ddns.lexdev.systempro_api.fiscal.SefazNfceGateway;
 import net.ddns.lexdev.systempro_api.fiscal.contingency.NfceContingencyPolicy;
 import net.ddns.lexdev.systempro_api.repository.ClientRepository;
@@ -214,6 +215,11 @@ public class SaleService {
         LocalDate operationDate = sale.getSaleAt().atZone(FISCAL_ZONE).toLocalDate();
         for (SaleItem item : sale.getItems()) {
             rtcSnapshotService.apply(establishment, rtcProfiles.get(item), item, operationDate);
+        }
+        // Opt-in fiscal estrito: zero tributo em TODOS os itens ou falha antes
+        // de persistir a venda. Não interfere no fluxo comercial padrão.
+        if (fiscalProperties.liquidZeroTaxProducerEnabled()) {
+            NfceZeroTaxSnapshotProducer.apply(establishment, sale, operationDate);
         }
 
         BigDecimal total = sale.getItems().stream()

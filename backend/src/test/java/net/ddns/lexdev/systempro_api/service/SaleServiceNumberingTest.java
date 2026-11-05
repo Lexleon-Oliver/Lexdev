@@ -63,7 +63,7 @@ class SaleServiceNumberingTest {
     void setUp() {
         FiscalProperties properties = new FiscalProperties(
             true, 10, 30, "test-key", "4.00", "SystemPro-Test",
-            null, null, "application/x-pkcs12", false
+            null, null, "application/x-pkcs12", false, false
         );
 
         service = new SaleService(

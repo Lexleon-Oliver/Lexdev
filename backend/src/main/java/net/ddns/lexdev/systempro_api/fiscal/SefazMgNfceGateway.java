@@ -24,6 +24,9 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 import javax.net.ssl.KeyManagerFactory;
@@ -57,6 +60,7 @@ import org.w3c.dom.Element;
 import org.xml.sax.InputSource;
 
 import net.ddns.lexdev.systempro_api.config.FiscalProperties;
+import net.ddns.lexdev.systempro_api.config.NfceSchemaProperties;
 import net.ddns.lexdev.systempro_api.domain.FiscalDocument;
 import net.ddns.lexdev.systempro_api.domain.FiscalEstablishment;
 import net.ddns.lexdev.systempro_api.domain.PersonAddress;
@@ -84,6 +88,7 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
     private final FileStorageService storage;
     private final FiscalProperties properties;
     private final NfceSchemaValidator schemaValidator;
+    private final NfceSchemaProperties schemaProperties;
     private final NfceQrCodeGenerator qrCodeGenerator;
     private final SecureRandom random = new SecureRandom();
 
@@ -92,13 +97,15 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
         FileStorageService storage,
         FiscalProperties properties,
         NfceSchemaValidator schemaValidator,
-        NfceQrCodeGenerator qrCodeGenerator
+        NfceQrCodeGenerator qrCodeGenerator,
+        NfceSchemaProperties schemaProperties
     ) {
         this.establishmentService = establishmentService;
         this.storage = storage;
         this.properties = properties;
         this.schemaValidator = schemaValidator;
         this.qrCodeGenerator = qrCodeGenerator;
+        this.schemaProperties = schemaProperties;
     }
 
     @Override
@@ -132,7 +139,8 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
             qrCodeGenerator.onlineUrl(accessKey, establishment.getEnvironment()),
             qrCodeGenerator.consultationUrl(establishment.getEnvironment()),
             null,
-            null
+            null,
+            NfceLiquidEmissionPolicy.forXml(sale, schemaProperties)
         );
         String signedXml = sign(xml, establishment);
         schemaValidator.validate(signedXml);
@@ -270,7 +278,8 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
             qrCodeUrl,
             qrCodeGenerator.consultationUrl(establishment.getEnvironment()),
             XML_DATE_TIME.format(emission),
-            justification
+            justification,
+            NfceLiquidEmissionPolicy.forXml(sale, schemaProperties)
         );
         String signedXml = sign(xml, establishment);
         schemaValidator.validate(signedXml);
@@ -1085,8 +1094,39 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
             String contingencyDateTime,
             String contingencyJustification
         ) {
+            return build(
+                establishment, sale, document, accessKey, cNF, tpEmis, emissionDateTime,
+                schemaVersion, productVersion, qrCodeUrl, consultationUrl,
+                contingencyDateTime, contingencyJustification, Map.of()
+            );
+        }
+
+        /**
+         * Variante de teste/integração para valores líquidos SEM tributos, informados
+         * por um cálculo fiscal independente. A emissão normal não fornece este mapa
+         * e não passa a inventar valores líquidos a partir de descontos comerciais.
+         *
+         * Não deve ser acionada sem snapshots fiscais auditáveis por item.
+         */
+        static String build(
+            FiscalEstablishment establishment,
+            Sale sale,
+            FiscalDocument document,
+            String accessKey,
+            String cNF,
+            int tpEmis,
+            String emissionDateTime,
+            String schemaVersion,
+            String productVersion,
+            String qrCodeUrl,
+            String consultationUrl,
+            String contingencyDateTime,
+            String contingencyJustification,
+            Map<Integer, NfceLiquidProductValues> liquidValues
+        ) {
             validateContingencyFields(tpEmis, contingencyDateTime, contingencyJustification);
             validateSaleAmounts(sale);
+            validateLiquidValues(sale, liquidValues);
             PersonAddress address = establishment.getCompany().getPerson().getAddresses().stream()
                 .filter(PersonAddress::isPrincipal)
                 .findFirst()
@@ -1196,8 +1236,13 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
                     .append("<uCom>").append(esc(item.getUnitSnapshot())).append("</uCom>")
                     .append("<qCom>").append(fmt(item.getQuantity(), 4)).append("</qCom>")
                     .append("<vUnCom>").append(fmt(item.getUnitPrice(), 10)).append("</vUnCom>")
-                    .append("<vProd>").append(fmt(gross, 2)).append("</vProd>")
-                    .append("<cEANTrib>").append(gtinOrSemGtin(item.getGtinSnapshot())).append("</cEANTrib>")
+                    .append("<vProd>").append(fmt(gross, 2)).append("</vProd>");
+                if (!liquidValues.isEmpty()) {
+                    NfceLiquidProductValues liquid = liquidValues.get(item.getItemNumber());
+                    xml.append("<vUnComLiq>").append(fmt(liquid.unitWithoutTaxes(), 10)).append("</vUnComLiq>")
+                        .append("<vProdLiq>").append(fmt(liquid.totalWithoutTaxes(), 2)).append("</vProdLiq>");
+                }
+                xml.append("<cEANTrib>").append(gtinOrSemGtin(item.getGtinSnapshot())).append("</cEANTrib>")
                     .append("<uTrib>").append(esc(item.getUnitSnapshot())).append("</uTrib>")
                     .append("<qTrib>").append(fmt(item.getQuantity(), 4)).append("</qTrib>")
                     .append("<vUnTrib>").append(fmt(item.getUnitPrice(), 10)).append("</vUnTrib>");
@@ -1231,7 +1276,14 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal change = totalPaid.subtract(sale.getTotal()).max(BigDecimal.ZERO);
 
-            xml.append("<total><ICMSTot>")
+            xml.append("<total>");
+            if (!liquidValues.isEmpty()) {
+                BigDecimal liquidTotal = sale.getItems().stream()
+                    .map(item -> liquidValues.get(item.getItemNumber()).totalWithoutTaxes())
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+                xml.append("<vProdLiqTot>").append(fmt(liquidTotal, 2)).append("</vProdLiqTot>");
+            }
+            xml.append("<ICMSTot>")
                 .append("<vBC>").append(fmt(vBC, 2)).append("</vBC>")
                 .append("<vICMS>").append(fmt(vIcms, 2)).append("</vICMS>")
                 .append("<vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP>")
@@ -1316,10 +1368,52 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
                 + "</IBSCBSTot>";
         }
 
+        /**
+         * CST 200 / 200003 (cesta básica nacional, redução integral) exige
+         * gRed em cada competência e alíquotas NOMINAIS no pIBS/pCBS. O snapshot
+         * guarda apenas alíquotas efetivas; não é correto serializá-las como
+         * nominais. Este ramo limitado usa a tabela legal fixa de 2026.
+         *
+         * Outras reduções não são inferidas automaticamente pelo XML.
+         */
         static String ibsCbsXml(SaleItem item) {
             var calculation = item.getIbsCbsCalculation();
             if (calculation == null) {
                 return "";
+            }
+            boolean cestaBasicaZero = "200003".equals(calculation.cClassTrib());
+            String ufRate = fmt(calculation.ibsUf().rate(), 4);
+            String municipalityRate = fmt(calculation.ibsMunicipal().rate(), 4);
+            String cbsRate = fmt(calculation.cbs().rate(), 4);
+            String ufReduction = "";
+            String municipalReduction = "";
+            String cbsReduction = "";
+
+            if (cestaBasicaZero) {
+                if (!"200".equals(calculation.cst())
+                    || item.getSale() == null || item.getSale().getSaleAt() == null
+                    || item.getSale().getSaleAt().atZone(BRAZIL_ZONE).getYear() != 2026
+                    || calculation.ibsUf().rate().signum() != 0
+                    || calculation.ibsUf().amount().signum() != 0
+                    || calculation.ibsMunicipal().rate().signum() != 0
+                    || calculation.ibsMunicipal().amount().signum() != 0
+                    || calculation.totalIbs().signum() != 0
+                    || calculation.cbs().rate().signum() != 0
+                    || calculation.cbs().amount().signum() != 0) {
+                    throw new FiscalIntegrationException(
+                        "CST 200 / cClassTrib 200003 exige RTC zero e operação de 2026 para serialização segura."
+                    );
+                }
+                var nominal = new net.ddns.lexdev.systempro_api.fiscal.rtc.LegislatedIbsCbsRateProvider()
+                    .resolve(item.getSale().getSaleAt().atZone(BRAZIL_ZONE).toLocalDate());
+                ufRate = fmt(nominal.ibsUfRate(), 4);
+                municipalityRate = fmt(nominal.ibsMunicipalRate(), 4);
+                cbsRate = fmt(nominal.cbsRate(), 4);
+                String reduced100 = "<gRed><pRedAliq>100.0000</pRedAliq>"
+                    + "<pAliqEfet>0.0000</pAliqEfet></gRed>";
+                ufReduction = reduced100;
+                municipalReduction = reduced100;
+                cbsReduction = reduced100;
             }
 
             return "<IBSCBS>"
@@ -1328,16 +1422,19 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
                 + "<gIBSCBS>"
                 + "<vBC>" + fmt(calculation.taxBase(), 2) + "</vBC>"
                 + "<gIBSUF>"
-                + "<pIBSUF>" + fmt(calculation.ibsUf().rate(), 4) + "</pIBSUF>"
+                + "<pIBSUF>" + ufRate + "</pIBSUF>"
+                + ufReduction
                 + "<vIBSUF>" + fmt(calculation.ibsUf().amount(), 2) + "</vIBSUF>"
                 + "</gIBSUF>"
                 + "<gIBSMun>"
-                + "<pIBSMun>" + fmt(calculation.ibsMunicipal().rate(), 4) + "</pIBSMun>"
+                + "<pIBSMun>" + municipalityRate + "</pIBSMun>"
+                + municipalReduction
                 + "<vIBSMun>" + fmt(calculation.ibsMunicipal().amount(), 2) + "</vIBSMun>"
                 + "</gIBSMun>"
                 + "<vIBS>" + fmt(calculation.totalIbs(), 2) + "</vIBS>"
                 + "<gCBS>"
-                + "<pCBS>" + fmt(calculation.cbs().rate(), 4) + "</pCBS>"
+                + "<pCBS>" + cbsRate + "</pCBS>"
+                + cbsReduction
                 + "<vCBS>" + fmt(calculation.cbs().amount(), 2) + "</vCBS>"
                 + "</gCBS>"
                 + "</gIBSCBS>"
@@ -1508,6 +1605,40 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
                 throw new FiscalIntegrationException(
                     "O endereço principal do estabelecimento fiscal está incompleto para emissão."
                 );
+            }
+        }
+
+        /**
+         * O envio parcial de vProdLiq causaria rejeição 1282/1283 e perda da
+         * rastreabilidade dos valores. Só aceita dados completos, exatos e
+         * provenientes de um cálculo fiscal externo à precificação do PDV.
+         */
+        private static void validateLiquidValues(
+            Sale sale, Map<Integer, NfceLiquidProductValues> liquidValues
+        ) {
+            if (liquidValues == null) {
+                throw new FiscalIntegrationException("Valores líquidos fiscais ausentes.");
+            }
+            if (liquidValues.isEmpty()) {
+                return; // Compatibilidade: fluxo de emissão ainda não usa a NT 2026.008.
+            }
+            if (liquidValues.size() != sale.getItems().size()) {
+                throw new FiscalIntegrationException(
+                    "Valores líquidos fiscais devem ser informados para todos os itens da NFC-e."
+                );
+            }
+            Set<Integer> itemNumbers = new HashSet<>();
+            for (SaleItem item : sale.getItems()) {
+                if (!itemNumbers.add(item.getItemNumber())) {
+                    throw new FiscalIntegrationException("Numeração duplicada de item na NFC-e.");
+                }
+                NfceLiquidProductValues liquid = liquidValues.get(item.getItemNumber());
+                if (liquid == null) {
+                    throw new FiscalIntegrationException(
+                        "Valor líquido fiscal ausente para o item " + item.getItemNumber() + "."
+                    );
+                }
+                liquid.validateQuantity(item.getQuantity());
             }
         }
 

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -18,18 +19,25 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.ArgumentCaptor;
 
 import net.ddns.lexdev.systempro_api.config.FiscalProperties;
 import net.ddns.lexdev.systempro_api.domain.FiscalDocument;
 import net.ddns.lexdev.systempro_api.domain.FiscalEstablishment;
 import net.ddns.lexdev.systempro_api.domain.FiscalProductProfile;
+import net.ddns.lexdev.systempro_api.domain.Sale;
+import net.ddns.lexdev.systempro_api.domain.SaleItem;
 import net.ddns.lexdev.systempro_api.domain.Product;
 import net.ddns.lexdev.systempro_api.domain.User;
 import net.ddns.lexdev.systempro_api.dto.SaleCreateRequestDto;
 import net.ddns.lexdev.systempro_api.dto.SaleItemRequestDto;
 import net.ddns.lexdev.systempro_api.dto.SalePaymentRequestDto;
 import net.ddns.lexdev.systempro_api.enums.PaymentMethod;
+import net.ddns.lexdev.systempro_api.enums.TaxRegime;
 import net.ddns.lexdev.systempro_api.exception.FiscalConfigurationException;
+import net.ddns.lexdev.systempro_api.exception.FiscalIntegrationException;
+import net.ddns.lexdev.systempro_api.fiscal.rtc.IbsCbsCalculation;
+import net.ddns.lexdev.systempro_api.fiscal.rtc.IbsCbsJurisdictionCalculation;
 import net.ddns.lexdev.systempro_api.fiscal.SefazNfceGateway;
 import net.ddns.lexdev.systempro_api.fiscal.contingency.NfceContingencyPolicy;
 import net.ddns.lexdev.systempro_api.repository.ClientRepository;
@@ -68,7 +76,7 @@ class SaleServiceProductFiscalValidationTest {
     void setUp() {
         FiscalProperties properties = new FiscalProperties(
             true, 10, 30, "test-key", "4.00", "SystemPro-Test",
-            null, null, "application/x-pkcs12", false
+            null, null, "application/x-pkcs12", false, false
         );
 
         service = new SaleService(
@@ -269,6 +277,66 @@ class SaleServiceProductFiscalValidationTest {
         assertThatThrownBy(() -> service.create(invalidQuantity))
             .isInstanceOf(net.ddns.lexdev.systempro_api.exception.BusinessException.class);
         verify(stockService, never()).registerSaleOut(any());
+    }
+
+    @Test
+    void optInDeveRejeitarOperacaoNaoCobertaAntesDeSalvarVenda() {
+        enableZeroTaxProducer();
+        establishment.setTaxRegime(TaxRegime.SIMPLES_NACIONAL);
+
+        assertThatThrownBy(() -> service.create(request()))
+            .isInstanceOf(FiscalIntegrationException.class)
+            .hasMessageContaining("somente Regime Normal");
+        verify(saleRepository, never()).saveAndFlush(any());
+        verify(stockService, never()).registerSaleOut(any());
+        assertThat(establishment.getNextNumber()).isEqualTo(900L);
+    }
+
+    @Test
+    void optInDevePersistirSnapshotSomenteComTodosTributosZerados() {
+        enableZeroTaxProducer();
+        product.setNcm("10063021");
+        establishment.setTaxRegime(TaxRegime.REGIME_NORMAL);
+        profile.setIcmsCstCsosn("40");
+        profile.setPisCst("06");
+        profile.setCofinsCst("06");
+        profile.setIcmsRate(BigDecimal.ZERO);
+        profile.setPisRate(BigDecimal.ZERO);
+        profile.setCofinsRate(BigDecimal.ZERO);
+
+        doAnswer(invocation -> {
+            SaleItem item = invocation.getArgument(2);
+            item.setIbsCbsCalculation(new IbsCbsCalculation(
+                "200", "200003", item.getTotal(),
+                new IbsCbsJurisdictionCalculation(BigDecimal.ZERO, BigDecimal.ZERO),
+                new IbsCbsJurisdictionCalculation(BigDecimal.ZERO, BigDecimal.ZERO),
+                BigDecimal.ZERO,
+                new IbsCbsJurisdictionCalculation(BigDecimal.ZERO, BigDecimal.ZERO)
+            ));
+            return null;
+        }).when(rtcSnapshotService).apply(any(), any(), any(), any());
+
+        service.create(request());
+
+        ArgumentCaptor<Sale> captor = ArgumentCaptor.forClass(Sale.class);
+        verify(saleRepository).saveAndFlush(captor.capture());
+        SaleItem item = captor.getValue().getItems().get(0);
+        assertThat(item.getNfceLiquidSnapshot().unitWithoutTaxes()).isEqualByComparingTo("10.00");
+        assertThat(item.getNfceLiquidSnapshot().totalWithoutTaxes()).isEqualByComparingTo("10.00");
+        assertThat(item.getNfceLiquidCalculationSource()).isEqualTo("NT2026.008:ZERO-TAX-200003-V2");
+    }
+
+    private void enableZeroTaxProducer() {
+        FiscalProperties enabledProperties = new FiscalProperties(
+            true, 10, 30, "test-key", "4.00", "SystemPro-Test",
+            null, null, "application/x-pkcs12", false, true
+        );
+        service = new SaleService(
+            saleRepository, productRepository, profileRepository, establishmentRepository,
+            clientRepository, fiscalDocumentRepository, fiscalEventRepository,
+            currentUserProvider, fiscalEstablishmentService, gateway, enabledProperties,
+            rtcSnapshotService, contingencyPolicy, stockService
+        );
     }
 
     private static SaleCreateRequestDto request() {

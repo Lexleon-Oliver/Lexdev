@@ -11,6 +11,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import net.ddns.lexdev.systempro_api.fiscal.NfceLiquidProductValues;
+import net.ddns.lexdev.systempro_api.exception.FiscalIntegrationException;
 import net.ddns.lexdev.systempro_api.fiscal.rtc.IbsCbsCalculation;
 import net.ddns.lexdev.systempro_api.fiscal.rtc.IbsCbsJurisdictionCalculation;
 
@@ -57,6 +59,16 @@ public class SaleItem {
     @Column(name = "ibs_total_amount", precision = 19, scale = 2) private BigDecimal ibsTotalAmount;
     @Column(name = "cbs_rate_rtc", precision = 9, scale = 6) private BigDecimal cbsRateRtc;
     @Column(name = "cbs_amount", precision = 19, scale = 2) private BigDecimal cbsAmount;
+
+    // NT 2026.008: snapshots SEM tributos, opcionais e fiscalmente rastreáveis.
+    // Preço comercial só pode coincidir com valor sem tributos quando a operação
+    // for comprovadamente zero-tributo; nunca presumir isto em venda tributada.
+    @Column(name = "nfce_liquid_unit_without_taxes", precision = 21, scale = 10)
+    private BigDecimal nfceLiquidUnitWithoutTaxes;
+    @Column(name = "nfce_liquid_total_without_taxes", precision = 15, scale = 2)
+    private BigDecimal nfceLiquidTotalWithoutTaxes;
+    @Column(name = "nfce_liquid_calculation_source", length = 80)
+    private String nfceLiquidCalculationSource;
 
     public Long getId() { return id; }
     public Sale getSale() { return sale; } public void setSale(Sale v) { sale = v; }
@@ -116,6 +128,56 @@ public class SaleItem {
         ibsTotalAmount = calculation.totalIbs();
         cbsRateRtc = calculation.cbs().rate();
         cbsAmount = calculation.cbs().amount();
+    }
+
+    /**
+     * Registra valores calculados em outro componente tributário, juntamente com
+     * a versão/identificador de origem. O fluxo de vendas atual não chama este método.
+     */
+    public void setNfceLiquidSnapshot(NfceLiquidProductValues values, String calculationSource) {
+        if (values == null) {
+            if (calculationSource != null) {
+                throw new FiscalIntegrationException("Não é permitido informar origem sem valores líquidos fiscais.");
+            }
+            nfceLiquidUnitWithoutTaxes = null;
+            nfceLiquidTotalWithoutTaxes = null;
+            nfceLiquidCalculationSource = null;
+            return;
+        }
+        if (calculationSource == null
+            || !calculationSource.matches("[A-Za-z0-9][A-Za-z0-9._:-]{2,79}")) {
+            throw new FiscalIntegrationException(
+                "A origem/versionamento do cálculo fiscal líquido é obrigatória (3 a 80 caracteres técnicos)."
+            );
+        }
+        values.validateQuantity(quantity);
+        nfceLiquidUnitWithoutTaxes = values.unitWithoutTaxes();
+        nfceLiquidTotalWithoutTaxes = values.totalWithoutTaxes();
+        nfceLiquidCalculationSource = calculationSource;
+    }
+
+    public boolean hasAnyNfceLiquidSnapshotData() {
+        return nfceLiquidUnitWithoutTaxes != null || nfceLiquidTotalWithoutTaxes != null
+            || nfceLiquidCalculationSource != null;
+    }
+
+    public String getNfceLiquidCalculationSource() { return nfceLiquidCalculationSource; }
+
+    /** Verifica novamente o snapshot quando a venda é convertida em XML. */
+    public NfceLiquidProductValues getNfceLiquidSnapshot() {
+        if (!hasAnyNfceLiquidSnapshotData()) {
+            return null;
+        }
+        if (nfceLiquidUnitWithoutTaxes == null || nfceLiquidTotalWithoutTaxes == null
+            || nfceLiquidCalculationSource == null
+            || !nfceLiquidCalculationSource.matches("[A-Za-z0-9][A-Za-z0-9._:-]{2,79}")) {
+            throw new FiscalIntegrationException("Snapshot fiscal líquido incompleto no item da venda.");
+        }
+        NfceLiquidProductValues values = new NfceLiquidProductValues(
+            nfceLiquidUnitWithoutTaxes, nfceLiquidTotalWithoutTaxes
+        );
+        values.validateQuantity(quantity);
+        return values;
     }
 
     public IbsCbsCalculation getIbsCbsCalculation() {
