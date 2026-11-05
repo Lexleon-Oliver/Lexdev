@@ -21,6 +21,10 @@ import net.ddns.lexdev.systempro_api.repository.projection.SaleSummaryProjection
 
 public interface SaleRepository extends JpaRepository<Sale, Long> {
 
+    @Query("SELECT CASE WHEN COUNT(i) > 0 THEN true ELSE false END FROM SaleItem i WHERE i.product.id = :productId")
+    boolean existsSaleItemForProduct(@Param("productId") Long productId);
+
+
     @Query("""
         SELECT DISTINCT s
         FROM Sale s

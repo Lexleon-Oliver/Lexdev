@@ -1086,6 +1086,7 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
             String contingencyJustification
         ) {
             validateContingencyFields(tpEmis, contingencyDateTime, contingencyJustification);
+            validateSaleAmounts(sale);
             PersonAddress address = establishment.getCompany().getPerson().getAddresses().stream()
                 .filter(PersonAddress::isPrincipal)
                 .findFirst()
@@ -1512,6 +1513,61 @@ public class SefazMgNfceGateway implements SefazNfceGateway {
 
         private static String gtinOrSemGtin(String gtin) {
             return gtin == null || gtin.isBlank() ? "SEM GTIN" : esc(gtin);
+        }
+
+        /** Impede emissão de XML incompatível, inclusive para vendas antigas ainda pendentes. */
+        private static void validateSaleAmounts(Sale sale) {
+            BigDecimal productTotal = BigDecimal.ZERO.setScale(2);
+            BigDecimal discountedTotal = BigDecimal.ZERO.setScale(2);
+            for (SaleItem item : sale.getItems()) {
+                BigDecimal gross = cents(item.getTotal(), "valor do item").add(cents(item.getDiscount(), "desconto do item"));
+                BigDecimal recalculated = item.getQuantity().multiply(item.getUnitPrice())
+                    .setScale(2, RoundingMode.HALF_UP);
+                if (item.getQuantity().signum() <= 0 || item.getQuantity().stripTrailingZeros().scale() > 4
+                    || gross.compareTo(recalculated) != 0) {
+                    throw new FiscalIntegrationException(
+                        "Venda possui quantidade ou valor de item incompatível com a NFC-e. Revisão fiscal necessária."
+                    );
+                }
+                productTotal = productTotal.add(gross);
+                discountedTotal = discountedTotal.add(cents(item.getTotal(), "total do item"));
+            }
+            if (cents(sale.getSubtotal(), "subtotal da venda").compareTo(productTotal) != 0
+                || cents(sale.getTotal(), "total da venda").compareTo(discountedTotal) != 0) {
+                throw new FiscalIntegrationException(
+                    "Venda possui total diferente da soma dos itens da NFC-e. Revisão fiscal necessária."
+                );
+            }
+            cents(sale.getDiscount(), "desconto da venda");
+            BigDecimal paid = BigDecimal.ZERO.setScale(2);
+            boolean hasCash = false;
+            for (SalePayment payment : sale.getPayments()) {
+                BigDecimal amount = cents(payment.getAmount(), "pagamento");
+                if (amount.signum() <= 0) {
+                    throw new FiscalIntegrationException("Pagamento fiscal com valor inválido.");
+                }
+                paid = paid.add(amount);
+                hasCash |= payment.getPaymentMethod() == PaymentMethod.DINHEIRO;
+            }
+            if (paid.compareTo(discountedTotal) < 0) {
+                throw new FiscalIntegrationException("Pagamentos inferiores ao total fiscal da venda.");
+            }
+            if (paid.compareTo(discountedTotal) > 0 && !hasCash) {
+                throw new FiscalIntegrationException("Troco fiscal sem pagamento em dinheiro.");
+            }
+        }
+
+        private static BigDecimal cents(BigDecimal value, String field) {
+            if (value == null) {
+                throw new FiscalIntegrationException("Valor ausente: " + field + ".");
+            }
+            try {
+                return value.setScale(2, RoundingMode.UNNECESSARY);
+            } catch (ArithmeticException e) {
+                throw new FiscalIntegrationException(
+                    "A venda contém frações de centavo em " + field + ". Revisão fiscal necessária.", e
+                );
+            }
         }
 
         private static BigDecimal zero() { return BigDecimal.ZERO.setScale(4); }

@@ -5,6 +5,7 @@ import java.util.List;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -44,9 +45,11 @@ public record ProductRequestDto(
     Boolean controlsExpiration,
 
     @DecimalMin(value = "0.0")
+    @Digits(integer = 15, fraction = 4)
     BigDecimal salePrice,
 
     @DecimalMin(value = "0.0")
+    @Digits(integer = 15, fraction = 4)
     BigDecimal minimumSalePrice,
 
     @DecimalMin(value = "0.0")

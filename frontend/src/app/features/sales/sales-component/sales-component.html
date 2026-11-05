@@ -56,7 +56,7 @@
                   @if (product.gtin) { <span>· {{ product.gtin }}</span> }
                 </small>
               </span>
-              <b>{{ formatMoney(product.salePrice) }}</b>
+              <b>{{ formatUnitPrice(product.salePrice) }} / {{ product.unitOfMeasure }}</b>
             </button>
           }
         </div>
@@ -86,7 +86,7 @@
               </div>
               <div class="cart-controls">
                 <label>
-                  Qtd.
+                  Qtd. ({{ item.product.unitOfMeasure }})
                   <input
                     type="number"
                     [min]="quantityStep(item.product.unitOfMeasure)"
@@ -95,12 +95,21 @@
                     (ngModelChange)="updateCartItem(i, 'quantity', $event)"
                   />
                 </label>
+                @if (isWeightProduct(item.product.unitOfMeasure)) {
+                  <label>
+                    Peso (gramas)
+                    <input type="number" min="0" step="1"
+                      [ngModel]="gramsFromKg(item.quantity)"
+                      (ngModelChange)="updateGrams(i, $event)"
+                      aria-label="Peso em gramas" />
+                  </label>
+                }
                 <label>
-                  Preço
+                  Preço / {{ item.product.unitOfMeasure }}
                   <input
                     type="text"
                     inputmode="decimal"
-                    [value]="formatMoneyInput(item.unitPrice)"
+                    [value]="formatUnitPriceInput(item.unitPrice)"
                     (change)="updateMoneyCartItem(i, 'unitPrice', $any($event.target).value)"
                   />
                 </label>
@@ -123,6 +132,9 @@
             </div>
           }
         </div>
+        @if (cartIssue(); as issue) {
+          <div class="alert-error" role="alert">{{ issue }}</div>
+        }
       }
     </section>
 

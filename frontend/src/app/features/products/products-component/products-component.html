@@ -216,7 +216,7 @@
 
             <div class="form-row">
               <div>
-                <label for="salePrice">Preço de Venda</label>
+                <label for="salePrice">Preço de Venda (R$ por {{ form.get('unitOfMeasure')?.value || 'UN' }})</label>
                 <input
                   id="salePrice"
                   type="text"
@@ -227,7 +227,7 @@
                 />
               </div>
               <div>
-                <label for="minimumSalePrice">Preço Mínimo de Venda</label>
+                <label for="minimumSalePrice">Preço Mínimo (R$ por {{ form.get('unitOfMeasure')?.value || 'UN' }})</label>
                 <input
                   id="minimumSalePrice"
                   type="text"

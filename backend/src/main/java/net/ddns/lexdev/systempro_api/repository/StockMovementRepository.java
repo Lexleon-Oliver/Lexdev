@@ -11,6 +11,8 @@ import net.ddns.lexdev.systempro_api.enums.StockMovementOrigin;
 
 public interface StockMovementRepository extends JpaRepository<StockMovement, Long> {
 
+    boolean existsByProductId(Long productId);
+
     boolean existsByOriginAndSourceReference(StockMovementOrigin origin, String sourceReference);
 
     Optional<StockMovement> findByOriginAndSourceReference(

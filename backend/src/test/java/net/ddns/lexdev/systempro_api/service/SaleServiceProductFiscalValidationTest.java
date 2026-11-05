@@ -196,6 +196,81 @@ class SaleServiceProductFiscalValidationTest {
         assertThat(establishment.getNextNumber()).isEqualTo(900L);
     }
 
+    @Test
+    void deveFecharDoisItensDe125gEm266Centavos() {
+        product.setUnitOfMeasure("KG");
+        product.setSalePrice(new BigDecimal("10.60"));
+
+        var response = service.create(new SaleCreateRequestDto(
+            1L, null, null,
+            List.of(
+                new SaleItemRequestDto(10L, new BigDecimal("0.125"), null, BigDecimal.ZERO),
+                new SaleItemRequestDto(10L, new BigDecimal("0.125"), null, BigDecimal.ZERO)
+            ),
+            List.of(new SalePaymentRequestDto(PaymentMethod.DINHEIRO, new BigDecimal("2.66"), null, null)),
+            BigDecimal.ZERO, null
+        ));
+
+        assertThat(response.subtotal()).isEqualByComparingTo("2.66");
+        assertThat(response.total()).isEqualByComparingTo("2.66");
+        assertThat(response.change()).isEqualByComparingTo("0.00");
+        assertThat(response.items()).hasSize(2).allSatisfy(item -> {
+            assertThat(item.total()).isEqualByComparingTo("1.33");
+            assertThat(item.quantity()).isEqualByComparingTo("0.125");
+        });
+        verify(stockService).registerSaleOut(any());
+    }
+
+    @Test
+    void deveDistribuirDescontoEmCentavosERespeitarTroco() {
+        product.setUnitOfMeasure("KG");
+        var response = service.create(new SaleCreateRequestDto(
+            1L, null, null,
+            List.of(
+                new SaleItemRequestDto(10L, new BigDecimal("0.125"), new BigDecimal("10.60"), new BigDecimal("0.01")),
+                new SaleItemRequestDto(10L, new BigDecimal("0.125"), new BigDecimal("10.60"), BigDecimal.ZERO)
+            ),
+            List.of(new SalePaymentRequestDto(PaymentMethod.DINHEIRO, new BigDecimal("2.65"), null, null)),
+            new BigDecimal("0.01"), null
+        ));
+        assertThat(response.total()).isEqualByComparingTo("2.64");
+        assertThat(response.change()).isEqualByComparingTo("0.01");
+        assertThat(response.items().stream().map(net.ddns.lexdev.systempro_api.dto.SaleItemResponseDto::total)
+            .reduce(BigDecimal.ZERO, BigDecimal::add)).isEqualByComparingTo(response.total());
+        assertThat(response.items().stream().map(net.ddns.lexdev.systempro_api.dto.SaleItemResponseDto::discount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add)).isEqualByComparingTo("0.02");
+    }
+
+    @Test
+    void deveRatearDescontoEmCemItensDeUmCentavoSemEstourarUltimoItem() {
+        product.setSalePrice(new BigDecimal("0.01"));
+        var items = java.util.stream.IntStream.range(0, 100)
+            .mapToObj(index -> new SaleItemRequestDto(10L, BigDecimal.ONE, null, BigDecimal.ZERO))
+            .toList();
+        var response = service.create(new SaleCreateRequestDto(
+            1L, null, null, items,
+            List.of(new SalePaymentRequestDto(PaymentMethod.DINHEIRO, new BigDecimal("0.51"), null, null)),
+            new BigDecimal("0.49"), null
+        ));
+        assertThat(response.total()).isEqualByComparingTo("0.51");
+        assertThat(response.items().stream().map(net.ddns.lexdev.systempro_api.dto.SaleItemResponseDto::total)
+            .reduce(BigDecimal.ZERO, BigDecimal::add)).isEqualByComparingTo("0.51");
+    }
+
+    @Test
+    void deveRecusarQuantidadeOuPagamentoIncompativelAntesDeBaixarEstoque() {
+        product.setUnitOfMeasure("KG");
+        var invalidQuantity = new SaleCreateRequestDto(
+            1L, null, null,
+            List.of(new SaleItemRequestDto(10L, new BigDecimal("0.0001"), new BigDecimal("40.00"), BigDecimal.ZERO)),
+            List.of(new SalePaymentRequestDto(PaymentMethod.DINHEIRO, new BigDecimal("1.00"), null, null)),
+            BigDecimal.ZERO, null
+        );
+        assertThatThrownBy(() -> service.create(invalidQuantity))
+            .isInstanceOf(net.ddns.lexdev.systempro_api.exception.BusinessException.class);
+        verify(stockService, never()).registerSaleOut(any());
+    }
+
     private static SaleCreateRequestDto request() {
         return new SaleCreateRequestDto(
             1L,

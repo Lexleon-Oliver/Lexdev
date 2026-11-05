@@ -58,6 +58,15 @@ describe('StockOperationComponent', () => {
     const request = stock.initializeBalance.mock.calls[0][1];
     expect(request.operationReference).toMatch(/^stock-ui:/);
   });
+  it('rejects stock entries with less than one gram for products in KG', () => {
+    component.selectProduct({ id: 1, code: 'P1', name: 'Produto', status: 'ATIVO', unitOfMeasure: 'KG', controlsStock: true, controlsExpiration: false, active: true });
+    component.beginOperation('INITIAL');
+    component.form.setValue({ quantity: 0.0001, reason: 'Contagem inicial', lotCode: '', manufactureDate: '', expirationDate: '' });
+    expect(component.quantityIsValid()).toBe(false);
+    component.submitOperation();
+    expect(stock.initializeBalance).not.toHaveBeenCalled();
+  });
+
   it('renders lot and expiration fields for an incoming operation when the product controls expiration', () => {
     component.selectProduct({ id: 1, code: 'P1', name: 'Produto', status: 'ATIVO', unitOfMeasure: 'UN', controlsStock: true, controlsExpiration: true, active: true });
     component.beginOperation('INITIAL');

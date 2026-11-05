@@ -8,6 +8,7 @@ import { ProductService } from '../../../core/services/product-service';
 import { StockService } from '../../../core/services/stock-service';
 import { ProductSummary } from '../../models/product-summary';
 import { StockBalance, StockLot, StockMovement, StockMovementType, StockOperationRequest } from '../models/stock';
+import { quantityStepFor, validSaleQuantity } from '../../models/commerce-pricing';
 
 export type StockOperationKind = 'INITIAL' | 'POSITIVE' | 'NEGATIVE';
 
@@ -120,11 +121,25 @@ export class StockOperationComponent implements OnInit {
     this.form.reset();
   }
 
+  quantityStep(): number {
+    return quantityStepFor(this.selectedProduct()?.unitOfMeasure ?? 'UN');
+  }
+
+  quantityIsValid(): boolean {
+    const quantity = Number(this.form.get('quantity')?.value);
+    return validSaleQuantity(this.selectedProduct()?.unitOfMeasure ?? 'UN', quantity);
+  }
+
   submitOperation(): void {
     const productId = this.selectedProduct()?.id;
     const kind = this.operation();
     if (!productId || !kind || this.form.invalid || !this.operationReference) {
       this.form.markAllAsTouched();
+      return;
+    }
+
+    if (!this.quantityIsValid()) {
+      this.notification.error('Quantidade incompatível com a unidade de medida. Verifique a precisão permitida.');
       return;
     }
 

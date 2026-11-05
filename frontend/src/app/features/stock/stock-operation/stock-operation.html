@@ -423,7 +423,7 @@
 
                 <div class="form-row">
 
-                  <label for="quantity">Quantidade</label>
+                  <label for="quantity">Quantidade ({{ selectedProduct()?.unitOfMeasure }})</label>
 
                   <input
 
@@ -431,15 +431,19 @@
 
                     type="number"
 
-                    step="0.000001"
+                    [step]="quantityStep()"
 
-                    min="0.000001"
+                    [min]="quantityStep()"
 
                     formControlName="quantity"
 
                     placeholder="0"
 
                   />
+
+                  @if (selectedProduct()?.unitOfMeasure === 'KG') {
+                    <small>Informe o peso em KG (ex.: 0,350 KG equivale a 350 g).</small>
+                  }
 
                   @if (form.get('quantity')?.invalid && form.get('quantity')?.touched) {
 
@@ -579,7 +583,7 @@
 
                     class="btn-submit"
 
-                    [disabled]="form.invalid || saving()"
+                    [disabled]="form.invalid || !quantityIsValid() || saving()"
 
                   >
 

@@ -11,6 +11,7 @@ import { FiscalEstablishment } from '../../models/fiscal-establishment';
 import { catchError, debounceTime, distinctUntilChanged, EMPTY, finalize, map, Observable, of, Subject, switchMap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SaleService } from '../../../core/services/sale-service';
+import { lineGrossCents, moneyCents, quantityStepFor, validSaleQuantity, validUnitPrice } from '../../models/commerce-pricing';
 
 interface CartItem {
   product: ProductSaleSummary;
@@ -155,15 +156,20 @@ export class SalesComponent implements OnInit {
     const current = this.cart();
     const existing = current.find(item => item.product.id === product.id);
     if (existing) {
-      this.cart.set(current.map(item => item.product.id === product.id
-        ? { ...item, quantity: item.quantity + 1 }
-        : item));
+      if (product.unitOfMeasure.trim().toUpperCase() === 'KG') {
+        this.notification.show('Produto já adicionado. Informe o peso total em gramas ou KG.', 'info');
+      } else {
+        this.cart.set(current.map(item => item.product.id === product.id
+          ? { ...item, quantity: item.quantity + quantityStepFor(product.unitOfMeasure) }
+          : item));
+      }
     } else {
       this.cart.set([
         ...current,
         {
           product,
-          quantity: 1,
+          // Produto em KG só poderá ser fechado após o operador informar o peso real.
+          quantity: product.unitOfMeasure.trim().toUpperCase() === 'KG' ? 0 : 1,
           unitPrice: Number(product.salePrice ?? 0),
           discount: 0,
         },
@@ -215,7 +221,38 @@ export class SalesComponent implements OnInit {
   }
 
   quantityStep(unitOfMeasure: string): number {
-    return unitOfMeasure.trim().toUpperCase() === 'UN' ? 1 : 0.001;
+    return quantityStepFor(unitOfMeasure);
+  }
+
+  isWeightProduct(unitOfMeasure: string): boolean {
+    return unitOfMeasure.trim().toUpperCase() === 'KG';
+  }
+
+  gramsFromKg(quantity: number): number {
+    return Math.round(quantity * 1000);
+  }
+
+  updateGrams(index: number, value: number): void {
+    const grams = Number(value);
+    if (!Number.isSafeInteger(grams) || grams < 0) {
+      this.notification.error('Informe o peso em gramas inteiras.');
+      return;
+    }
+    this.updateCartItem(index, 'quantity', grams / 1000);
+  }
+
+  formatUnitPriceInput(value: number | null | undefined): string {
+    return new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 4,
+    }).format(Number(value ?? 0));
+  }
+
+  formatUnitPrice(value: number | null | undefined): string {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency', currency: 'BRL',
+      minimumFractionDigits: 2, maximumFractionDigits: 4,
+    }).format(Number(value ?? 0));
   }
 
   formatMoney(value: number | null | undefined): string {
@@ -261,40 +298,82 @@ export class SalesComponent implements OnInit {
     return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
   }
 
+  private itemGrossCents(item: CartItem): number {
+    return lineGrossCents(item.quantity, item.unitPrice) ?? 0;
+  }
+
+  cartIssue(): string | null {
+    for (const item of this.cart()) {
+      if (!validSaleQuantity(item.product.unitOfMeasure, item.quantity)) {
+        return this.isWeightProduct(item.product.unitOfMeasure)
+          ? `Informe o peso de ${item.product.name} em gramas inteiras ou KG (até 3 casas decimais).`
+          : `Informe uma quantidade válida de ${item.product.name} para a unidade ${item.product.unitOfMeasure}.`;
+      }
+      if (!validUnitPrice(item.unitPrice)) {
+        return `O preço de ${item.product.name} deve ser positivo e ter até 4 casas decimais.`;
+      }
+      const gross = lineGrossCents(item.quantity, item.unitPrice);
+      if (gross === null || gross <= 0) {
+        return `O valor de ${item.product.name} deve ser de pelo menos R$ 0,01.`;
+      }
+      const discount = moneyCents(item.discount);
+      if (discount === null || discount > gross) {
+        return `O desconto de ${item.product.name} precisa estar em centavos e não pode superar o valor do item.`;
+      }
+    }
+    return null;
+  }
+
+  private validCart(): boolean {
+    return this.cartIssue() === null;
+  }
+
+  private validPayments(): boolean {
+    return this.payments().length > 0
+      && this.payments().every(p => moneyCents(p.amount) !== null && p.amount > 0)
+      && moneyCents(this.saleDiscount) !== null
+      && (this.change() === 0 || this.payments().some(p => p.paymentMethod === 'DINHEIRO'));
+  }
+
   itemTotal(item: CartItem): number {
-    return Math.max(0, item.quantity * item.unitPrice - Math.min(item.discount, item.quantity * item.unitPrice));
+    return Math.max(0, this.itemGrossCents(item) - (moneyCents(item.discount) ?? 0)) / 100;
   }
 
   subtotal(): number {
-    return this.cart().reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+    return this.cart().reduce((sum, item) => sum + this.itemGrossCents(item), 0) / 100;
   }
 
   itemDiscounts(): number {
-    return this.cart().reduce((sum, item) => sum + Math.min(item.discount, item.quantity * item.unitPrice), 0);
+    return this.cart().reduce((sum, item) =>
+      sum + Math.min(moneyCents(item.discount) ?? 0, this.itemGrossCents(item)), 0) / 100;
   }
 
   total(): number {
-    return Math.max(0, this.subtotal() - this.itemDiscounts() - Math.max(0, Number(this.saleDiscount) || 0));
+    const discount = moneyCents(this.saleDiscount) ?? 0;
+    return Math.max(0, this.cart().reduce((sum, item) =>
+      sum + Math.max(0, this.itemGrossCents(item) - (moneyCents(item.discount) ?? 0)), 0) - discount) / 100;
   }
 
   totalPaid(): number {
-    return this.payments().reduce((sum, payment) => sum + Math.max(0, Number(payment.amount) || 0), 0);
+    return this.payments().reduce((sum, payment) => sum + (moneyCents(payment.amount) ?? 0), 0) / 100;
   }
 
   change(): number {
-    return Math.max(0, this.totalPaid() - this.total());
+    return Math.max(0, Math.round(this.totalPaid() * 100) - Math.round(this.total() * 100)) / 100;
   }
 
   remaining(): number {
-    return Math.max(0, this.total() - this.totalPaid());
+    return Math.max(0, Math.round(this.total() * 100) - Math.round(this.totalPaid() * 100)) / 100;
   }
 
   canFinishSale(): boolean {
     return !this.isSaving()
       && this.selectedEstablishmentId() !== null
       && this.cart().length > 0
+      && this.validCart()
+      && this.validPayments()
       && this.total() > 0
-      && this.remaining() <= 0.0001;
+      && this.remaining() === 0;
   }
 
   findClient(): void {
@@ -327,12 +406,16 @@ export class SalesComponent implements OnInit {
       this.errorMessage.set('Adicione pelo menos um produto à venda.');
       return;
     }
+    if (!this.validCart()) {
+      this.errorMessage.set('Revise os pesos, quantidades, preços e descontos. Use até 3 casas em KG e valores monetários em centavos.');
+      return;
+    }
     if (this.total() <= 0) {
       this.errorMessage.set('O total da venda precisa ser maior que zero.');
       return;
     }
-    if (this.remaining() > 0.0001) {
-      this.errorMessage.set('Informe pagamentos suficientes para fechar a venda.');
+    if (!this.validPayments() || this.remaining() > 0) {
+      this.errorMessage.set('Revise os pagamentos: informe valores em centavos e troco somente com dinheiro.');
       return;
     }
 

@@ -58,6 +58,7 @@ public class StockService {
     ) {
         Product product = lockControlledProduct(productId);
         requirePositive(quantity);
+        SalePricing.quantity(product.getUnitOfMeasure(), quantity);
         String reference = requireReference(operationReference);
         String normalizedReason = requireReason(reason);
 
@@ -349,6 +350,7 @@ public class StockService {
     ) {
         Product product = lockControlledProduct(productId);
         requirePositive(quantity);
+        SalePricing.quantity(product.getUnitOfMeasure(), quantity);
         String reference = requireReference(operationReference);
         String normalizedReason = requireReason(reason);
 

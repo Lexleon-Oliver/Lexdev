@@ -86,6 +86,177 @@ class NfceXmlBuilderSchemaRegressionTest {
     }
 
     @Test
+    void deveRejeitarVendaAntigaComFracaoDeCentavoEmItem() throws Exception {
+        FiscalEstablishment establishment = establishment();
+        Sale sale = basicSale(establishment);
+        SaleItem item = sale.getItems().get(0);
+        item.setUnitSnapshot("KG");
+        item.setQuantity(new BigDecimal("0.125"));
+        item.setUnitPrice(new BigDecimal("10.60"));
+        item.setTotal(new BigDecimal("1.3250"));
+        sale.setSubtotal(new BigDecimal("1.3250"));
+        sale.setTotal(new BigDecimal("1.3250"));
+        sale.getPayments().get(0).setAmount(new BigDecimal("1.33"));
+        FiscalDocument document = basicDocument(establishment, sale);
+
+        assertThrows(net.ddns.lexdev.systempro_api.exception.FiscalIntegrationException.class, () ->
+            SefazMgNfceGateway.NfceXmlBuilder.build(
+                establishment, sale, document, "31261012345678000195650010000000011000000010",
+                "00000001", 1, "2026-10-08T00:00:00-03:00", "4.00", "SystemPro 1.0",
+                "https://portalsped.fazenda.mg.gov.br/portalnfce/sistema/qrcode.xhtml?p=teste",
+                "https://hportalsped.fazenda.mg.gov.br/portalnfce"
+            )
+        );
+    }
+
+    @Test
+    void deveEmitirDoisItensPesaveisSomandoMesmoTotalFiscal() throws Exception {
+        FiscalEstablishment establishment = establishment();
+        Sale sale = basicSale(establishment);
+        SaleItem first = sale.getItems().get(0);
+        first.setUnitSnapshot("KG");
+        first.setQuantity(new BigDecimal("0.125"));
+        first.setUnitPrice(new BigDecimal("10.60"));
+        first.setTotal(new BigDecimal("1.33"));
+
+        SaleItem second = new SaleItem();
+        second.setItemNumber(2);
+        second.setCodeSnapshot("P2");
+        second.setNameSnapshot("PRODUTO 2");
+        second.setUnitSnapshot("KG");
+        second.setNcmSnapshot("61091000");
+        second.setOriginSnapshot("0");
+        second.setCfopSnapshot("5102");
+        second.setIcmsCstCsosnSnapshot("40");
+        second.setPisCstSnapshot("06");
+        second.setCofinsCstSnapshot("06");
+        second.setQuantity(new BigDecimal("0.125"));
+        second.setUnitPrice(new BigDecimal("10.60"));
+        second.setDiscount(BigDecimal.ZERO);
+        second.setTotal(new BigDecimal("1.33"));
+        sale.addItem(second);
+        sale.setSubtotal(new BigDecimal("2.66"));
+        sale.setTotal(new BigDecimal("2.66"));
+        sale.getPayments().get(0).setAmount(new BigDecimal("2.66"));
+        FiscalDocument document = basicDocument(establishment, sale);
+
+        String xml = SefazMgNfceGateway.NfceXmlBuilder.build(
+            establishment, sale, document, "31261012345678000195650010000000011000000010",
+            "00000001", 1, "2026-10-08T00:00:00-03:00", "4.00", "SystemPro 1.0",
+            "https://portalsped.fazenda.mg.gov.br/portalnfce/sistema/qrcode.xhtml?p=teste",
+            "https://hportalsped.fazenda.mg.gov.br/portalnfce"
+        );
+        assertTrue(xml.contains("<vProd>2.66</vProd>"));
+        assertTrue(xml.contains("<vNF>2.66</vNF>"));
+        assertTrue(xml.contains("<vPag>2.66</vPag>"));
+        assertTrue(xml.split("<vProd>1.33</vProd>", -1).length == 3);
+    }
+
+
+    @Test
+    void deveSomarPesoDescontoPagamentoETrocoSemDivergenciaNoXml() throws Exception {
+        FiscalEstablishment establishment = establishment();
+        Sale sale = basicSale(establishment);
+        SaleItem item = sale.getItems().get(0);
+        item.setUnitSnapshot("KG");
+        item.setQuantity(new BigDecimal("0.125"));
+        item.setUnitPrice(new BigDecimal("10.60"));
+        item.setDiscount(new BigDecimal("0.10"));
+        item.setTotal(new BigDecimal("1.23"));
+        sale.setSubtotal(new BigDecimal("1.33"));
+        sale.setDiscount(BigDecimal.ZERO);
+        sale.setTotal(new BigDecimal("1.23"));
+        sale.getPayments().get(0).setAmount(new BigDecimal("2.00"));
+
+        String xml = SefazMgNfceGateway.NfceXmlBuilder.build(
+            establishment, sale, basicDocument(establishment, sale),
+            "31261012345678000195650010000000011000000010", "00000001", 1,
+            "2026-10-08T00:00:00-03:00", "4.00", "SystemPro 1.0",
+            "https://portalsped.fazenda.mg.gov.br/portalnfce/sistema/qrcode.xhtml?p=teste",
+            "https://hportalsped.fazenda.mg.gov.br/portalnfce"
+        );
+
+        assertTrue(xml.contains("<qCom>0.1250</qCom>"));
+        assertTrue(xml.contains("<vUnCom>10.6000000000</vUnCom>"));
+        assertTrue(xml.split("<vProd>1.33</vProd>", -1).length == 3);
+        assertTrue(xml.split("<vDesc>0.10</vDesc>", -1).length == 3);
+        assertTrue(xml.contains("<vNF>1.23</vNF>"));
+        assertTrue(xml.contains("<vPag>2.00</vPag>"));
+        assertTrue(xml.contains("<vTroco>0.77</vTroco>"));
+    }
+
+    @Test
+    void deveSomarDoisItensPesaveisComDescontosETrocoEmCentavos() throws Exception {
+        FiscalEstablishment establishment = establishment();
+        Sale sale = basicSale(establishment);
+        SaleItem first = sale.getItems().get(0);
+        first.setUnitSnapshot("KG");
+        first.setQuantity(new BigDecimal("0.125"));
+        first.setUnitPrice(new BigDecimal("10.60"));
+        first.setDiscount(new BigDecimal("0.01"));
+        first.setTotal(new BigDecimal("1.32"));
+
+        SaleItem second = new SaleItem();
+        second.setItemNumber(2);
+        second.setCodeSnapshot("P2");
+        second.setNameSnapshot("PRODUTO 2");
+        second.setUnitSnapshot("KG");
+        second.setNcmSnapshot("61091000");
+        second.setOriginSnapshot("0");
+        second.setCfopSnapshot("5102");
+        second.setIcmsCstCsosnSnapshot("40");
+        second.setPisCstSnapshot("06");
+        second.setCofinsCstSnapshot("06");
+        second.setQuantity(new BigDecimal("0.125"));
+        second.setUnitPrice(new BigDecimal("10.60"));
+        second.setDiscount(new BigDecimal("0.02"));
+        second.setTotal(new BigDecimal("1.31"));
+        sale.addItem(second);
+        sale.setSubtotal(new BigDecimal("2.66"));
+        sale.setDiscount(new BigDecimal("0.03"));
+        sale.setTotal(new BigDecimal("2.63"));
+        sale.getPayments().get(0).setAmount(new BigDecimal("5.00"));
+
+        String xml = SefazMgNfceGateway.NfceXmlBuilder.build(
+            establishment, sale, basicDocument(establishment, sale),
+            "31261012345678000195650010000000011000000010", "00000001", 1,
+            "2026-10-08T00:00:00-03:00", "4.00", "SystemPro 1.0",
+            "https://portalsped.fazenda.mg.gov.br/portalnfce/sistema/qrcode.xhtml?p=teste",
+            "https://hportalsped.fazenda.mg.gov.br/portalnfce"
+        );
+        assertTrue(xml.contains("<vProd>2.66</vProd>"));
+        assertTrue(xml.contains("<vDesc>0.03</vDesc>"));
+        assertTrue(xml.contains("<vNF>2.63</vNF>"));
+        assertTrue(xml.contains("<vPag>5.00</vPag>"));
+        assertTrue(xml.contains("<vTroco>2.37</vTroco>"));
+    }
+
+    @Test
+    void deveRejeitarQuantidadeComMaisDeQuatroCasasNoXmlFiscal() throws Exception {
+        FiscalEstablishment establishment = establishment();
+        Sale sale = basicSale(establishment);
+        SaleItem item = sale.getItems().get(0);
+        item.setUnitSnapshot("KG");
+        item.setQuantity(new BigDecimal("0.00001"));
+        item.setUnitPrice(new BigDecimal("1000.00"));
+        item.setDiscount(BigDecimal.ZERO);
+        item.setTotal(new BigDecimal("0.01"));
+        sale.setSubtotal(new BigDecimal("0.01"));
+        sale.setTotal(new BigDecimal("0.01"));
+        sale.getPayments().get(0).setAmount(new BigDecimal("0.01"));
+
+        assertThrows(net.ddns.lexdev.systempro_api.exception.FiscalIntegrationException.class, () ->
+            SefazMgNfceGateway.NfceXmlBuilder.build(
+                establishment, sale, basicDocument(establishment, sale),
+                "31261012345678000195650010000000011000000010", "00000001", 1,
+                "2026-10-08T00:00:00-03:00", "4.00", "SystemPro 1.0",
+                "https://portalsped.fazenda.mg.gov.br/portalnfce/sistema/qrcode.xhtml?p=teste",
+                "https://hportalsped.fazenda.mg.gov.br/portalnfce"
+            )
+        );
+    }
+
+    @Test
     void deveEmitirDadosDeContingenciaOfflineNaIde() throws Exception {
         FiscalEstablishment establishment = establishment();
         Sale sale = basicSale(establishment);

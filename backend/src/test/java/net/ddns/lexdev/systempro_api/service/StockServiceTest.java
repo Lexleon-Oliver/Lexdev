@@ -55,8 +55,20 @@ class StockServiceTest {
         );
         product = new Product();
         product.setControlsStock(true);
+        product.setUnitOfMeasure("KG");
         ReflectionTestUtils.setField(product, "id", 10L);
         user = new User();
+    }
+
+    @Test
+    void shouldRejectFractionalStockEntryForIndivisibleUnit() {
+        product.setUnitOfMeasure("UN");
+        when(productRepository.findByIdForStockUpdate(10L)).thenReturn(Optional.of(product));
+
+        assertThrows(BusinessException.class, () ->
+            service.initializeBalance(10L, new BigDecimal("1.5"), "Inicial", "op-un")
+        );
+        verify(movementRepository, never()).save(any());
     }
 
     @Test

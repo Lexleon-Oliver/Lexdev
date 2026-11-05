@@ -103,6 +103,54 @@ describe('SalesComponent', () => {
     expect(component.quantityStep('UN')).toBe(1);
   });
 
+  it('never assumes 1KG on product insertion and accepts explicit gram input', () => {
+    vi.spyOn((component as any).notification, 'show').mockImplementation(() => undefined);
+    const product = { id: 501, code: 'KG001', name: 'Queijo', unitOfMeasure: 'KG',
+      salePrice: 40, controlsStock: true, controlsExpiration: false };
+    component.selectedEstablishmentId.set(1);
+    component.addProduct(product);
+    expect(component.cart()[0].quantity).toBe(0);
+    expect(component.canFinishSale()).toBe(false);
+
+    component.updateGrams(0, 350);
+    expect(component.cart()[0].quantity).toBe(0.35);
+    expect(component.total()).toBe(14);
+    expect(component.payments()[0].amount).toBe(14);
+    expect(component.canFinishSale()).toBe(true);
+
+    component.addProduct(product);
+    expect(component.cart()[0].quantity).toBe(0.35);
+  });
+
+  it('rounds the gross value of each weighted item before totaling the sale', () => {
+    component.cart.set([
+      { product: { id: 101, code: 'A', name: 'A', unitOfMeasure: 'KG',
+        controlsStock: true, controlsExpiration: false, salePrice: 10.60 },
+        quantity: 0.125, unitPrice: 10.60, discount: 0 },
+      { product: { id: 102, code: 'B', name: 'B', unitOfMeasure: 'KG',
+        controlsStock: true, controlsExpiration: false, salePrice: 10.60 },
+        quantity: 0.125, unitPrice: 10.60, discount: 0 },
+    ]);
+    component.selectedEstablishmentId.set(1);
+    component.updateCartItem(0, 'quantity', 0.125);
+    expect(component.itemTotal(component.cart()[0])).toBe(1.33);
+    expect(component.subtotal()).toBe(2.66);
+    expect(component.total()).toBe(2.66);
+    expect(component.payments()[0].amount).toBe(2.66);
+    expect(component.canFinishSale()).toBe(true);
+  });
+
+  it('rejects fractions of a gram, fractional units and fractions of cents', () => {
+    component.selectedEstablishmentId.set(1);
+    component.addProduct({ id: 33, code: 'KG', name: 'Carne', unitOfMeasure: 'KG',
+      salePrice: 40, controlsStock: true, controlsExpiration: false });
+    component.updateCartItem(0, 'quantity', 0.0001);
+    expect(component.canFinishSale()).toBe(false);
+    component.updateGrams(0, 250);
+    component.updateMoneyCartItem(0, 'discount', '0,005');
+    expect(component.canFinishSale()).toBe(false);
+  });
+
   it('should format monetary values using pt-BR conventions', () => {
     expect(component.formatMoney(3499.9)).toContain('3.499,90');
     expect(component.formatMoneyInput(3499.9)).toBe('3.499,90');

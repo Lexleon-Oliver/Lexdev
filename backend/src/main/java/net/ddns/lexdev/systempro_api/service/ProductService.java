@@ -20,8 +20,11 @@ import net.ddns.lexdev.systempro_api.repository.ProductRepository;
 import net.ddns.lexdev.systempro_api.repository.SupplierRepository;
 import net.ddns.lexdev.systempro_api.repository.StockBalanceRepository;
 import net.ddns.lexdev.systempro_api.repository.StockLotRepository;
+import net.ddns.lexdev.systempro_api.repository.StockMovementRepository;
+import net.ddns.lexdev.systempro_api.repository.SaleRepository;
 import net.ddns.lexdev.systempro_api.exception.BusinessException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 @Service
 public class ProductService {
@@ -30,17 +33,23 @@ public class ProductService {
     private final SupplierRepository supplierRepository;
     private final StockBalanceRepository stockBalanceRepository;
     private final StockLotRepository stockLotRepository;
+    private final StockMovementRepository stockMovementRepository;
+    private final SaleRepository saleRepository;
 
     public ProductService(
         ProductRepository productRepository,
         SupplierRepository supplierRepository,
         StockBalanceRepository stockBalanceRepository,
-        StockLotRepository stockLotRepository
+        StockLotRepository stockLotRepository,
+        StockMovementRepository stockMovementRepository,
+        SaleRepository saleRepository
     ) {
         this.productRepository = productRepository;
         this.supplierRepository = supplierRepository;
         this.stockBalanceRepository = stockBalanceRepository;
         this.stockLotRepository = stockLotRepository;
+        this.stockMovementRepository = stockMovementRepository;
+        this.saleRepository = saleRepository;
     }
 
     // ============================================================
@@ -53,6 +62,7 @@ public class ProductService {
         validateUniqueCode(dto.code(), null);
         validateUniqueGtin(dto.gtin(), null);
         validateExpirationControlRequest(dto);
+        validatePricePrecision(dto);
 
         Product product = new Product();
 
@@ -79,7 +89,9 @@ public class ProductService {
         validateUniqueCode(dto.code(), id);
         validateUniqueGtin(dto.gtin(), id);
         validateExpirationControlRequest(dto);
+        validatePricePrecision(dto);
         validateExpirationControlChange(product, dto);
+        validateUnitOfMeasureChange(product, dto);
 
         applyBasicData(product, dto);
         updateSuppliers(product, dto.suppliers());
@@ -183,6 +195,20 @@ public class ProductService {
         productRepository.delete(product);
     }
 
+    private void validatePricePrecision(ProductRequestDto dto) {
+        validateFourDecimals(dto.salePrice(), "Preço de venda");
+        validateFourDecimals(dto.minimumSalePrice(), "Preço mínimo");
+    }
+
+    private static void validateFourDecimals(BigDecimal amount, String field) {
+        if (amount == null) return;
+        try {
+            amount.setScale(4, RoundingMode.UNNECESSARY);
+        } catch (ArithmeticException e) {
+            throw new BusinessException(field + " aceita no máximo quatro casas decimais.", e);
+        }
+    }
+
     private void validateExpirationControlRequest(ProductRequestDto dto) {
         if (Boolean.TRUE.equals(dto.controlsExpiration()) && !Boolean.TRUE.equals(dto.controlsStock())) {
             throw new BusinessException("Controle de validade exige controle de estoque habilitado.");
@@ -197,6 +223,22 @@ public class ProductService {
         boolean hasLots = stockLotRepository.existsByProductIdAndQuantityGreaterThan(product.getId(), BigDecimal.ZERO);
         if (hasBalance || hasLots) {
             throw new BusinessException("Não é possível alterar o controle de validade enquanto o produto possui saldo em estoque.");
+        }
+    }
+
+    private void validateUnitOfMeasureChange(Product product, ProductRequestDto dto) {
+        String previous = product.getUnitOfMeasure();
+        String requested = dto.unitOfMeasure();
+        if (previous != null && requested != null
+            && previous.trim().equalsIgnoreCase(requested.trim())) return;
+        Long productId = product.getId();
+        if (stockBalanceRepository.findByProductId(productId).isPresent()
+            || stockMovementRepository.existsByProductId(productId)
+            || stockLotRepository.existsByProductIdAndQuantityGreaterThan(productId, BigDecimal.ZERO)
+            || saleRepository.existsSaleItemForProduct(productId)) {
+            throw new BusinessException(
+                "Não é possível alterar a unidade de medida de um produto com histórico de vendas ou estoque."
+            );
         }
     }
 
@@ -216,7 +258,7 @@ public class ProductService {
         product.setManufacturerCode(dto.manufacturerCode());
         product.setGtin(dto.gtin());
         product.setStatus(dto.status());
-        product.setUnitOfMeasure(dto.unitOfMeasure());
+        product.setUnitOfMeasure(dto.unitOfMeasure().trim().toUpperCase(java.util.Locale.ROOT));
         product.setControlsStock(dto.controlsStock());
         product.setControlsExpiration(Boolean.TRUE.equals(dto.controlsExpiration()));
 

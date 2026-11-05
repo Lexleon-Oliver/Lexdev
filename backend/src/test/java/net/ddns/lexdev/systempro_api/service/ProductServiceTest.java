@@ -23,6 +23,12 @@ import net.ddns.lexdev.systempro_api.repository.ProductRepository;
 import net.ddns.lexdev.systempro_api.repository.SupplierRepository;
 import net.ddns.lexdev.systempro_api.repository.StockBalanceRepository;
 import net.ddns.lexdev.systempro_api.repository.StockLotRepository;
+import net.ddns.lexdev.systempro_api.repository.StockMovementRepository;
+import net.ddns.lexdev.systempro_api.repository.SaleRepository;
+import net.ddns.lexdev.systempro_api.dto.ProductRequestDto;
+import net.ddns.lexdev.systempro_api.exception.BusinessException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import java.util.Optional;
 
 @ExtendWith(MockitoExtension.class)
 class ProductServiceTest {
@@ -31,7 +37,49 @@ class ProductServiceTest {
     @Mock SupplierRepository supplierRepository;
     @Mock StockBalanceRepository stockBalanceRepository;
     @Mock StockLotRepository stockLotRepository;
+    @Mock StockMovementRepository stockMovementRepository;
+    @Mock SaleRepository saleRepository;
     @InjectMocks ProductService service;
+
+    @Test
+    void naoDeveArredondarPrecoDoCadastroSilenciosamente() {
+        ProductRequestDto dto = mock(ProductRequestDto.class);
+        when(dto.salePrice()).thenReturn(new java.math.BigDecimal("9.12345"));
+        assertThatThrownBy(() -> service.create(dto))
+            .isInstanceOf(BusinessException.class)
+            .hasMessageContaining("quatro casas decimais");
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void naoPermiteAlterarUnidadeQuandoExisteHistoricoDeVenda() {
+        Product product = mock(Product.class);
+        ProductRequestDto dto = mock(ProductRequestDto.class);
+        when(productRepository.findById(42L)).thenReturn(Optional.of(product));
+        when(product.getId()).thenReturn(42L);
+        when(product.getUnitOfMeasure()).thenReturn("KG");
+        when(dto.unitOfMeasure()).thenReturn("UN");
+        when(saleRepository.existsSaleItemForProduct(42L)).thenReturn(true);
+        assertThatThrownBy(() -> service.update(42L, dto))
+            .isInstanceOf(BusinessException.class)
+            .hasMessageContaining("unidade de medida");
+        verify(product, never()).setUnitOfMeasure(any());
+    }
+
+    @Test
+    void naoPermiteAlterarUnidadeQuandoExisteHistoricoDeEstoque() {
+        Product product = mock(Product.class);
+        ProductRequestDto dto = mock(ProductRequestDto.class);
+        when(productRepository.findById(42L)).thenReturn(Optional.of(product));
+        when(product.getId()).thenReturn(42L);
+        when(product.getUnitOfMeasure()).thenReturn("KG");
+        when(dto.unitOfMeasure()).thenReturn("UN");
+        when(stockMovementRepository.existsByProductId(42L)).thenReturn(true);
+        assertThatThrownBy(() -> service.update(42L, dto))
+            .isInstanceOf(BusinessException.class)
+            .hasMessageContaining("unidade de medida");
+        verify(product, never()).setUnitOfMeasure(any());
+    }
 
     @Test
     void deveListarPaginaSemPesquisa() {

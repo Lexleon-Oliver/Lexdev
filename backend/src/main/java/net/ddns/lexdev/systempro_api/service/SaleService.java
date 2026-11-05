@@ -155,7 +155,7 @@ public class SaleService {
 
             validateProductFiscalData(product, profile);
 
-            BigDecimal unitPrice = money(request.unitPrice() == null ? product.getSalePrice() : request.unitPrice());
+            BigDecimal unitPrice = SalePricing.unitPrice(request.unitPrice() == null ? product.getSalePrice() : request.unitPrice());
             if (unitPrice == null || unitPrice.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new BusinessException("O preço do produto " + product.getCode() + " precisa ser maior que zero.");
             }
@@ -164,14 +164,18 @@ public class SaleService {
                 throw new BusinessException("O preço do produto " + product.getCode() + " está abaixo do preço mínimo configurado.");
             }
 
-            BigDecimal quantity = request.quantity();
-            BigDecimal itemDiscount = money(request.discount());
-            BigDecimal gross = quantity.multiply(unitPrice).setScale(4, RoundingMode.HALF_UP);
+            BigDecimal quantity = SalePricing.quantity(product.getUnitOfMeasure(), request.quantity());
+            BigDecimal itemDiscount = SalePricing.amount(request.discount(), "Desconto do item");
+            BigDecimal gross = SalePricing.gross(quantity, unitPrice);
+            if (gross.signum() == 0) {
+                throw new BusinessException("O valor calculado para o produto " + product.getCode()
+                    + " é inferior a R$ 0,01. Ajuste a quantidade ou o preço.");
+            }
             if (itemDiscount.compareTo(gross) > 0) {
                 throw new BusinessException("O desconto do item do produto " + product.getCode() + " não pode superar o valor bruto do item.");
             }
 
-            BigDecimal itemTotal = gross.subtract(itemDiscount).setScale(4, RoundingMode.HALF_UP);
+            BigDecimal itemTotal = gross.subtract(itemDiscount);
 
             SaleItem item = new SaleItem();
             item.setItemNumber(itemNumber++);
@@ -201,7 +205,7 @@ public class SaleService {
             totalBeforeSaleDiscount = totalBeforeSaleDiscount.add(itemTotal);
         }
 
-        BigDecimal saleDiscount = money(dto.discount());
+        BigDecimal saleDiscount = SalePricing.amount(dto.discount(), "Desconto da venda");
         if (saleDiscount.compareTo(totalBeforeSaleDiscount) > 0) {
             throw new BusinessException("O desconto total não pode superar o valor da venda após os descontos dos itens.");
         }
@@ -212,11 +216,19 @@ public class SaleService {
             rtcSnapshotService.apply(establishment, rtcProfiles.get(item), item, operationDate);
         }
 
-        BigDecimal total = totalBeforeSaleDiscount.subtract(saleDiscount).setScale(4, RoundingMode.HALF_UP);
+        BigDecimal total = sale.getItems().stream()
+            .map(SaleItem::getTotal)
+            .reduce(BigDecimal.ZERO.setScale(2), BigDecimal::add);
+        if (total.compareTo(totalBeforeSaleDiscount.subtract(saleDiscount)) != 0) {
+            throw new BusinessException("Inconsistência na distribuição dos descontos da venda.");
+        }
+        if (total.signum() == 0) {
+            throw new BusinessException("O total da venda precisa ser maior que zero.");
+        }
         BigDecimal totalPaid = BigDecimal.ZERO;
 
         for (SalePaymentRequestDto request : dto.payments()) {
-            BigDecimal amount = money(request.amount());
+            BigDecimal amount = SalePricing.amount(request.amount(), "Pagamento");
             validatePayment(request, amount);
 
             SalePayment payment = new SalePayment();
@@ -236,7 +248,7 @@ public class SaleService {
             throw new BusinessException("A venda possui troco, mas nenhum pagamento em dinheiro foi informado.");
         }
 
-        sale.setSubtotal(subtotal.setScale(4, RoundingMode.HALF_UP));
+        sale.setSubtotal(subtotal);
         sale.setDiscount(saleDiscount);
         sale.setTotal(total);
         sale.setStatus(SaleStatus.AGUARDANDO_FISCAL);
@@ -634,24 +646,29 @@ public class SaleService {
         }
 
         BigDecimal remaining = saleDiscount;
+        BigDecimal remainingBase = itemTotalBase;
         for (int index = 0; index < items.size(); index++) {
             SaleItem item = items.get(index);
+            BigDecimal originalTotal = item.getTotal();
             BigDecimal allocation;
             if (index == items.size() - 1) {
                 allocation = remaining;
-            } else if (item.getTotal().signum() == 0) {
-                allocation = BigDecimal.ZERO.setScale(4);
+            } else if (originalTotal.signum() == 0) {
+                allocation = BigDecimal.ZERO.setScale(2);
             } else {
-                allocation = item.getTotal()
-                    .multiply(saleDiscount)
-                    .divide(itemTotalBase, 4, RoundingMode.HALF_UP);
+                // O rateio é progressivo para que o arredondamento não concentre
+                // centavos indevidos no último item (especialmente em itens de R$ 0,01).
+                allocation = originalTotal.multiply(remaining)
+                    .divide(remainingBase, 2, RoundingMode.HALF_UP);
+                allocation = allocation.min(originalTotal).min(remaining);
             }
-            if (allocation.compareTo(item.getTotal()) > 0) {
-                allocation = item.getTotal();
+            if (allocation.compareTo(originalTotal) > 0) {
+                throw new BusinessException("Inconsistência na distribuição dos descontos da venda.");
             }
-            item.setDiscount(item.getDiscount().add(allocation).setScale(4, RoundingMode.HALF_UP));
-            item.setTotal(item.getTotal().subtract(allocation).setScale(4, RoundingMode.HALF_UP));
-            remaining = remaining.subtract(allocation).setScale(4, RoundingMode.HALF_UP);
+            item.setDiscount(item.getDiscount().add(allocation));
+            item.setTotal(originalTotal.subtract(allocation));
+            remaining = remaining.subtract(allocation);
+            remainingBase = remainingBase.subtract(originalTotal);
         }
     }
 
@@ -674,10 +691,6 @@ public class SaleService {
             document == null ? null : FiscalDocumentResponseDto.fromEntity(document),
             sale.getNote()
         );
-    }
-
-    private static BigDecimal money(BigDecimal value) {
-        return value == null ? BigDecimal.ZERO.setScale(4) : value.setScale(4, RoundingMode.HALF_UP);
     }
 
     private static String normalizeDocument(String value) {
