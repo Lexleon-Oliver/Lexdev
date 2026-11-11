@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -48,6 +49,25 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiErrorResponseDto> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
         return buildResponse(HttpStatus.FORBIDDEN, "Acesso Negado", "Você não tem permissão para acessar este recurso", request.getRequestURI(), null);
+    }
+
+    // Métodos HTTP sem endpoint (405): preservar o cabeçalho Allow fornecido pelo Spring.
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiErrorResponseDto> handleMethodNotAllowed(
+            HttpRequestMethodNotSupportedException ex,
+            HttpServletRequest request) {
+        HttpStatus status = HttpStatus.METHOD_NOT_ALLOWED;
+        ApiErrorResponseDto body = new ApiErrorResponseDto(
+                Instant.now(),
+                status.value(),
+                "Método Não Permitido",
+                "O método HTTP solicitado não é permitido para este recurso",
+                request.getRequestURI(),
+                null
+        );
+        return ResponseEntity.status(status)
+                .headers(ex.getHeaders())
+                .body(body);
     }
 
     // 5. Erro Genérico / Inesperado (500)

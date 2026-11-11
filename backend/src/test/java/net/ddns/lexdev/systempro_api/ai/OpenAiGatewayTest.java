@@ -55,6 +55,17 @@ class OpenAiGatewayTest {
     }
 
     @Test
+    void novoLimiteOperacionalAlteraRequisicaoSemRecriarGateway() throws Exception {
+        var limit = org.mockito.Mockito.mock(net.ddns.lexdev.systempro_api.service.support.AiOutputTokenSettingsService.class);
+        org.mockito.Mockito.when(limit.effectiveValue()).thenReturn(600, 900);
+        AiProperties properties = new AiProperties(true, "openai", 600, 10, 30,
+            new AiProperties.OpenAi("sk-test", "https://api.openai.com/v1", "gpt-6-luna"));
+        var live = new OpenAiGateway(properties, objectMapper, limit);
+        assertThat(objectMapper.readTree(live.buildRequestBody("teste")).path("max_output_tokens").asInt()).isEqualTo(600);
+        assertThat(objectMapper.readTree(live.buildRequestBody("teste")).path("max_output_tokens").asInt()).isEqualTo(900);
+    }
+
+    @Test
     void deveExtrairOutputTextDaResposta() {
         String response = """
             {

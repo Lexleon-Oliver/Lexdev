@@ -72,6 +72,22 @@ class GeminiGatewayTest {
     }
 
     @Test
+    void novoLimiteOperacionalAlteraRequisicaoSemRecriarGateway() throws Exception {
+        var limit = org.mockito.Mockito.mock(net.ddns.lexdev.systempro_api.service.support.AiOutputTokenSettingsService.class);
+        org.mockito.Mockito.when(limit.effectiveValue()).thenReturn(600, 900);
+        AiProperties ai = org.mockito.Mockito.mock(AiProperties.class);
+        org.mockito.Mockito.when(ai.connectTimeoutSeconds()).thenReturn(10);
+        org.mockito.Mockito.when(ai.requestTimeoutSeconds()).thenReturn(30);
+        var gemini = new GeminiGateway(ai,
+            new GeminiProperties("test-api-key", "https://generativelanguage.googleapis.com/v1", "gemini-3.5-flash-lite"),
+            objectMapper, limit);
+        assertThat(objectMapper.readTree(gemini.buildRequestBody("teste"))
+            .path("generation_config").path("max_output_tokens").asInt()).isEqualTo(600);
+        assertThat(objectMapper.readTree(gemini.buildRequestBody("teste"))
+            .path("generation_config").path("max_output_tokens").asInt()).isEqualTo(900);
+    }
+
+    @Test
     void deveExtrairTextoDaRespostaDaInteractionsApi() {
         String response = """
             {

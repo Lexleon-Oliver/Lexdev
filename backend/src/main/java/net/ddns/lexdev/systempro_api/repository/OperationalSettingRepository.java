@@ -1,0 +1,6 @@
+package net.ddns.lexdev.systempro_api.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import net.ddns.lexdev.systempro_api.domain.OperationalSetting;
+
+public interface OperationalSettingRepository extends JpaRepository<OperationalSetting, String> {}

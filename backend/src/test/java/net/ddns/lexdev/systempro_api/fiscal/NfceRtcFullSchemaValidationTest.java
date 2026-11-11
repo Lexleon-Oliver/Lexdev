@@ -116,6 +116,15 @@ class NfceRtcFullSchemaValidationTest {
             "https://portalsped.fazenda.mg.gov.br/portalnfce/sistema/consultaarg.xhtml"
         );
 
+        // V2: conciliação independente dos valores efetivamente serializados no XML.
+        var audit = NfceTaxXmlReconciliation.reconcile(sale, TaxRegime.REGIME_NORMAL, xml);
+        org.junit.jupiter.api.Assertions.assertEquals(new BigDecimal("99.00"), audit.netCommercial());
+        org.junit.jupiter.api.Assertions.assertEquals(new BigDecimal("0.10"), audit.ibsUf());
+        org.junit.jupiter.api.Assertions.assertEquals(new BigDecimal("0.89"), audit.cbs());
+        org.junit.jupiter.api.Assertions.assertEquals(
+            NfceTaxXmlReconciliation.PriceInclusionStatus.NOT_DEMONSTRATED,
+            audit.priceInclusionStatus());
+
         assertTrue(xml.contains("<IBSCBS><CST>000</CST><cClassTrib>000001</cClassTrib>"));
         assertTrue(xml.contains("<vBCIBSCBS>99.00</vBCIBSCBS>"));
         assertTrue(xml.contains("<vIBSUF>0.10</vIBSUF>"));
@@ -131,6 +140,9 @@ class NfceRtcFullSchemaValidationTest {
         );
 
         String signedXml = signForSchemaValidation(xml);
+        assertDoesNotThrow(() -> NfceTaxXmlReconciliation.reconcile(
+            sale, TaxRegime.REGIME_NORMAL, signedXml),
+            "A conciliação também deve aceitar o XML assinado.");
         assertDoesNotThrow(() -> validator.validate(signedXml));
 
         NfceSchemaValidator validatorPl010g = new NfceSchemaValidator(
@@ -236,6 +248,10 @@ class NfceRtcFullSchemaValidationTest {
         assertTrue(withLiquid.contains("<vUnComLiq>8.0000000000</vUnComLiq><vProdLiq>1.00</vProdLiq>"));
         assertTrue(withLiquid.contains("<vUnComLiq>7.2000000000</vUnComLiq><vProdLiq>0.90</vProdLiq>"));
         assertTrue(withLiquid.contains("<total><vProdLiqTot>1.90</vProdLiqTot><ICMSTot>"));
+        // Inclui descontos e quantidade fracionária, sem inferir preço sem tributos.
+        var liquidAudit = NfceTaxXmlReconciliation.reconcile(sale, TaxRegime.REGIME_NORMAL, withLiquid);
+        org.junit.jupiter.api.Assertions.assertEquals(new BigDecimal("2.56"), liquidAudit.netCommercial());
+
         assertTrue(withLiquid.contains("<vNF>2.56</vNF>"));
         assertTrue(withLiquid.contains("<vTroco>2.44</vTroco>"));
 
@@ -312,6 +328,14 @@ class NfceRtcFullSchemaValidationTest {
         );
         assertTrue(xml.contains("<vUnComLiq>10.6000000000</vUnComLiq>"));
         assertTrue(xml.contains("<vProdLiq>1.33</vProdLiq>"));
+        var zeroAudit = NfceTaxXmlReconciliation.reconcile(sale, TaxRegime.REGIME_NORMAL, xml);
+        org.junit.jupiter.api.Assertions.assertEquals(new BigDecimal("11.33"), zeroAudit.netCommercial());
+        org.junit.jupiter.api.Assertions.assertEquals(new BigDecimal("0.00"), zeroAudit.cbs());
+        // Mesmo zero, só o produtor específico do recorte CST 200 pode criar valores líquidos.
+        org.junit.jupiter.api.Assertions.assertEquals(
+            NfceTaxXmlReconciliation.PriceInclusionStatus.NOT_DEMONSTRATED,
+            zeroAudit.priceInclusionStatus());
+
         assertTrue(xml.contains("<vProdLiqTot>11.33</vProdLiqTot>"));
         assertTrue(xml.contains("<CST>200</CST><cClassTrib>200003</cClassTrib>"));
         assertTrue(xml.contains("<pIBSUF>0.1000</pIBSUF><gRed><pRedAliq>100.0000</pRedAliq>"));

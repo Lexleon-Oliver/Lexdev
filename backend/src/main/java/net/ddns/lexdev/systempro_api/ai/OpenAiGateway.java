@@ -7,6 +7,9 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.function.IntSupplier;
+
+import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.stereotype.Component;
 
@@ -17,6 +20,7 @@ import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
 import net.ddns.lexdev.systempro_api.config.AiProperties;
+import net.ddns.lexdev.systempro_api.service.support.AiOutputTokenSettingsService;
 
 @Component
 public class OpenAiGateway implements AiGateway {
@@ -32,13 +36,24 @@ public class OpenAiGateway implements AiGateway {
     private final AiProperties properties;
     private final JsonMapper objectMapper;
     private final HttpClient httpClient;
+    private final IntSupplier maxOutputTokens;
 
-    public OpenAiGateway(
-        AiProperties properties,
-        JsonMapper objectMapper
-    ) {
+    @Autowired
+    public OpenAiGateway(AiProperties properties, JsonMapper objectMapper,
+                         AiOutputTokenSettingsService limits) {
+        this(properties, objectMapper, limits::effectiveValue);
+    }
+
+    // Mantido para testes e consumidores Java existentes.
+    public OpenAiGateway(AiProperties properties, JsonMapper objectMapper) {
+        this(properties, objectMapper, () -> positive(properties.maxOutputTokens(), 600));
+    }
+
+    private OpenAiGateway(AiProperties properties, JsonMapper objectMapper,
+                          IntSupplier maxOutputTokens) {
         this.properties = properties;
         this.objectMapper = objectMapper;
+        this.maxOutputTokens = maxOutputTokens;
         this.httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(
                 positive(properties.connectTimeoutSeconds(), 10)
@@ -103,7 +118,7 @@ public class OpenAiGateway implements AiGateway {
         root.put("store", false);
         root.put(
             "max_output_tokens",
-            positive(properties.maxOutputTokens(), 600)
+            maxOutputTokens.getAsInt()
         );
 
         root.putObject("reasoning")

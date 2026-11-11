@@ -1,0 +1,56 @@
+<section class="configuration-page">
+  <div class="page-header">
+    <div>
+      <h2>Configurações técnicas</h2>
+      <p class="subtitle">Diagnóstico de recursos e responsabilidades de configuração do SystemPro.</p>
+    </div>
+    <button type="button" class="refresh-btn" (click)="reload()" [disabled]="loading">
+      <i class="fas fa-rotate"></i> Atualizar
+    </button>
+  </div>
+
+  <div class="info-note" role="note">
+    <i class="fas fa-shield-alt"></i>
+    <span>Consulta somente leitura para suporte. Nenhuma opção pode ser ativada nesta tela. Alterações técnicas exigem controle da instalação; segredos e credenciais não são exibidos.</span>
+  </div>
+
+  @if (error) {
+    <div class="error-note" role="alert"><i class="fas fa-exclamation-triangle"></i> {{ error }}</div>
+  }
+
+  @if (loading) {
+    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Consultando configurações…</div>
+  } @else if (overview) {
+    <section class="panel" aria-label="Estado dos recursos">
+      <h3>Estado dos recursos</h3>
+      <p class="helper">Valores efetivos obtidos na inicialização do backend. Uma atualização de tela não recarrega propriedades externas.</p>
+      <div class="feature-list">
+        @for (feature of overview.features; track feature.key) {
+          <div class="feature-row">
+            <div class="feature-body">
+              <strong>{{ feature.label }}</strong>
+              <small>{{ feature.category }} · {{ feature.key }}</small>
+            </div>
+            <div class="feature-status">
+              <span class="status" [class.enabled]="feature.enabled">{{ feature.enabled ? 'Ativado' : 'Desativado' }}</span>
+              @if (feature.requiresRestart) { <small>Requer reinício do backend para alterar</small> }
+            </div>
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Responsáveis pelas configurações">
+      <h3>Onde administrar</h3>
+      <div class="area-grid">
+        @for (area of overview.areas; track area.name) {
+          <article class="area-card">
+            <div class="area-heading"><strong>{{ area.name }}</strong><span>{{ area.ownership }}</span></div>
+            <p>{{ area.explanation }}</p>
+            <small>{{ area.location }}</small>
+          </article>
+        }
+      </div>
+    </section>
+  }
+</section>

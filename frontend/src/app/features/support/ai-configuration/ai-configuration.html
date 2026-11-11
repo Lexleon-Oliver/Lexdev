@@ -1,0 +1,44 @@
+<section class="ai-config-page">
+  <div class="page-header">
+    <div>
+      <h2>Parâmetro operacional da IA</h2>
+      <p class="subtitle">Controle restrito ao suporte. Uma alteração não ativa a inteligência artificial.</p>
+    </div>
+    <button type="button" class="secondary-btn" (click)="reload()" [disabled]="loading || saving">Atualizar</button>
+  </div>
+
+  <div class="info-note" role="note">
+    <i class="fas fa-shield-alt"></i>
+    <span>Apenas o limite de tokens é editável. Ativação da IA, chaves de API, recursos fiscais e licenciamento permanecem bloqueados.</span>
+  </div>
+
+  @if (error) { <div class="error-note" role="alert">{{ error }}</div> }
+  @if (success) { <div class="success-note" role="status">{{ success }}</div> }
+
+  @if (loading) {
+    <div class="loading">Consultando configuração…</div>
+  } @else if (settings) {
+    <form class="panel" [formGroup]="form" (ngSubmit)="save()">
+      <h3>Limite máximo de tokens de saída</h3>
+      <p class="helper">O limite é aplicado às novas solicitações aos provedores OpenAI e Gemini, sem reiniciar o backend.</p>
+      <div class="input-row">
+        <label for="aiTokenLimit">Tokens por resposta (128 a 2048)</label>
+        <input id="aiTokenLimit" type="number" inputmode="numeric" min="128" max="2048" step="1"
+          formControlName="value" [attr.aria-invalid]="form.controls.value.invalid" />
+        @if (form.controls.value.invalid && form.controls.value.touched) {
+          <small class="field-error">Informe um número inteiro entre 128 e 2048.</small>
+        }
+      </div>
+      <p class="detail">Padrão da instalação: <strong>{{ settings.installationDefault }}</strong> tokens.</p>
+      <p class="detail">Origem atual: <strong>{{ settings.overridden ? 'Personalizada no banco' : 'Configuração da instalação' }}</strong>.</p>
+      <div class="actions">
+        <button type="submit" class="primary-btn" [disabled]="saving || loading || form.invalid || form.pristine">
+          {{ saving ? 'Salvando…' : 'Salvar limite' }}
+        </button>
+        <button type="button" class="secondary-btn" (click)="reset()" [disabled]="saving || !settings.overridden">
+          Restaurar padrão
+        </button>
+      </div>
+    </form>
+  }
+</section>

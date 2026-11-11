@@ -43,6 +43,17 @@ export const routes: Routes = [
         canActivate: [supportGuard],
         loadComponent: () => import('./features/support/deleted-records/deleted-records').then(m => m.DeletedRecordsComponent)
       },
+      {
+        path: 'suporte/configuracoes-tecnicas',
+        canActivate: [supportGuard],
+        loadComponent: () => import('./features/support/configuration/configuration').then(m => m.SupportConfigurationComponent)
+      },
+      {
+        path: 'suporte/configuracoes-ia',
+        canActivate: [supportGuard],
+        loadComponent: () => import('./features/support/ai-configuration/ai-configuration')
+          .then(m => m.SupportAiConfigurationComponent)
+      },
       { path: 'usuarios', loadComponent: () =>
           import('./features/users/users-component/users-component')
             .then(m => m.UsersComponent)

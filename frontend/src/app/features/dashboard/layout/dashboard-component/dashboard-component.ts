@@ -128,7 +128,11 @@ export class DashboardComponent implements OnInit {
     if (this.authService.isSupport()) {
       this.menus.push({
         key: 'suporte', label: 'Suporte', icon: 'fas fa-tools', open: false,
-        submenu: [{ key: 'recovery', label: 'Recuperação de dados', icon: '', route: ['/suporte/recuperacao'] }]
+        submenu: [
+          { key: 'recovery', label: 'Recuperação de dados', icon: '', route: ['/suporte/recuperacao'] },
+          { key: 'technical-config', label: 'Configurações técnicas', icon: '', route: ['/suporte/configuracoes-tecnicas'] },
+          { key: 'ai-limit-config', label: 'Limite de tokens IA', icon: '', route: ['/suporte/configuracoes-ia'] }
+        ]
       });
     }
 

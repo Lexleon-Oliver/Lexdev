@@ -7,10 +7,14 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.function.IntSupplier;
+
+import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.stereotype.Component;
 
 import net.ddns.lexdev.systempro_api.config.AiProperties;
+import net.ddns.lexdev.systempro_api.service.support.AiOutputTokenSettingsService;
 import net.ddns.lexdev.systempro_api.config.GeminiProperties;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -32,15 +36,25 @@ public class GeminiGateway implements AiGateway {
     private final GeminiProperties properties;
     private final JsonMapper objectMapper;
     private final HttpClient httpClient;
+    private final IntSupplier maxOutputTokens;
 
-    public GeminiGateway(
-        AiProperties aiProperties,
-        GeminiProperties properties,
-        JsonMapper objectMapper
-    ) {
+    @Autowired
+    public GeminiGateway(AiProperties aiProperties, GeminiProperties properties,
+                         JsonMapper objectMapper, AiOutputTokenSettingsService limits) {
+        this(aiProperties, properties, objectMapper, limits::effectiveValue);
+    }
+
+    // Mantido para testes e consumidores Java existentes.
+    public GeminiGateway(AiProperties aiProperties, GeminiProperties properties, JsonMapper objectMapper) {
+        this(aiProperties, properties, objectMapper, aiProperties::maxOutputTokens);
+    }
+
+    private GeminiGateway(AiProperties aiProperties, GeminiProperties properties,
+                          JsonMapper objectMapper, IntSupplier maxOutputTokens) {
         this.aiProperties = aiProperties;
         this.properties = properties;
         this.objectMapper = objectMapper;
+        this.maxOutputTokens = maxOutputTokens;
 
         this.httpClient = HttpClient.newBuilder()
             .connectTimeout(
@@ -119,7 +133,7 @@ public class GeminiGateway implements AiGateway {
 
             generationConfig.put(
                 "max_output_tokens",
-                aiProperties.maxOutputTokens()
+                maxOutputTokens.getAsInt()
             );
 
             return objectMapper.writeValueAsString(body);
@@ -276,7 +290,7 @@ public class GeminiGateway implements AiGateway {
             );
         }
 
-        if (aiProperties.maxOutputTokens() <= 0) {
+        if (maxOutputTokens.getAsInt() <= 0) {
             throw new IllegalStateException(
                 "AI_MAX_OUTPUT_TOKENS deve ser maior que zero."
             );
