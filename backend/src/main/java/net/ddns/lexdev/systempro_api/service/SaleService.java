@@ -287,6 +287,13 @@ public class SaleService {
         FiscalDocument document = fiscalDocumentRepository.findBySaleId(saleId)
             .orElseThrow(() -> new EntityNotFoundException("Documento fiscal da venda não encontrado."));
 
+        if (sale.getStatus() == SaleStatus.CANCELADA) {
+            throw new BusinessException("A venda está cancelada e não pode ser emitida fiscalmente.");
+        }
+        if (document.getStatus() == FiscalDocumentStatus.DESCARTADA) {
+            throw new BusinessException("A NFC-e desta venda foi descartada e não pode ser emitida novamente.");
+        }
+
         if (document.getStatus() == FiscalDocumentStatus.AUTORIZADA) {
             return response(sale, document);
         }

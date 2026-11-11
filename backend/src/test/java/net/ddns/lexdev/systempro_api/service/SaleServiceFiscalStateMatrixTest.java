@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,6 +22,7 @@ import net.ddns.lexdev.systempro_api.config.FiscalProperties;
 import net.ddns.lexdev.systempro_api.domain.FiscalDocument;
 import net.ddns.lexdev.systempro_api.domain.Sale;
 import net.ddns.lexdev.systempro_api.enums.FiscalDocumentStatus;
+import net.ddns.lexdev.systempro_api.enums.SaleStatus;
 import net.ddns.lexdev.systempro_api.exception.BusinessException;
 import net.ddns.lexdev.systempro_api.fiscal.SefazNfceGateway;
 import net.ddns.lexdev.systempro_api.fiscal.contingency.NfceContingencyPolicy;
@@ -68,6 +70,23 @@ class SaleServiceFiscalStateMatrixTest {
         long saleId = 100L + status.ordinal();
         Fixture fixture = fixture(saleId, status);
         when(fiscalProperties.enabled()).thenReturn(true);
+
+        assertThatThrownBy(() -> service.issue(saleId))
+            .isInstanceOf(BusinessException.class);
+
+        verify(gateway, never()).authorize(any(), any(), any());
+        verify(fiscalEstablishmentService, never()).assertReadyForEmission(any());
+    }
+
+    @Test
+    void emissaoNormalNaoDeveAtravessarGatewayComVendaCancelada() {
+        long saleId = 500L;
+        Sale sale = mock(Sale.class);
+        FiscalDocument document = mock(FiscalDocument.class);
+        when(saleRepository.findForFiscal(saleId)).thenReturn(Optional.of(sale));
+        when(fiscalDocumentRepository.findBySaleId(saleId)).thenReturn(Optional.of(document));
+        when(fiscalProperties.enabled()).thenReturn(true);
+        when(sale.getStatus()).thenReturn(SaleStatus.CANCELADA);
 
         assertThatThrownBy(() -> service.issue(saleId))
             .isInstanceOf(BusinessException.class);
@@ -129,6 +148,7 @@ class SaleServiceFiscalStateMatrixTest {
             FiscalDocumentStatus.REJEITADA,
             FiscalDocumentStatus.CANCELAMENTO_PENDENTE,
             FiscalDocumentStatus.CANCELADA,
+            FiscalDocumentStatus.DESCARTADA,
             FiscalDocumentStatus.CONTINGENCIA
         );
     }

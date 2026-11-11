@@ -130,6 +130,18 @@ public final class NfceZeroTaxSnapshotProducer {
             throw unsupported("total não corresponde a quantidade multiplicada pelo preço");
         }
 
+        // Segunda conciliação independente: os valores tributários apresentados
+        // no XML devem coincidir com o snapshot da operação. Isso NÃO autoriza
+        // produzir valores líquidos para operações tributadas.
+        NfceTaxCompositionEvidence evidence = NfceTaxCompositionEvidence.capture(
+            item, TaxRegime.REGIME_NORMAL
+        );
+        if (!evidence.allReportedAmountsZero()
+            || evidence.netCommercial().compareTo(total) != 0
+            || evidence.rtcTaxBase().compareTo(total) != 0) {
+            throw unsupported("evidências tributárias divergentes da venda sem tributos");
+        }
+
         // Como nenhum tributo conhecido incide nesta operação estritamente
         // delimitada e não há desconto, o valor comercial coincide com o valor
         // fiscal sem tributos. NUNCA estender esta igualdade a itens tributados.
