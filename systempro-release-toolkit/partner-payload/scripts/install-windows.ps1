@@ -15,7 +15,6 @@ $RootPublicSource = Join-Path $MediaDir "agent\trust\root-public.json"
 $Version = (Get-Content (Join-Path $MediaDir "VERSION") -Raw).Trim()
 $EnvFile = Join-Path $InstallDir ".env"
 $ServiceName = "SystemProLicenseAgent"
-$EnvUtf8 = [System.Text.UTF8Encoding]::new($false, $true)
 
 function New-RandomBase64([int]$Count) {
     # Compatível com Windows PowerShell 5.1 / .NET Framework e PowerShell 7+.
@@ -33,7 +32,7 @@ function New-RandomBase64([int]$Count) {
 function Read-EnvFile([string]$Path) {
     $map = @{}
     if (Test-Path $Path) {
-        foreach ($line in [System.IO.File]::ReadAllLines($Path, $EnvUtf8)) {
+        foreach ($line in Get-Content $Path) {
             if ($line -match '^\s*#' -or $line -notmatch '=') { continue }
             $pair = $line.Split('=',2)
             $value = $pair[1]
@@ -49,14 +48,72 @@ function Read-EnvFile([string]$Path) {
 function Ensure-Env([string]$Name, [string]$Value) {
     $current = Read-EnvFile $EnvFile
     if (-not $current.ContainsKey($Name)) {
-        $text = [System.IO.File]::ReadAllText($EnvFile, $EnvUtf8)
-        $newline = if ($text.Contains("`r`n")) { "`r`n" } else { "`n" }
-        $prefix = if ($text.Length -gt 0 -and -not $text.EndsWith("`n")) { $newline } else { "" }
-        [System.IO.File]::AppendAllText(
-            $EnvFile,
-            $prefix + ("{0}={1}" -f $Name,$Value) + $newline,
-            $EnvUtf8
+        Add-Content -Path $EnvFile -Encoding ascii -Value ("{0}={1}" -f $Name,$Value)
+    }
+}
+
+# Alterações pontuais no .env preservam os demais bytes (UTF-8, CRLF, comentários e valores do cliente).
+# Não utilizamos Set-Content -Encoding ascii em atualizações de instalações existentes.
+function Set-EnvAssignmentPreservingBytes([string]$Path, [string]$Key, [string]$Value) {
+    if ($Key -notmatch '^[A-Z][A-Z0-9_]*$' -or $Value -match '[\r\n]') {
+        throw "Chave ou valor de configuração inválido."
+    }
+    $enc = [System.Text.Encoding]::GetEncoding(28591) # Mapeamento 1:1 de bytes, não altera outros valores.
+    $original = $enc.GetString([System.IO.File]::ReadAllBytes($Path))
+    $pattern = '(?m)^' + [regex]::Escape($Key) + '=[^\r\n]*'
+    $replacement = $Key + '=' + $Value
+    if ([regex]::IsMatch($original, $pattern)) {
+        $updated = [regex]::Replace($original, $pattern, [System.Text.RegularExpressions.MatchEvaluator]{ param($match) $replacement })
+    } else {
+        $separator = if ($original.EndsWith("`r`n")) { "`r`n" } elseif ($original.EndsWith("`n")) { "`n" } elseif ($original.Contains("`r`n")) { "`r`n" } else { "`n" }
+        if ($original.Length -gt 0 -and -not $original.EndsWith("`n")) { $original += $separator }
+        $updated = $original + $replacement + $separator
+    }
+    if ($updated -cne $original) {
+        $temp = Join-Path (Split-Path -Parent $Path) ('.' + (Split-Path -Leaf $Path) + '.tmp.' + [guid]::NewGuid().ToString('N'))
+        try {
+            [System.IO.File]::WriteAllBytes($temp, $enc.GetBytes($updated))
+            Set-Acl -LiteralPath $temp -AclObject (Get-Acl -LiteralPath $Path) -ErrorAction Stop
+            [System.IO.File]::Replace($temp, $Path, $null) # Troca atômica no mesmo volume NTFS.
+        } finally {
+            if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp -Force }
+        }
+    }
+}
+
+# Retém somente SYSTEM e Administrators, inclusive em atualizações de instalações anteriores.
+# Arquivos/pastas de teste são criados fora da instalação; não altere a pasta public/instance.json.
+function Protect-SystemProSecretPath([string]$Path) {
+    $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+    if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw "Caminho sigiloso é um link/reparse point: $Path"
+    }
+    $acl = Get-Acl -LiteralPath $Path -ErrorAction Stop
+    $acl.SetAccessRuleProtection($true, $false)
+    foreach ($rule in @($acl.Access)) { [void]$acl.RemoveAccessRuleSpecific($rule) }
+    $inherit = [System.Security.AccessControl.InheritanceFlags]::None
+    if ($item.PSIsContainer) {
+        $inherit = [System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [System.Security.AccessControl.InheritanceFlags]::ObjectInherit
+    }
+    foreach ($sid in @('S-1-5-18', 'S-1-5-32-544')) {
+        $identity = [System.Security.Principal.SecurityIdentifier]::new($sid)
+        $rule = [System.Security.AccessControl.FileSystemAccessRule]::new(
+            $identity,
+            [System.Security.AccessControl.FileSystemRights]::FullControl,
+            $inherit,
+            [System.Security.AccessControl.PropagationFlags]::None,
+            [System.Security.AccessControl.AccessControlType]::Allow
         )
+        [void]$acl.AddAccessRule($rule)
+    }
+    Set-Acl -LiteralPath $Path -AclObject $acl -ErrorAction Stop
+    $effective = Get-Acl -LiteralPath $Path -ErrorAction Stop
+    if (-not $effective.AreAccessRulesProtected) { throw "ACL ainda permite herança: $Path" }
+    foreach ($rule in @($effective.Access)) {
+        $sid = $rule.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value
+        if ($sid -notin @('S-1-5-18', 'S-1-5-32-544')) {
+            throw "Principal não autorizado nas permissões de $Path: $sid"
+        }
     }
 }
 
@@ -70,6 +127,8 @@ if ($LASTEXITCODE -ne 0) { throw "Docker Compose v2 não está disponível." }
 if (-not (Test-Path $ImageArchive)) { throw "Arquivo de imagens não encontrado: $ImageArchive" }
 if (-not (Test-Path $AgentSource)) { throw "Host Agent Windows não encontrado na mídia." }
 if (-not (Test-Path $RootPublicSource)) { throw "Root Public Key de licenciamento não encontrada na mídia." }
+if (-not (Test-Path $ComposeSource)) { throw "docker-compose.yml não encontrado na mídia." }
+if (-not (Test-Path $CtlSource)) { throw "systemproctl-windows.ps1 não encontrado na mídia." }
 
 if (Test-Path (Join-Path $MediaDir "SHA256SUMS")) {
     foreach ($line in Get-Content (Join-Path $MediaDir "SHA256SUMS")) {
@@ -77,10 +136,9 @@ if (Test-Path (Join-Path $MediaDir "SHA256SUMS")) {
             $expected = $Matches[1].ToLowerInvariant()
             $relative = $Matches[2] -replace '^\./',''
             $target = Join-Path $MediaDir $relative
-            if (Test-Path $target) {
-                $actual = (Get-FileHash -Algorithm SHA256 $target).Hash.ToLowerInvariant()
-                if ($actual -ne $expected) { throw "Falha de integridade: $relative" }
-            }
+            if (-not (Test-Path -LiteralPath $target)) { throw "Arquivo da mídia ausente: $relative" }
+            $actual = (Get-FileHash -Algorithm SHA256 $target).Hash.ToLowerInvariant()
+            if ($actual -ne $expected) { throw "Falha de integridade: $relative" }
         }
     }
 }
@@ -97,10 +155,10 @@ if ($FirstInstall) {
     $InstanceDirDocker = $InstanceDirNative -replace '\\','/'
     $LicenseServer = if ($env:SYSTEMPRO_LICENSE_SERVER_URL) { $env:SYSTEMPRO_LICENSE_SERVER_URL } else { "https://license.lexdev.net.br" }
     $ActivationPath = if ($env:SYSTEMPRO_LICENSE_ACTIVATION_PATH) { $env:SYSTEMPRO_LICENSE_ACTIVATION_PATH } else { "/api/v1/activations" }
-    $HeartbeatPath = if ($env:SYSTEMPRO_LICENSE_HEARTBEAT_PATH) { $env:SYSTEMPRO_LICENSE_HEARTBEAT_PATH } else { "/api/v1/heartbeats" }
+    $HeartbeatPath = if ($env:SYSTEMPRO_LICENSE_HEARTBEAT_PATH) { $env:SYSTEMPRO_LICENSE_HEARTBEAT_PATH } else { "/api/v1/heartbeat" }
     $RenewalPath = if ($env:SYSTEMPRO_LICENSE_RENEWAL_PATH) { $env:SYSTEMPRO_LICENSE_RENEWAL_PATH } else { "/api/v1/leases/renewals" }
 
-    $InitialEnv = @"
+    @"
 # SystemPro - configuração persistente da instalação
 SYSTEMPRO_VERSION=$Version
 SYSTEMPRO_HTTP_PORT=$Port
@@ -184,16 +242,9 @@ SYSTEMPRO_LICENSE_HEARTBEAT_INTERVAL_SECONDS=21600
 SYSTEMPRO_LICENSE_RENEWAL_INTERVAL_SECONDS=86400
 SYSTEMPRO_LICENSE_JITTER_SECONDS=900
 LICENSE_CACHE_MILLIS=5000
-"@
-    [System.IO.File]::WriteAllText($EnvFile, $InitialEnv + [Environment]::NewLine, $EnvUtf8)
+"@ | Set-Content -Path $EnvFile -Encoding ascii
 } else {
-    $lines = [System.IO.File]::ReadAllLines($EnvFile, $EnvUtf8)
-    $found = $false
-    $updated = foreach ($line in $lines) {
-        if ($line -match '^SYSTEMPRO_VERSION=') { $found = $true; "SYSTEMPRO_VERSION=$Version" } else { $line }
-    }
-    if (-not $found) { $updated += "SYSTEMPRO_VERSION=$Version" }
-    [System.IO.File]::WriteAllLines($EnvFile, [string[]]$updated, $EnvUtf8)
+    Set-EnvAssignmentPreservingBytes $EnvFile "SYSTEMPRO_VERSION" $Version
 
     $DefaultInstance = (Join-Path $InstallDir "instance") -replace '\\','/'
     Ensure-Env "SYSTEMPRO_INSTANCE_DIR" $DefaultInstance
@@ -214,7 +265,7 @@ LICENSE_CACHE_MILLIS=5000
     Ensure-Env "BACKUP_SCHEDULING_CHECK_INTERVAL_MILLIS" "3600000"; Ensure-Env "BACKUP_SCHEDULING_INITIAL_DELAY_MILLIS" "60000"; Ensure-Env "BACKUP_RETENTION_SCHEDULED_DAYS" "30"
     Ensure-Env "SYSTEMPRO_LICENSE_SERVER_URL" "https://license.lexdev.net.br"
     Ensure-Env "SYSTEMPRO_LICENSE_ACTIVATION_PATH" "/api/v1/activations"
-    Ensure-Env "SYSTEMPRO_LICENSE_HEARTBEAT_PATH" "/api/v1/heartbeats"
+    Ensure-Env "SYSTEMPRO_LICENSE_HEARTBEAT_PATH" "/api/v1/heartbeat"
     Ensure-Env "SYSTEMPRO_LICENSE_RENEWAL_PATH" "/api/v1/leases/renewals"
     Ensure-Env "SYSTEMPRO_LICENSE_REQUEST_TIMEOUT_SECONDS" "30"
     Ensure-Env "SYSTEMPRO_LICENSE_HEARTBEAT_INTERVAL_SECONDS" "21600"
@@ -223,11 +274,22 @@ LICENSE_CACHE_MILLIS=5000
     Ensure-Env "LICENSE_CACHE_MILLIS" "5000"
 }
 
+# Corrige exclusivamente a rota padrão defeituosa de instalações R2.4 que usam o servidor oficial.
+# Valores de URL ou rota customizados continuam intactos.
+$ExistingEnv = Read-EnvFile $EnvFile
+if ($ExistingEnv["SYSTEMPRO_LICENSE_SERVER_URL"] -eq "https://license.lexdev.net.br" -and
+    $ExistingEnv["SYSTEMPRO_LICENSE_HEARTBEAT_PATH"] -eq "/api/v1/heartbeats") {
+    Set-EnvAssignmentPreservingBytes $EnvFile "SYSTEMPRO_LICENSE_HEARTBEAT_PATH" "/api/v1/heartbeat"
+    Write-Host "SYSTEMPRO_HEARTBEAT_DEFAULT_MIGRATED=OK"
+}
+Protect-SystemProSecretPath $EnvFile
+
 $EnvMap = Read-EnvFile $EnvFile
 $InstanceDirDocker = $EnvMap["SYSTEMPRO_INSTANCE_DIR"]
 $InstanceDirNative = $InstanceDirDocker -replace '/','\'
 New-Item -ItemType Directory -Force -Path (Join-Path $InstanceDirNative "private") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $InstanceDirNative "public") | Out-Null
+Protect-SystemProSecretPath (Join-Path $InstanceDirNative "private")
 
 $AgentDir = Join-Path $InstallDir "agent"
 $TrustDir = Join-Path $AgentDir "trust"
@@ -285,6 +347,7 @@ $config = [ordered]@{
 $ConfigJson = $config | ConvertTo-Json
 $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 [System.IO.File]::WriteAllText($AgentConfig, $ConfigJson, $Utf8NoBom)
+Protect-SystemProSecretPath $AgentConfig
 
 $PublicInstance = Join-Path $InstanceDirNative "public\instance.json"
 if (-not (Test-Path $PublicInstance)) {

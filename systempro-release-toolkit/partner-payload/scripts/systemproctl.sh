@@ -24,6 +24,29 @@ case "${1:-status}" in
   status) compose ps ;;
   logs) shift; compose logs --tail=200 "$@" ;;
   version) grep '^SYSTEMPRO_VERSION=' "$ENV_FILE" | cut -d= -f2- ;;
+  # Não imprime o docker compose config completo: ele contém segredos interpolados.
+  config-check)
+    compose config --quiet
+    echo "SYSTEMPRO_CONFIG=OK"
+    ;;
+  config-apply)
+    target=${2:-}
+    confirm=${3:-}
+    case "$target" in
+      backend|proxy) ;;
+      *) echo "Uso: systemproctl config-apply {backend|proxy} --confirm" >&2; exit 2 ;;
+    esac
+    [ "$confirm" = "--confirm" ] || {
+      echo "Confirme explicitamente: systemproctl config-apply $target --confirm" >&2
+      exit 2
+    }
+    # Valida todas as variáveis antes de recriar qualquer container.
+    compose config --quiet
+    # Sem pull, rebuild, dependências nem remoção de volumes.
+    compose up -d --no-deps --no-build --pull never "$target"
+    echo "SYSTEMPRO_CONFIG_APPLIED=$target"
+    echo "ATENÇÃO: mudanças em licenciamento/Host Agent não são aplicadas por este comando."
+    ;;
   license)
     [ -x "$AGENT" ] || { echo "Host Agent não encontrado." >&2; exit 2; }
     "$AGENT" status --config "$AGENT_CONFIG"
@@ -38,7 +61,7 @@ case "${1:-status}" in
     ;;
   *)
     cat <<USAGE
-Uso: systemproctl {start|stop|restart|status|logs [serviço]|version|license|license-once|license-logs}
+Uso: systemproctl {start|stop|restart|status|logs [serviço]|version|config-check|config-apply {backend|proxy} --confirm|license|license-once|license-logs}
 
 Este utilitário nunca remove volumes ou dados.
 USAGE

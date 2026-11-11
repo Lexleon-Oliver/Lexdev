@@ -68,6 +68,10 @@ services:
       FISCAL_TRUST_STORE_PASSWORD: ${FISCAL_TRUST_STORE_PASSWORD:-}
       FISCAL_SCHEMA_LOCATION: ${FISCAL_SCHEMA_LOCATION:-classpath:/fiscal/nfce/PL_010f/nfe_v4.00.xsd}
 
+      # Funcionalidades fiscais experimentais permanecem bloqueadas na ISO comercial.
+      FISCAL_LIQUID_ZERO_TAX_PRODUCER_ENABLED: "false"
+      FISCAL_EMIT_LIQUID_VALUES: "false"
+
       AI_ENABLED: ${AI_ENABLED:-false}
       AI_PROVIDER: ${AI_PROVIDER:-openai}
       AI_MAX_OUTPUT_TOKENS: ${AI_MAX_OUTPUT_TOKENS:-600}
